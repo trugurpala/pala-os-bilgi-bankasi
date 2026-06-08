@@ -1,0 +1,205 @@
+﻿# CI Source Court Audit Fix - Raw Patch/Diff
+# Date: 2026-06-08
+# Source repo: trugurpala/pala-os-v6
+# Source fix commit: 32362b5626b7f3264c49f3676343389c009e407f
+
+commit 32362b5626b7f3264c49f3676343389c009e407f
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Mon Jun 8 18:15:55 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Mon Jun 8 18:15:55 2026 +0300
+
+    fix: unblock source court audit ci gate
+---
+ .github/workflows/pala.yml    |  5 ++++
+ docs/inheritance-backlog.json | 15 ++++++++++++
+ src/source-court.js           | 41 ++++++++++++++++++++++++++++++-
+ test/pala-v6.test.js          | 57 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 117 insertions(+), 1 deletion(-)
+
+diff --git a/.github/workflows/pala.yml b/.github/workflows/pala.yml
+index 46048b3..75ba555 100644
+--- a/.github/workflows/pala.yml
++++ b/.github/workflows/pala.yml
+@@ -23,9 +23,14 @@ jobs:
+         run: |
+           node src/cli.js source audit --json | Set-Content source-audit.json
+           $audit = Get-Content source-audit.json -Raw | ConvertFrom-Json
++          Write-Host "Source Court audit status: $($audit.status)"
++          Write-Host "Source Court blockedFiles: $($audit.summary.blockedFiles)"
+           if ($audit.status -eq 'BLOCKED') {
+             throw "Source Court audit is BLOCKED"
+           }
++          if ([int]$audit.summary.blockedFiles -gt 0) {
++            throw "Source Court audit has blockedFiles=$($audit.summary.blockedFiles)"
++          }
+           if (-not $audit.sourceStampGate) {
+             throw "sourceStampGate missing from Source Court audit"
+           }
+diff --git a/docs/inheritance-backlog.json b/docs/inheritance-backlog.json
+index c6678ef..7becc67 100644
+--- a/docs/inheritance-backlog.json
++++ b/docs/inheritance-backlog.json
+@@ -3,6 +3,21 @@
+   "generatedAt": "2026-06-08T08:43:00+03:00",
+   "status": "RELEASE_BLOCKED",
+   "objectiveScope": "read-only inheritance audit for Pala OS V6",
++  "sourceCards": [
++    {
++      "originType": "legacy-repo",
++      "originRef": "legacy/pala-os/source/docs/v6-dunya-standardi-karargah-tr.md",
++      "repoFullName": "trugurpala/pala-os",
++      "visibility": "private",
++      "commitSha": "legacy-local-archive-2026-06-08",
++      "license": "NOT_AVAILABLE_WITH_REASON",
++      "decision": "ADAPT",
++      "riskLevel": "medium",
++      "allowedLayer": "governance-doc",
++      "summary": "Source card for the adapted V6 world-standard governance document; used by clean CI source-court audit when local SQLite source-card state is absent.",
++      "evidenceUri": "docs/inheritance-backlog.json#sourceCards"
++    }
++  ],
+   "sourceCourtDecisions": [
+     {
+       "sourceRef": "trugurpala/pala-os:docs/v6-dunya-standardi-karargah-tr.md",
+diff --git a/src/source-court.js b/src/source-court.js
+index a6bf410..6910bb1 100644
+--- a/src/source-court.js
++++ b/src/source-court.js
+@@ -387,6 +387,43 @@ async function readDefaultCourtDecisions(rootDir) {
+   }
+ }
+ 
++async function readDefaultSourceCards(rootDir) {
++  const backlogPath = path.join(rootDir, 'docs', 'inheritance-backlog.json');
++  try {
++    const payload = JSON.parse(await fs.readFile(backlogPath, 'utf8'));
++    return Array.isArray(payload.sourceCards) ? payload.sourceCards : [];
++  } catch {
++    return [];
++  }
++}
++
++function sourceCardIdentity(card) {
++  const normalized = normalizeCard(card);
++  return [
++    normalized.originRef,
++    normalized.repoFullName,
++    normalized.evidenceUri,
++  ].filter(hasText).join('|').toLowerCase();
++}
++
++function mergeSourceCards(...cardSets) {
++  const merged = [];
++  const seen = new Set();
++
++  for (const cardSet of cardSets) {
++    for (const card of cardSet ?? []) {
++      const identity = sourceCardIdentity(card);
++      if (!identity || seen.has(identity)) {
++        continue;
++      }
++      seen.add(identity);
++      merged.push(card);
++    }
++  }
++
++  return merged;
++}
++
+ function findMatchingCourtDecision(courtDecisions, { stamp, legacyMatches }) {
+   const tokens = sourceTokensForMatch({ stamp, legacyMatches });
+   const stampDecision = String(stamp.fields.palaCourtDecision ?? '').trim();
+@@ -578,6 +615,8 @@ export async function buildSourceCourtAudit({
+   const legacyHash = await buildLegacyHashIndex(resolvedRoot, { legacyMode });
+   const legacyHashIndex = legacyHash.index;
+   const decisions = courtDecisions ?? await readDefaultCourtDecisions(resolvedRoot);
++  const defaultSourceCards = await readDefaultSourceCards(resolvedRoot);
++  const effectiveSourceCards = mergeSourceCards(sourceCards, defaultSourceCards);
+   const files = [];
+ 
+   for (const filePath of activeFiles) {
+@@ -620,7 +659,7 @@ export async function buildSourceCourtAudit({
+     const sourceChainRequired = Boolean(classification.adaptation)
+       || classification.classification === SOURCE_CLASSES.LEGACY_ADAPTED
+       || classification.classification === SOURCE_CLASSES.OSS_ADAPTED;
+-    const sourceCard = sourceChainRequired ? findMatchingSourceCard(sourceCards, { stamp, legacyMatches }) : null;
++    const sourceCard = sourceChainRequired ? findMatchingSourceCard(effectiveSourceCards, { stamp, legacyMatches }) : null;
+     const courtDecision = sourceChainRequired ? findMatchingCourtDecision(decisions, { stamp, legacyMatches }) : null;
+     const validatorLink = buildValidatorLink(relativePath, contentHash);
+     const verdict = validateFileChain({
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index e49f8f6..20b9cd8 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -1095,6 +1095,62 @@ test('source court gives PASS only when the full adapted chain is present', asyn
+   assert.equal(adapted?.sourceChain.requiredFieldsComplete, true);
+ });
+ 
++test('source court uses inheritance backlog source cards in clean checkout audit', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'docs'), { recursive: true });
++  await writeFile(path.join(root, 'docs', 'inheritance-backlog.json'), JSON.stringify({
++    sourceCards: [{
++      originType: 'legacy-repo',
++      originRef: 'legacy/pala-os/source/docs/v6-dunya-standardi-karargah-tr.md',
++      repoFullName: 'trugurpala/pala-os',
++      visibility: 'private',
++      commitSha: 'legacy-local-archive-2026-06-08',
++      license: 'NOT_AVAILABLE_WITH_REASON',
++      decision: 'ADAPT',
++      riskLevel: 'medium',
++      allowedLayer: 'governance-doc',
++      summary: 'tracked clean checkout source card for adapted governance doc',
++    }],
++    sourceCourtDecisions: [{
++      sourceRef: 'trugurpala/pala-os:docs/v6-dunya-standardi-karargah-tr.md',
++      decision: 'ADAPT',
++      category: 'governance-doc',
++    }],
++  }, null, 2));
++  await writeFile(path.join(root, 'docs', 'v6-dunya-standardi-karargah-tr.md'), [
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/docs/v6-dunya-standardi-karargah-tr.md',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' * @palaCourtId MIGRATION-V6-001',
++    ' * @palaRewritePolicy Adapted for v6 strict governance, not blind copied.',
++    ' * @palaSavedEstimate 1d_estimated',
++    ' */',
++    '# Governance source card test',
++    '',
++  ].join('\n'));
++
++  const audit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    legacyMode: 'explicit',
++  });
++  const adaptedDoc = audit.files.find((file) => file.path === 'docs/v6-dunya-standardi-karargah-tr.md');
++
++  assert.equal(adaptedDoc?.classification, 'GOVERNANCE_DOC');
++  assert.equal(adaptedDoc?.adaptation, 'LEGACY_ADAPTED');
++  assert.equal(adaptedDoc?.status, 'PASS');
++  assert.equal(adaptedDoc?.sourceChain.sourceCard, true);
++  assert.equal(adaptedDoc?.sourceChain.courtDecision, true);
++  assert.equal(audit.summary.blockedFiles, 0);
++  assert.notEqual(audit.status, 'BLOCKED');
++});
++
+ test('source audit CLI emits JSON and court includes sourceStampGate', async (t) => {
+   const root = await createWorkspace();
+   t.after(async () => {
+@@ -1328,6 +1384,7 @@ test('github governance files declare Phase B review and ownership controls', as
+   ].forEach((jobName) => {
+     assert.ok(workflow.includes(jobName), `workflow missing stable job ${jobName}`);
+   });
++  assert.match(workflow, /blockedFiles/);
+ 
+   assert.match(policy, /BRANCH_PROTECTION_BLOCKED/);
+   assert.match(policy, /Solo-Owner Deadlock Risk/);
