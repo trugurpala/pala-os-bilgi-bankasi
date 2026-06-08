@@ -9,6 +9,8 @@ Default behavior:
 - Visibility: public
 - Report format: dated Markdown under `reports/<source-repo>/`
 - Include: source repo, phase, changed files, new files, evidence commands, status, rollback note, and release posture.
+- Always include a changed-files section. For implementation reports, add a separate changed-files manifest when there are multiple files or any pre-existing dirty files.
+- Separate included files from excluded/pre-existing dirty files so the owner can review the mutation package quickly.
 - Do not include secrets, API keys, local database dumps, private runtime artifacts, or sensitive customer data.
 - Do not treat knowledge-bank publication as release approval.
 

@@ -32,6 +32,10 @@ Reason: there are no release-blocking source stamp failures, but governance/refe
 - `docs/inheritance-backlog.json`
 - `docs/v6-dunya-standardi-karargah-tr.md`
 
+Manifest:
+
+- `reports/pala-os-v6/2026-06-08-phase-a-changed-files-manifest.md`
+
 ## New Files
 
 - `src/source-court.js`
