@@ -1,0 +1,59 @@
+﻿# Windows Test EBUSY Fix - Raw Patch/Diff
+# Date: 2026-06-08
+# Source repo: trugurpala/pala-os-v6
+# Source fix commit: 61b5962f639baa61f497fdac3ba8b3e35863ed75
+
+commit 61b5962f639baa61f497fdac3ba8b3e35863ed75
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Mon Jun 8 18:32:27 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Mon Jun 8 18:32:27 2026 +0300
+
+    fix: stabilize windows test cleanup
+---
+ test/pala-v6.test.js | 23 ++++++++++++++++++++++-
+ 1 file changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index 20b9cd8..9a236a1 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -1,9 +1,10 @@
+ import assert from 'node:assert/strict';
+ import { execFileSync, spawn } from 'node:child_process';
+-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
++import { mkdir, mkdtemp, readFile, rm as fsRm, writeFile } from 'node:fs/promises';
+ import os from 'node:os';
+ import path from 'node:path';
+ import { once } from 'node:events';
++import { setTimeout as delay } from 'node:timers/promises';
+ import test from 'node:test';
+ 
+ const repoRoot = process.cwd();
+@@ -25,6 +26,26 @@ async function createWorkspace() {
+   return mkdtemp(path.join(os.tmpdir(), 'pala-os-v6-'));
+ }
+ 
++async function rm(targetPath, options) {
++  const retryableCodes = new Set(['EBUSY', 'EPERM', 'ENOTEMPTY']);
++  let lastError = null;
++
++  for (let attempt = 0; attempt < 8; attempt += 1) {
++    try {
++      await fsRm(targetPath, options);
++      return;
++    } catch (error) {
++      lastError = error;
++      if (!retryableCodes.has(error?.code) || attempt === 7) {
++        throw error;
++      }
++      await delay(100 * (attempt + 1));
++    }
++  }
++
++  throw lastError;
++}
++
+ test('bootstrap seeds the 60-standard policy catalog', async (t) => {
+   const root = await createWorkspace();
+   t.after(async () => {
