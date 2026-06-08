@@ -11,6 +11,8 @@ Default behavior:
 - Include: source repo, phase, changed files, new files, evidence commands, status, rollback note, and release posture.
 - Always include a changed-files section. For implementation reports, add a separate changed-files manifest when there are multiple files or any pre-existing dirty files.
 - Separate included files from excluded/pre-existing dirty files so the owner can review the mutation package quickly.
+- For meaningful local mutations, publish a repo-change review package too: included files, excluded dirty files, new files, tracked diff stat, file-by-file change notes, evidence commands, and a raw patch/diff file when practical.
+- If a tracked file includes older dirty changes, say that clearly and isolate the current phase intent from the full local diff.
 - Reports are append-only by default: do not overwrite old report files. Use a new dated filename, and add `-v2` or an addendum suffix when publishing another report for the same phase.
 - Corrections should be new correction/addendum files unless the owner explicitly asks to edit an existing report.
 - Do not include secrets, API keys, local database dumps, private runtime artifacts, or sensitive customer data.

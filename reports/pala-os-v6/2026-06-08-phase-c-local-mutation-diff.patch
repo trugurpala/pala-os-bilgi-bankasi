@@ -1,0 +1,1376 @@
+﻿diff --git a/.github/workflows/pala.yml b/.github/workflows/pala.yml
+index cfbd1a1..5d9f56b 100644
+--- a/.github/workflows/pala.yml
++++ b/.github/workflows/pala.yml
+@@ -18,6 +18,25 @@ jobs:
+       - uses: actions/setup-node@v4
+         with:
+           node-version: '24.14.1'
++      - name: Legacy boundary scan
++        shell: pwsh
++        run: |
++          $required = @(
++            'legacy/**',
++            'docs/legacy/**',
++            '.pala/**',
++            'node_modules/**',
++            'dist/**',
++            'coverage/**',
++            'skills/registry/legacy-skills-index.json'
++          )
++          $dockerignore = Get-Content .dockerignore -Raw
++          foreach ($entry in $required) {
++            if ($dockerignore -notmatch [regex]::Escape($entry)) {
++              throw ".dockerignore missing $entry"
++            }
++          }
++          node src/cli.js source audit --json | Out-Null
+       - name: Bootstrap app
+         run: node src/cli.js bootstrap
+       - name: Run tests
+diff --git a/src/bootstrap.js b/src/bootstrap.js
+index 549a2f3..ad20f0b 100644
+--- a/src/bootstrap.js
++++ b/src/bootstrap.js
+@@ -33,6 +33,7 @@ import { battalionCatalog, EVIDENCE_BATTALIONS } from './evidence-battalions.js'
+ import {
+   buildEvidenceSprint,
+   evaluateCourt,
++  evaluateSourceStampGate,
+   evaluateStandards,
+   suggestNextActions,
+   summarizeEvaluations,
+@@ -48,6 +49,10 @@ import {
+   summarizeSkillRegistry,
+ } from './skill-registry.js';
+ import { ensureBenchmarkState, loadBenchmarkState, summarizeBenchmarkState } from './benchmark.js';
++import { ENVIRONMENT_LIMIT_RADAR, summarizeEnvironmentLimits } from './environment-limits.js';
++import { OPERATOR_ACTION_QUEUE, summarizeOperatorActions } from './operator-actions.js';
++import { buildCoreFoundationRadar } from './core-foundation.js';
++import { buildSourceCourtAudit, sanitizeSourceCourtAudit } from './source-court.js';
+ 
+ export async function bootstrapApp() {
+   await ensureAppDirs();
+@@ -101,10 +106,19 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+   const tokenSnapshots = loadRecentTokenSnapshots(db, 5);
+   const ledger = readLedgerRecords(250);
+   const github = await getGithubBridgeStatus();
++  const sourceCourtAudit = sanitizeSourceCourtAudit(await buildSourceCourtAudit({
++    rootDir: ROOT_DIR,
++    sourceCards,
++  }));
++  const sourceStampGate = evaluateSourceStampGate(sourceCourtAudit);
+   const skillRegistry = await loadSeedSkillRegistry();
+   const skillRegistrySummary = summarizeSkillRegistry(skillRegistry);
+   const benchmarkState = await loadBenchmarkState();
+   const benchmarkSummary = summarizeBenchmarkState(benchmarkState);
++  const environmentLimits = ENVIRONMENT_LIMIT_RADAR;
++  const environmentLimitSummary = summarizeEnvironmentLimits(environmentLimits);
++  const operatorActionQueue = OPERATOR_ACTION_QUEUE;
++  const operatorActionSummary = summarizeOperatorActions(operatorActionQueue);
+   const viewSummary = summarizeEvaluations(evaluatedStandards);
+   const summary = summarizeEvaluations(globalStandards);
+   const evidenceSprint = buildEvidenceSprint(standards, evidenceCounts, {
+@@ -121,6 +135,7 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     sourceCards,
+     runs,
+     ledger,
++    sourceStampGate,
+   });
+ 
+   const state = {
+@@ -134,6 +149,10 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     skillRegistrySummary,
+     benchmarkState,
+     benchmarkSummary,
++    environmentLimits,
++    environmentLimitSummary,
++    operatorActionQueue,
++    operatorActionSummary,
+     skillRegistryViews: {
+       list: listRegistrySkills(skillRegistry),
+       core: listRegistrySkills(skillRegistry, { status: 'draft' }).slice(0, 6),
+@@ -157,6 +176,8 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     standards: evaluatedStandards,
+     events,
+     sourceCards,
++    sourceCourtAudit,
++    sourceStampGate,
+     jobRuns,
+     runs,
+     tokenSnapshots,
+@@ -175,6 +196,9 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     evidenceSprint,
+   };
+ 
++  state.coreFoundation = buildCoreFoundationRadar(state);
++  state.coreFoundationSummary = state.coreFoundation.summary;
++
+   saveDashboardState(db, 'last', state);
+   return state;
+ }
+@@ -186,9 +210,12 @@ export async function runCronCycle(db) {
+     'ledger-watch',
+     'evidence-watch',
+     'source-drift',
++    'core-foundation-watch',
+     'secret-watch',
+     'docker-watch',
+     'mcp-watch',
++    'environment-limit-watch',
++    'operator-action-watch',
+     'github-watch',
+     'token-watch',
+     'standard-watch',
+@@ -197,12 +224,19 @@ export async function runCronCycle(db) {
+ 
+   watchers.forEach((watcher, index) => {
+     const finishedAt = new Date(startedAt.getTime() + 15 + (index * 5));
++    const detail = watcher === 'environment-limit-watch'
++      ? `${state.environmentLimitSummary.total} environments tracked; ${(state.environmentLimitSummary.byStatus?.['not-external'] ?? 0)} not external`
++      : watcher === 'operator-action-watch'
++        ? `${state.operatorActionSummary.ready}/${state.operatorActionSummary.total} operator actions ready; token reduction ${state.operatorActionSummary.expectedContextReduction}`
++      : watcher === 'core-foundation-watch'
++        ? `${state.coreFoundationSummary.active}/${state.coreFoundationSummary.total} core components active; ${state.coreFoundationSummary.ownerGated} owner-gated`
++      : state.summary.blocked > 0
++        ? `blocked required standards: ${state.summary.blocked}`
++        : 'no blockers detected';
+     addJobRun(db, {
+       jobName: watcher,
+       status: state.summary.blocked > 0 && watcher === 'court-watch' ? 'attention' : 'ok',
+-      detail: state.summary.blocked > 0
+-        ? `blocked required standards: ${state.summary.blocked}`
+-        : 'no blockers detected',
++      detail,
+       startedAt: startedAt.toISOString(),
+       finishedAt: finishedAt.toISOString(),
+       runtimeMs: finishedAt.getTime() - startedAt.getTime(),
+diff --git a/src/cli.js b/src/cli.js
+index 1343f17..a4c064f 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -8,6 +8,7 @@ import {
+   addToolUsage,
+   finishRun,
+   loadEvidenceCounts,
++  loadRecentSourceCards,
+   loadStandards,
+   startRun,
+ } from './db.js';
+@@ -23,6 +24,9 @@ import { runDockerSmoke } from './docker-smoke.js';
+ import { buildLegacyAudit } from './legacy-audit.js';
+ import { archiveLegacySource } from './legacy-archive.js';
+ import { writeLegacySkillIndex } from './legacy-skills.js';
++import { buildCoreFoundationRadar } from './core-foundation.js';
++import { ROOT_DIR } from './config.js';
++import { buildSourceCourtAudit } from './source-court.js';
+ 
+ function printHelp() {
+   console.log(`Pala OS V6
+@@ -35,12 +39,14 @@ Commands:
+   sak status
+   sak bak <query>
+   sak ingest --repo owner/name [--path local/path] [--visibility public|private|internal|local|unknown] [--commit sha] [--license MIT] [--summary text]
++  sak source audit [--json]
+   sak legacy audit --path C:\\legacy\\repo [--json]
+   sak legacy archive --path C:\\legacy\\repo [--out legacy/pala-os/source] [--force] [--json]
+   sak legacy skills index --path C:\\legacy\\repo [--out skills/registry/legacy-skills-index.json] [--json]
+   sak evidence add --standard nist-ssdf --detail "..."
+   sak evidence sprint [--mode machine-gate] [--max 10] [--include-satisfied true|false] [--json]
+   sak screenshot --url http://127.0.0.1:8787 [--selector ...] [--full-page]
++  sak core audit [--json]
+   sak audit
+   sak cron run
+   sak court
+@@ -132,12 +138,17 @@ function selectCourtStandards(standards) {
+ 
+ function buildCourtDecisionPayload(court, state) {
+   const { sourceCards = [], ledger = [] } = state;
++  const sourceStampGate = state.sourceStampGate ?? court?.sourceStampGate ?? {
++    status: 'NOT_AVAILABLE_WITH_REASON',
++    reasons: ['source court audit not available'],
++  };
+   const blockedStandards = selectCourtStandards(state.standards);
+   const blockedRequired = court?.blockedRequired ?? 0;
+   const ownerApproved = Boolean(court?.ownerApproved);
+   const hasSourceCards = sourceCards.length > 0;
+   const hasLedgerEvidence = ledger.length > 0;
+-  const releaseReady = ownerApproved && blockedRequired === 0 && hasSourceCards && hasLedgerEvidence;
++  const sourceStampGatePassable = sourceStampGate.status !== 'BLOCKED';
++  const releaseReady = ownerApproved && blockedRequired === 0 && hasSourceCards && hasLedgerEvidence && sourceStampGatePassable;
+   const gate = releaseReady ? 'PASS' : 'BLOCKED';
+ 
+   return {
+@@ -153,6 +164,7 @@ function buildCourtDecisionPayload(court, state) {
+       sourceCards: sourceCards.length,
+       ledgerRecords: ledger.length,
+       courtDecision: court?.decision ?? 'RELEASE_BLOCKED',
++      sourceStampGateStatus: sourceStampGate.status,
+       releaseStatus: releaseReady ? 'GECERLI' : 'BASARISIZ',
+     },
+     releaseGate: {
+@@ -163,8 +175,10 @@ function buildCourtDecisionPayload(court, state) {
+       hasSourceCards,
+       hasLedgerEvidence,
+       blockedRequired,
++      sourceStampGateStatus: sourceStampGate.status,
+       route: state.route,
+     },
++    sourceStampGate,
+     releaseReady,
+     sourceCardsCount: sourceCards.length,
+     ledgerRecordsCount: ledger.length,
+@@ -383,6 +397,32 @@ async function main() {
+     return;
+   }
+ 
++  if (command === 'source' && subcommand === 'audit') {
++    const flags = parseFlags(rest);
++    const outputJson = normalizeSprintBoolean(flags.json, true);
++    const { db } = await bootstrapApp();
++    const result = await withCommandRun(db, 'source audit', 'Inspect source court stamp chain', async () => {
++      const sourceCards = loadRecentSourceCards(db, 12);
++      const audit = await buildSourceCourtAudit({
++        rootDir: ROOT_DIR,
++        sourceCards,
++        legacyMode: 'explicit',
++      });
++      return {
++        message: 'source court audit generated',
++        audit,
++      };
++    });
++
++    if (!outputJson) {
++      console.log(`${result.audit.status}: ${result.audit.sourceStampGate.reasons.join('; ')}`);
++      return;
++    }
++
++    console.log(JSON.stringify(result.audit, null, 2));
++    return;
++  }
++
+   if (command === 'screenshot') {
+     const flags = parseFlags([subcommand, ...rest].filter(Boolean));
+     const positionalUrl = subcommand.startsWith('--') ? '' : subcommand;
+@@ -460,6 +500,27 @@ async function main() {
+     return;
+   }
+ 
++  if (command === 'core' && subcommand === 'audit') {
++    const flags = parseFlags(rest);
++    const outputJson = normalizeSprintBoolean(flags.json, true);
++    const { db } = await bootstrapApp();
++    const result = await withCommandRun(db, 'core audit', 'Inspect Pala core foundation radar', async () => {
++      const state = await buildAppState(db, { profile: 'dashboard' });
++      const radar = buildCoreFoundationRadar(state);
++      return { message: 'core foundation radar generated', radar };
++    });
++
++    if (!outputJson) {
++      for (const component of result.radar.components) {
++        console.log(`${component.id}: ${component.status} (${component.verdict}) - ${component.currentEvidence}`);
++      }
++      return;
++    }
++
++    console.log(JSON.stringify({ ok: true, ...result.radar }, null, 2));
++    return;
++  }
++
+   if (command === 'cron' && subcommand === 'run') {
+     const { db } = await bootstrapApp();
+     const result = await withCommandRun(db, 'cron run', 'Run local watcher jobs', async () => {
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index 2796ffa..db4a0d9 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -679,6 +679,9 @@ test('cron run records watcher jobs and token snapshots', async (t) => {
+   const pack = JSON.parse(runCli(['bak', 'cron audit'], { PALA_ROOT_DIR: root }));
+ 
+   assert.ok(pack.appState.jobRuns.length >= 10);
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'core-foundation-watch'));
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'environment-limit-watch'));
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'operator-action-watch'));
+   assert.ok(pack.appState.tokenSnapshots.length >= 1);
+ });
+ 
+@@ -708,6 +711,12 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+   assert.match(auditOutput, /RELEASE_BLOCKED/);
+   assert.match(auditOutput, /Build Web Data Visualization/);
+ 
++  const coreAudit = JSON.parse(runCli(['core', 'audit', '--json'], { PALA_ROOT_DIR: root }));
++  assert.equal(coreAudit.ok, true);
++  assert.equal(coreAudit.summary.total, 6);
++  assert.ok(coreAudit.components.some((component) => component.id === 'sak-cli'));
++  assert.ok(coreAudit.components.some((component) => component.id === 'court-release-gate' && component.status === 'owner-gated'));
++
+   const apiScript = `
+     import { spawn } from 'node:child_process';
+     import { setTimeout as delay } from 'node:timers/promises';
+@@ -750,13 +759,16 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     const skills = await fetchWithRetry('http://127.0.0.1:${port}/api/skills', (response) => response.json());
+     const filteredSkills = await fetchWithRetry('http://127.0.0.1:${port}/api/skills?status=draft&q=operator', (response) => response.json());
+     const benchmark = await fetchWithRetry('http://127.0.0.1:${port}/api/benchmark', (response) => response.json());
++    const environmentLimits = await fetchWithRetry('http://127.0.0.1:${port}/api/environment-limits', (response) => response.json());
++    const operatorActions = await fetchWithRetry('http://127.0.0.1:${port}/api/operator-actions', (response) => response.json());
++    const coreFoundation = await fetchWithRetry('http://127.0.0.1:${port}/api/core-foundation', (response) => response.json());
+ 
+     try {
+       server.kill('SIGTERM');
+       await Promise.race([serverExit, delay(1000)]);
+     } catch {}
+ 
+-    console.log(JSON.stringify({ rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark }, null, 2));
++    console.log(JSON.stringify({ rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark, environmentLimits, operatorActions, coreFoundation }, null, 2));
+   `;
+ 
+   const apiOutput = execFileSync(process.execPath, ['--input-type=module', '-e', apiScript], {
+@@ -770,12 +782,19 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     encoding: 'utf8',
+   });
+ 
+-  const { rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark } = JSON.parse(apiOutput);
++  const { rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark, environmentLimits, operatorActions, coreFoundation } = JSON.parse(apiOutput);
+ 
+   assert.match(rootHtml, /Command Radar/);
++  assert.match(rootHtml, /Core Foundation Radar/);
++  assert.match(rootHtml, /SQLite Evidence Ledger/);
+   assert.match(rootHtml, /Reference Doctrine/);
+   assert.match(rootHtml, /Skill Registry/);
+   assert.match(rootHtml, /Connector Dock/);
++  assert.match(rootHtml, /Environment Limit Radar/);
++  assert.match(rootHtml, /Operator Action Queue/);
++  assert.match(rootHtml, /Vercel/);
++  assert.match(rootHtml, /GitHub/);
++  assert.match(rootHtml, /browser-playwright/);
+   assert.match(rootHtml, /Official Source Authority/);
+   assert.match(rootHtml, /csrc\.nist\.gov/);
+   assert.match(rootHtml, /KANIT YOK/);
+@@ -795,6 +814,19 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+   assert.ok(filteredSkills.skills.some((skill) => skill.name === 'pala-os-operator'));
+   assert.equal(benchmark.ok, true);
+   assert.ok(Array.isArray(benchmark.benchmark.categories));
++  assert.equal(environmentLimits.ok, true);
++  assert.equal(environmentLimits.summary.total, 5);
++  assert.ok(environmentLimits.radar.environments.some((environment) => environment.id === 'vercel-static-upload'));
++  assert.ok(environmentLimits.radar.environments.some((environment) => environment.id === 'localhost-download' && environment.status === 'not-external'));
++  assert.equal(operatorActions.ok, true);
++  assert.equal(operatorActions.summary.total, 6);
++  assert.equal(operatorActions.summary.expectedContextReduction, '60-85%');
++  assert.ok(operatorActions.queue.actions.some((action) => action.id === 'browser-visual-check'));
++  assert.ok(operatorActions.queue.actions.some((action) => action.id === 'token-context-pack' && action.mode === 'token-saver'));
++  assert.equal(coreFoundation.ok, true);
++  assert.equal(coreFoundation.summary.total, 6);
++  assert.ok(coreFoundation.radar.components.some((component) => component.id === 'standards-policy-engine' && component.currentEvidence.includes('60 standards')));
++  assert.ok(coreFoundation.radar.components.some((component) => component.id === 'court-release-gate' && component.status === 'owner-gated'));
+ });
+ 
+ test('root-level scaffold docs exist for plans prompts benchmark and court', async () => {
+@@ -872,3 +904,298 @@ test('local MCP packaging and boot artifacts exist', async () => {
+   assert.match(compose, /pala-v6-mcp/);
+   assert.match(bootDoc, /RELEASE_BLOCKED/);
+ });
++
++test('source court classifies originals governance docs references and excluded paths', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'docs', 'legacy'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await mkdir(path.join(root, '.pala', 'runtime'), { recursive: true });
++  await mkdir(path.join(root, 'node_modules', 'pkg'), { recursive: true });
++  await mkdir(path.join(root, 'dist'), { recursive: true });
++
++  await writeFile(path.join(root, 'src', 'original.js'), 'export const original = true;\n');
++  await writeFile(path.join(root, 'README.md'), '# Governance README\nrelease gate and court overview\n');
++  await writeFile(path.join(root, 'docs', 'legacy', 'reference.md'), '# Old reference\n');
++  await writeFile(path.join(root, 'docs', 'legacy', 'copied-reference.md'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'docs', 'source-stamp-contract.md'), [
++    '# Source stamp contract',
++    '',
++    '```ts',
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/example.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' */',
++    '```',
++    '',
++  ].join('\n'));
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, '.pala', 'runtime', 'ignored.js'), 'ignored\n');
++  await writeFile(path.join(root, 'node_modules', 'pkg', 'ignored.js'), 'ignored\n');
++  await writeFile(path.join(root, 'dist', 'ignored.js'), 'ignored\n');
++
++  const audit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const byPath = new Map(audit.files.map((file) => [file.path, file]));
++
++  assert.equal(byPath.get('src/original.js')?.classification, 'PALA_ORIGINAL');
++  assert.notEqual(byPath.get('src/original.js')?.status, 'BLOCKED');
++  assert.equal(byPath.get('README.md')?.classification, 'GOVERNANCE_DOC');
++  assert.notEqual(byPath.get('README.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/legacy/reference.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/legacy/reference.md')?.releaseEvidenceAllowed, false);
++  assert.equal(byPath.get('docs/legacy/copied-reference.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/source-stamp-contract.md')?.classification, 'GOVERNANCE_DOC');
++  assert.equal(byPath.get('docs/source-stamp-contract.md')?.sourceStamp.present, false);
++  assert.equal(byPath.get('src/copied.js')?.classification, 'LEGACY_ADAPTED');
++  assert.equal(byPath.get('src/copied.js')?.status, 'BLOCKED');
++  assert.ok(audit.files.every((file) => !file.path.startsWith('legacy/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('.pala/runtime/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('node_modules/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('dist/')));
++});
++
++test('source court refuses PASS for incomplete legacy source chains', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'stamp-only.js'), [
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/stamp-only.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' * @palaCourtId MIGRATION-V6-001',
++    ' * @palaRewritePolicy Adapted for v6 strict governance, not blind copied.',
++    ' * @palaSavedEstimate 3d_estimated',
++    ' */',
++    'export const adapted = true;',
++    '',
++  ].join('\n'));
++  await writeFile(path.join(root, 'src', 'card-only.js'), 'export const cardOnly = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'card-only.js'), 'export const cardOnly = "legacy";\n');
++
++  const card = {
++    origin_type: 'local-path',
++    origin_ref: 'legacy/pala-os/source',
++    repo_full_name: 'trugurpala/pala-os',
++    visibility: 'local',
++    commit_sha: 'archive',
++    license: 'MIT',
++    decision: 'QUARANTINE',
++    risk_level: 'medium',
++    allowed_layer: 'adapter',
++    summary: 'legacy source under review',
++  };
++  const withStampOnly = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const withCardOnly = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [card],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++
++  const stampOnly = withStampOnly.files.find((file) => file.path === 'src/stamp-only.js');
++  const cardOnly = withCardOnly.files.find((file) => file.path === 'src/card-only.js');
++
++  assert.equal(stampOnly?.classification, 'LEGACY_ADAPTED');
++  assert.equal(stampOnly?.status, 'BLOCKED');
++  assert.ok(stampOnly?.missingRequirements.includes('sourceCard'));
++  assert.ok(stampOnly?.missingRequirements.includes('courtDecision'));
++  assert.equal(cardOnly?.classification, 'LEGACY_ADAPTED');
++  assert.equal(cardOnly?.status, 'BLOCKED');
++  assert.ok(cardOnly?.missingRequirements.includes('sourceStamp'));
++});
++
++test('source court gives PASS only when the full adapted chain is present', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'adapted.js'), [
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/adapted.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' * @palaCourtId MIGRATION-V6-001',
++    ' * @palaRewritePolicy Adapted for v6 strict governance, not blind copied.',
++    ' * @palaSavedEstimate 3d_estimated',
++    ' */',
++    'export const adapted = true;',
++    '',
++  ].join('\n'));
++
++  const audit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [{
++      origin_type: 'local-path',
++      origin_ref: 'legacy/pala-os/source',
++      repo_full_name: 'trugurpala/pala-os',
++      visibility: 'local',
++      commit_sha: 'archive',
++      license: 'MIT',
++      decision: 'QUARANTINE',
++      risk_level: 'medium',
++      allowed_layer: 'adapter',
++      summary: 'legacy source under review',
++    }],
++    courtDecisions: [{
++      sourceRef: 'trugurpala/pala-os:src',
++      decision: 'ADAPT',
++      category: 'operator-cli-and-method',
++    }],
++  });
++  const adapted = audit.files.find((file) => file.path === 'src/adapted.js');
++
++  assert.equal(adapted?.classification, 'LEGACY_ADAPTED');
++  assert.equal(adapted?.status, 'PASS');
++  assert.equal(adapted?.sourceChain.sourceStamp, true);
++  assert.equal(adapted?.sourceChain.sourceCard, true);
++  assert.equal(adapted?.sourceChain.courtDecision, true);
++  assert.equal(adapted?.sourceChain.validatorLink, true);
++  assert.equal(adapted?.sourceChain.requiredFieldsComplete, true);
++});
++
++test('source audit CLI emits JSON and court includes sourceStampGate', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const sourceAudit = JSON.parse(runCli(['source', 'audit', '--json'], { PALA_ROOT_DIR: root }));
++  const court = JSON.parse(runCli(['court'], { PALA_ROOT_DIR: root }));
++
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED', 'NOT_AVAILABLE_WITH_REASON'].includes(sourceAudit.status));
++  assert.equal(typeof sourceAudit.summary.activeFiles, 'number');
++  assert.ok(Array.isArray(sourceAudit.files));
++  assert.ok(sourceAudit.sourceStampGate);
++  assert.ok(Array.isArray(sourceAudit.sourceStampGate.reasons));
++  assert.ok(court.sourceStampGate);
++  assert.equal(court.decision, 'RELEASE_BLOCKED');
++});
++
++test('legacy boundary keeps default source court off root legacy while explicit audit can read it', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++
++  const defaultAudit = await buildSourceCourtAudit({ rootDir: root, sourceCards: [], courtDecisions: [] });
++  const explicitAudit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const defaultCopied = defaultAudit.files.find((file) => file.path === 'src/copied.js');
++  const explicitCopied = explicitAudit.files.find((file) => file.path === 'src/copied.js');
++
++  assert.equal(defaultAudit.legacyBoundary.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.equal(defaultCopied?.classification, 'PALA_ORIGINAL');
++  assert.equal(explicitAudit.legacyBoundary.status, 'PASS');
++  assert.equal(explicitCopied?.classification, 'LEGACY_ADAPTED');
++  assert.equal(explicitCopied?.status, 'BLOCKED');
++});
++
++test('dashboard state exposes only sanitized source court summary for legacy boundary', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const dashboardState = JSON.parse(await readFile(path.join(root, '.pala', 'state', 'last-dashboard-state.json'), 'utf8'));
++
++  assert.ok(dashboardState.sourceStampGate);
++  assert.equal(dashboardState.sourceCourtAudit.legacyBoundary.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.equal(dashboardState.sourceCourtAudit.files, undefined);
++  assert.equal(dashboardState.court.decision, 'RELEASE_BLOCKED');
++});
++
++test('skill registry ignores legacy skill index by default', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  const legacyIndexPath = path.join(root, 'skills', 'registry', 'legacy-skills-index.json');
++  await mkdir(path.dirname(legacyIndexPath), { recursive: true });
++  await writeFile(legacyIndexPath, `${JSON.stringify({
++    status: 'IMPORT_LATER',
++    skills: [{
++      name: 'legacy-only-skill',
++      domain: 'legacy',
++      status: 'import_later',
++      path: 'legacy/pala-os/source/skills/legacy-only/SKILL.md',
++      compatibility: ['codex'],
++    }],
++  }, null, 2)}\n`);
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const payload = JSON.parse(runCli(['skills', 'list'], {
++    PALA_ROOT_DIR: root,
++    PALA_LEGACY_SKILLS_INDEX_PATH: legacyIndexPath,
++  }));
++
++  assert.equal(payload.summary.total, 5);
++  assert.ok(payload.skills.every((skill) => !String(skill.path).startsWith('legacy/')));
++  assert.ok(payload.skills.every((skill) => skill.name !== 'legacy-only-skill'));
++});
++
++test('docker package and ci boundaries exclude legacy production inputs', async () => {
++  const dockerIgnore = await readFile(path.join(repoRoot, '.dockerignore'), 'utf8');
++  const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
++  const dockerfile = await readFile(path.join(repoRoot, 'Dockerfile'), 'utf8');
++  const workflow = await readFile(path.join(repoRoot, '.github', 'workflows', 'pala.yml'), 'utf8');
++
++  [
++    'legacy/**',
++    'docs/legacy/**',
++    '.pala/**',
++    'node_modules/**',
++    'dist/**',
++    'coverage/**',
++    'skills/registry/legacy-skills-index.json',
++  ].forEach((entry) => {
++    assert.ok(dockerIgnore.includes(entry), `.dockerignore missing ${entry}`);
++  });
++
++  assert.equal(packageJson.scripts.test, 'node --test test/pala-v6.test.js');
++  assert.ok(!dockerfile.includes('COPY legacy'));
++  assert.ok(workflow.includes('Legacy boundary scan'));
++});
+
+
+diff --git a/.dockerignore b/.dockerignore
+new file mode 100644
+index 0000000..f19dcc4
+--- /dev/null
++++ b/.dockerignore
+@@ -0,0 +1,12 @@
++legacy/**
++docs/legacy/**
++.pala/**
++node_modules/**
++dist/**
++coverage/**
++skills/registry/legacy-skills-index.json
++
++.git/**
++.github/**
++benchmark/benchmark-state.json
++*.log
+
+
+diff --git a/src/source-court.js b/src/source-court.js
+new file mode 100644
+index 0000000..a6bf410
+--- /dev/null
++++ b/src/source-court.js
+@@ -0,0 +1,680 @@
++import { createHash } from 'node:crypto';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++
++export const SOURCE_CLASSES = {
++  PALA_ORIGINAL: 'PALA_ORIGINAL',
++  LEGACY_ADAPTED: 'LEGACY_ADAPTED',
++  OSS_ADAPTED: 'OSS_ADAPTED',
++  REFERENCE_ONLY: 'REFERENCE_ONLY',
++  GOVERNANCE_DOC: 'GOVERNANCE_DOC',
++};
++
++export const SOURCE_STATUSES = {
++  PASS: 'PASS',
++  PARTIAL: 'PARTIAL',
++  BLOCKED: 'BLOCKED',
++  NOT_AVAILABLE_WITH_REASON: 'NOT_AVAILABLE_WITH_REASON',
++};
++
++const ACTIVE_DIRS = ['src', 'scripts', 'docs', 'plans', 'prompts'];
++const ROOT_GOVERNANCE_DOCS = new Set([
++  'README.md',
++  'AGENTS.md',
++  'PALA_RULES.md',
++  'SECURITY.md',
++  'ARCHITECTURE.md',
++]);
++const REQUIRED_STAMP_FIELDS = [
++  'palaSourceRef',
++  'palaSourceRepo',
++  'palaCourtDecision',
++  'palaCourtId',
++  'palaRewritePolicy',
++  'palaSavedEstimate',
++];
++const COURT_DECISIONS = new Set(['ADOPT', 'ADAPT', 'IMPORT_LATER', 'QUARANTINE', 'REJECT', 'ADAPT_PATTERN']);
++const BUILD_ARTIFACT_DIRS = new Set(['dist', 'build', 'coverage', '.next', 'out']);
++const LEGACY_MODE_EXPLICIT = 'explicit';
++const LEGACY_MODE_DISABLED = 'disabled';
++
++function toPosix(value) {
++  return String(value).replaceAll(path.sep, '/').replaceAll('\\', '/');
++}
++
++function relativeTo(rootDir, targetPath) {
++  return toPosix(path.relative(rootDir, targetPath));
++}
++
++function normalizeCard(card) {
++  return {
++    id: card.id ?? null,
++    originType: card.origin_type ?? card.originType ?? '',
++    originRef: card.origin_ref ?? card.originRef ?? '',
++    repoFullName: card.repo_full_name ?? card.repoFullName ?? '',
++    visibility: card.visibility ?? '',
++    commitSha: card.commit_sha ?? card.commitSha ?? '',
++    license: card.license ?? '',
++    decision: card.decision ?? '',
++    riskLevel: card.risk_level ?? card.riskLevel ?? '',
++    allowedLayer: card.allowed_layer ?? card.allowedLayer ?? '',
++    summary: card.summary ?? '',
++    evidenceUri: card.evidence_uri ?? card.evidenceUri ?? '',
++  };
++}
++
++function hasText(value) {
++  return String(value ?? '').trim().length > 0;
++}
++
++function sourceCardFieldsComplete(card) {
++  if (!card) {
++    return false;
++  }
++  const normalized = normalizeCard(card);
++  return [
++    normalized.originRef || normalized.repoFullName,
++    normalized.visibility,
++    normalized.commitSha || normalized.originRef,
++    normalized.license || 'NOT_AVAILABLE_WITH_REASON',
++    normalized.decision,
++    normalized.riskLevel,
++    normalized.allowedLayer,
++    normalized.summary || normalized.evidenceUri,
++  ].every(hasText);
++}
++
++function isExcludedPath(relativePath) {
++  const normalized = toPosix(relativePath);
++  const [first] = normalized.split('/');
++
++  if (!normalized || normalized.startsWith('../')) {
++    return true;
++  }
++  if (normalized.startsWith('legacy/') || normalized === 'legacy') {
++    return true;
++  }
++  if (normalized.startsWith('.git/') || normalized === '.git') {
++    return true;
++  }
++  if (normalized.startsWith('node_modules/') || normalized === 'node_modules') {
++    return true;
++  }
++  if (normalized.startsWith('.pala/db/') || normalized.startsWith('.pala/runtime/')) {
++    return true;
++  }
++  return BUILD_ARTIFACT_DIRS.has(first);
++}
++
++async function pathExists(targetPath) {
++  try {
++    await fs.access(targetPath);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++async function listFilesRecursive(rootDir, startPath, { respectExcludes = true } = {}) {
++  const files = [];
++  if (!(await pathExists(startPath))) {
++    return files;
++  }
++
++  const entries = await fs.readdir(startPath, { withFileTypes: true });
++  for (const entry of entries) {
++    const fullPath = path.join(startPath, entry.name);
++    const relativePath = relativeTo(rootDir, fullPath);
++    if (respectExcludes && isExcludedPath(relativePath)) {
++      continue;
++    }
++    if (entry.isDirectory()) {
++      files.push(...await listFilesRecursive(rootDir, fullPath, { respectExcludes }));
++      continue;
++    }
++    if (entry.isFile()) {
++      files.push(fullPath);
++    }
++  }
++
++  return files;
++}
++
++async function discoverActiveFiles(rootDir) {
++  const discovered = new Set();
++
++  for (const activeDir of ACTIVE_DIRS) {
++    const dirPath = path.join(rootDir, activeDir);
++    for (const filePath of await listFilesRecursive(rootDir, dirPath)) {
++      discovered.add(filePath);
++    }
++  }
++
++  for (const docName of ROOT_GOVERNANCE_DOCS) {
++    const docPath = path.join(rootDir, docName);
++    if (await pathExists(docPath)) {
++      discovered.add(docPath);
++    }
++  }
++
++  return [...discovered].sort((a, b) => relativeTo(rootDir, a).localeCompare(relativeTo(rootDir, b)));
++}
++
++async function discoverLegacyFiles(rootDir) {
++  const legacyRoot = path.join(rootDir, 'legacy');
++  return listFilesRecursive(rootDir, legacyRoot, { respectExcludes: false });
++}
++
++function hashContent(content) {
++  return createHash('sha256').update(content).digest('hex');
++}
++
++function buildLegacyBoundary({ legacyMode, files = [] }) {
++  if (legacyMode !== LEGACY_MODE_EXPLICIT) {
++    return {
++      status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++      mode: LEGACY_MODE_DISABLED,
++      files: 0,
++      reason: 'legacy archive is quarantined and not read by default product surfaces',
++      allowedReaders: ['source audit', 'legacy audit', 'legacy archive', 'legacy skills index'],
++      forbiddenReaders: ['runtime', 'dashboard truth', 'docker package', 'default test discovery', 'active skill loader', 'default agent context'],
++    };
++  }
++
++  return {
++    status: files.length > 0 ? SOURCE_STATUSES.PASS : SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++    mode: LEGACY_MODE_EXPLICIT,
++    files: files.length,
++    reason: files.length > 0
++      ? 'legacy archive read by explicit source-court audit'
++      : 'explicit legacy audit requested but no legacy archive files were found',
++    allowedReaders: ['source audit', 'legacy audit', 'legacy archive', 'legacy skills index'],
++    forbiddenReaders: ['runtime', 'dashboard truth', 'docker package', 'default test discovery', 'active skill loader', 'default agent context'],
++  };
++}
++
++async function buildLegacyHashIndex(rootDir, { legacyMode = LEGACY_MODE_DISABLED } = {}) {
++  if (legacyMode !== LEGACY_MODE_EXPLICIT) {
++    return {
++      index: new Map(),
++      boundary: buildLegacyBoundary({ legacyMode }),
++    };
++  }
++
++  const index = new Map();
++  const files = await discoverLegacyFiles(rootDir);
++  for (const filePath of files) {
++    const content = await fs.readFile(filePath, 'utf8').catch(() => null);
++    if (content === null) {
++      continue;
++    }
++    const hash = hashContent(content);
++    const relativePath = relativeTo(rootDir, filePath);
++    const matches = index.get(hash) ?? [];
++    matches.push(relativePath);
++    index.set(hash, matches);
++  }
++  return {
++    index,
++    boundary: buildLegacyBoundary({ legacyMode, files }),
++  };
++}
++
++export function parseSourceStamp(content) {
++  const fields = {};
++  const pattern = /@(pala[A-Za-z]+)\s+([^\r\n*]+)/g;
++  const scanContent = content.replace(/```[\s\S]*?```/g, '');
++  let match = pattern.exec(scanContent);
++  while (match) {
++    fields[match[1]] = match[2].trim();
++    match = pattern.exec(scanContent);
++  }
++
++  const missingFields = REQUIRED_STAMP_FIELDS.filter((field) => !hasText(fields[field]));
++  const present = REQUIRED_STAMP_FIELDS.some((field) => hasText(fields[field]));
++
++  return {
++    present,
++    fields,
++    requiredFields: REQUIRED_STAMP_FIELDS,
++    missingFields,
++    complete: present && missingFields.length === 0,
++  };
++}
++
++function looksLikeLegacySource(stamp) {
++  const sourceRef = String(stamp.fields.palaSourceRef ?? '').toLowerCase();
++  const sourceRepo = String(stamp.fields.palaSourceRepo ?? '').toLowerCase();
++  return [
++    sourceRef,
++    sourceRepo,
++  ].some((value) => {
++    return value.includes('legacy/pala-os')
++      || value.includes('trugurpala/pala-os:')
++      || value.endsWith('trugurpala/pala-os')
++      || /trugurpala\/pala-os-v[0-5](?:$|[:/])/.test(value);
++  });
++}
++
++function hasOssSourceStamp(stamp) {
++  if (!stamp.present) {
++    return false;
++  }
++  return !looksLikeLegacySource(stamp);
++}
++
++function isGovernanceDoc(relativePath, content) {
++  if (isCodeSurface(relativePath)) {
++    return false;
++  }
++
++  const basename = path.basename(relativePath);
++  if (ROOT_GOVERNANCE_DOCS.has(basename) && !relativePath.includes('/')) {
++    return true;
++  }
++
++  const lowerPath = relativePath.toLowerCase();
++  const lowerContent = content.toLowerCase();
++  return [
++    'court',
++    'release',
++    'gate',
++    'governance',
++    'source-court',
++    'source-card',
++    'world-standards',
++    'github-policy',
++    'agent-contracts',
++  ].some((token) => lowerPath.includes(token) || lowerContent.includes(token));
++}
++
++function isReferenceOnly(relativePath) {
++  const normalized = relativePath.toLowerCase();
++  return normalized.startsWith('docs/legacy/')
++    || normalized.includes('/archive/')
++    || normalized.endsWith('/reference.md');
++}
++
++function isCodeSurface(relativePath) {
++  return relativePath.startsWith('src/') || relativePath.startsWith('scripts/');
++}
++
++function classifyFile({ relativePath, content, legacyMatches, stamp }) {
++  const governanceDoc = isGovernanceDoc(relativePath, content);
++  const referenceOnly = isReferenceOnly(relativePath);
++  let adaptation = null;
++
++  if (referenceOnly) {
++    return {
++      classification: SOURCE_CLASSES.REFERENCE_ONLY,
++      adaptation: null,
++      governanceDoc: false,
++      referenceOnly: true,
++    };
++  }
++
++  if (looksLikeLegacySource(stamp) || legacyMatches.length > 0) {
++    adaptation = SOURCE_CLASSES.LEGACY_ADAPTED;
++  } else if (hasOssSourceStamp(stamp)) {
++    adaptation = SOURCE_CLASSES.OSS_ADAPTED;
++  }
++
++  if (governanceDoc) {
++    return {
++      classification: SOURCE_CLASSES.GOVERNANCE_DOC,
++      adaptation,
++      governanceDoc: true,
++      referenceOnly: false,
++    };
++  }
++
++  if (adaptation) {
++    return {
++      classification: adaptation,
++      adaptation,
++      governanceDoc: false,
++      referenceOnly: false,
++    };
++  }
++
++  return {
++    classification: SOURCE_CLASSES.PALA_ORIGINAL,
++    adaptation: null,
++    governanceDoc: false,
++    referenceOnly: false,
++  };
++}
++
++function sourceTokensForMatch({ stamp, legacyMatches }) {
++  return [
++    stamp.fields.palaSourceRef,
++    stamp.fields.palaSourceRepo,
++    ...legacyMatches,
++  ].filter(hasText).map((value) => String(value).toLowerCase());
++}
++
++function findMatchingSourceCard(sourceCards, { stamp, legacyMatches }) {
++  const tokens = sourceTokensForMatch({ stamp, legacyMatches });
++  return sourceCards.map(normalizeCard).find((card) => {
++    const cardValues = [
++      card.originRef,
++      card.repoFullName,
++      card.evidenceUri,
++    ].filter(hasText).map((value) => String(value).toLowerCase());
++
++    return cardValues.some((cardValue) => {
++      return tokens.some((token) => token.includes(cardValue) || cardValue.includes(token.split(':')[0]));
++    });
++  }) ?? null;
++}
++
++function loadCourtDecisionRows(rawDecisions) {
++  return (rawDecisions ?? []).map((decision) => ({
++    sourceRef: decision.sourceRef ?? '',
++    decision: decision.decision ?? '',
++    category: decision.category ?? '',
++    riskLevel: decision.riskLevel ?? '',
++  }));
++}
++
++async function readDefaultCourtDecisions(rootDir) {
++  const backlogPath = path.join(rootDir, 'docs', 'inheritance-backlog.json');
++  try {
++    const payload = JSON.parse(await fs.readFile(backlogPath, 'utf8'));
++    return loadCourtDecisionRows(payload.sourceCourtDecisions ?? []);
++  } catch {
++    return [];
++  }
++}
++
++function findMatchingCourtDecision(courtDecisions, { stamp, legacyMatches }) {
++  const tokens = sourceTokensForMatch({ stamp, legacyMatches });
++  const stampDecision = String(stamp.fields.palaCourtDecision ?? '').trim();
++
++  return loadCourtDecisionRows(courtDecisions).find((decision) => {
++    const sourceRef = String(decision.sourceRef ?? '').toLowerCase();
++    const decisionName = String(decision.decision ?? '').trim();
++    const sourceMatches = tokens.some((token) => {
++      const normalizedToken = token.replace('legacy/pala-os/source', 'trugurpala/pala-os');
++      return sourceRef && (normalizedToken.includes(sourceRef.split(':')[0]) || sourceRef.includes(normalizedToken.split('/source/')[0]));
++    });
++    const decisionMatches = !stampDecision || decisionName === stampDecision || COURT_DECISIONS.has(decisionName);
++    return sourceMatches && decisionMatches;
++  }) ?? null;
++}
++
++function buildValidatorLink(relativePath, contentHash) {
++  return `source-court:${relativePath}#${contentHash.slice(0, 12)}`;
++}
++
++function validateFileChain({ classification, adaptation, relativePath, stamp, sourceCard, courtDecision, validatorLink }) {
++  const effectiveAdaptation = adaptation ?? (
++    classification === SOURCE_CLASSES.LEGACY_ADAPTED || classification === SOURCE_CLASSES.OSS_ADAPTED
++      ? classification
++      : null
++  );
++  const adapted = Boolean(effectiveAdaptation);
++  const requiresStamp = effectiveAdaptation === SOURCE_CLASSES.LEGACY_ADAPTED
++    || (effectiveAdaptation === SOURCE_CLASSES.OSS_ADAPTED && isCodeSurface(relativePath));
++  const releaseEvidenceAllowed = classification !== SOURCE_CLASSES.REFERENCE_ONLY;
++  const sourceCardComplete = sourceCardFieldsComplete(sourceCard);
++  const courtDecisionComplete = Boolean(courtDecision?.decision);
++  const stampComplete = stamp.complete;
++  const missingRequirements = [];
++
++  if (adapted) {
++    if (requiresStamp && !stamp.present) {
++      missingRequirements.push('sourceStamp');
++    } else if (requiresStamp && !stampComplete) {
++      missingRequirements.push(...stamp.missingFields);
++    }
++    if (!sourceCard) {
++      missingRequirements.push('sourceCard');
++    } else if (!sourceCardComplete) {
++      missingRequirements.push('sourceCardRequiredFields');
++    }
++    if (!courtDecision) {
++      missingRequirements.push('courtDecision');
++    }
++    if (!validatorLink) {
++      missingRequirements.push('validatorLink');
++    }
++  }
++
++  const sourceChain = {
++    sourceStamp: requiresStamp ? stampComplete : !adapted || stampComplete,
++    sourceCard: adapted ? sourceCardComplete : false,
++    courtDecision: adapted ? courtDecisionComplete : false,
++    validatorLink: Boolean(validatorLink),
++    requiredFieldsComplete: missingRequirements.length === 0,
++    required: adapted,
++  };
++
++  if (missingRequirements.length > 0) {
++    return {
++      status: SOURCE_STATUSES.BLOCKED,
++      releaseBlocking: true,
++      releaseEvidenceAllowed,
++      missingRequirements: [...new Set(missingRequirements)],
++      sourceChain,
++      reason: `source chain incomplete for ${effectiveAdaptation}`,
++    };
++  }
++
++  if (adapted) {
++    return {
++      status: SOURCE_STATUSES.PASS,
++      releaseBlocking: false,
++      releaseEvidenceAllowed,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'full source chain present',
++    };
++  }
++
++  if (classification === SOURCE_CLASSES.REFERENCE_ONLY) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      releaseBlocking: false,
++      releaseEvidenceAllowed: false,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'reference-only material cannot be release evidence',
++    };
++  }
++
++  if (classification === SOURCE_CLASSES.GOVERNANCE_DOC) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      releaseBlocking: false,
++      releaseEvidenceAllowed,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'governance influence tracked; source chain not required unless adapted',
++    };
++  }
++
++  return {
++    status: SOURCE_STATUSES.PASS,
++    releaseBlocking: false,
++    releaseEvidenceAllowed,
++    missingRequirements: [],
++    sourceChain,
++    reason: 'Pala-original active file',
++  };
++}
++
++export function summarizeSourceFiles(files) {
++  return files.reduce((summary, file) => {
++    summary.activeFiles += 1;
++    summary.classifiedFiles += 1;
++    if (file.status === SOURCE_STATUSES.BLOCKED) summary.blockedFiles += 1;
++    if (file.status === SOURCE_STATUSES.PARTIAL) summary.partialFiles += 1;
++    if (file.classification === SOURCE_CLASSES.GOVERNANCE_DOC) summary.governanceDocs += 1;
++    if (file.adaptation === SOURCE_CLASSES.LEGACY_ADAPTED || file.classification === SOURCE_CLASSES.LEGACY_ADAPTED) summary.legacyAdapted += 1;
++    if (file.adaptation === SOURCE_CLASSES.OSS_ADAPTED || file.classification === SOURCE_CLASSES.OSS_ADAPTED) summary.ossAdapted += 1;
++    if (file.classification === SOURCE_CLASSES.PALA_ORIGINAL) summary.palaOriginal += 1;
++    if (file.classification === SOURCE_CLASSES.REFERENCE_ONLY) summary.referenceOnly += 1;
++    return summary;
++  }, {
++    activeFiles: 0,
++    classifiedFiles: 0,
++    blockedFiles: 0,
++    partialFiles: 0,
++    governanceDocs: 0,
++    legacyAdapted: 0,
++    ossAdapted: 0,
++    palaOriginal: 0,
++    referenceOnly: 0,
++  });
++}
++
++export function buildSourceStampGate(files, summary) {
++  if (summary.activeFiles === 0) {
++    return {
++      status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++      reasons: ['no active source-court files found in configured scope'],
++    };
++  }
++
++  const blocked = files.filter((file) => file.status === SOURCE_STATUSES.BLOCKED);
++  if (blocked.length > 0) {
++    return {
++      status: SOURCE_STATUSES.BLOCKED,
++      reasons: blocked.slice(0, 20).map((file) => `${file.path}: ${file.reason}`),
++    };
++  }
++
++  if (summary.partialFiles > 0) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      reasons: ['non-release-blocking governance/reference files need audit tracking'],
++    };
++  }
++
++  return {
++    status: SOURCE_STATUSES.PASS,
++    reasons: ['all active source-court files are classified and no adapted chain is missing'],
++  };
++}
++
++export function sanitizeSourceCourtAudit(audit) {
++  return {
++    status: audit.status,
++    summary: audit.summary,
++    sourceStampGate: audit.sourceStampGate,
++    legacyBoundary: audit.legacyBoundary ?? buildLegacyBoundary({ legacyMode: LEGACY_MODE_DISABLED }),
++  };
++}
++
++export async function buildSourceCourtAudit({
++  rootDir = process.cwd(),
++  sourceCards = [],
++  courtDecisions = null,
++  legacyMode = LEGACY_MODE_DISABLED,
++} = {}) {
++  const resolvedRoot = path.resolve(rootDir);
++  const activeFiles = await discoverActiveFiles(resolvedRoot);
++  const legacyHash = await buildLegacyHashIndex(resolvedRoot, { legacyMode });
++  const legacyHashIndex = legacyHash.index;
++  const decisions = courtDecisions ?? await readDefaultCourtDecisions(resolvedRoot);
++  const files = [];
++
++  for (const filePath of activeFiles) {
++    const relativePath = relativeTo(resolvedRoot, filePath);
++    if (isExcludedPath(relativePath)) {
++      continue;
++    }
++
++    let content = '';
++    try {
++      content = await fs.readFile(filePath, 'utf8');
++    } catch {
++      files.push({
++        path: relativePath,
++        classification: SOURCE_CLASSES.PALA_ORIGINAL,
++        adaptation: null,
++        status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++        reason: 'file could not be read as utf8',
++        releaseBlocking: false,
++        releaseEvidenceAllowed: false,
++        missingRequirements: [],
++        legacyMatches: [],
++        sourceStamp: { present: false, fields: {}, missingFields: REQUIRED_STAMP_FIELDS, complete: false },
++        sourceChain: {
++          sourceStamp: false,
++          sourceCard: false,
++          courtDecision: false,
++          validatorLink: false,
++          requiredFieldsComplete: false,
++          required: false,
++        },
++      });
++      continue;
++    }
++
++    const contentHash = hashContent(content);
++    const legacyMatches = legacyHashIndex.get(contentHash) ?? [];
++    const stamp = parseSourceStamp(content);
++    const classification = classifyFile({ relativePath, content, legacyMatches, stamp });
++    const sourceChainRequired = Boolean(classification.adaptation)
++      || classification.classification === SOURCE_CLASSES.LEGACY_ADAPTED
++      || classification.classification === SOURCE_CLASSES.OSS_ADAPTED;
++    const sourceCard = sourceChainRequired ? findMatchingSourceCard(sourceCards, { stamp, legacyMatches }) : null;
++    const courtDecision = sourceChainRequired ? findMatchingCourtDecision(decisions, { stamp, legacyMatches }) : null;
++    const validatorLink = buildValidatorLink(relativePath, contentHash);
++    const verdict = validateFileChain({
++      classification: classification.classification,
++      adaptation: classification.adaptation,
++      relativePath,
++      stamp,
++      sourceCard,
++      courtDecision,
++      validatorLink,
++    });
++
++    files.push({
++      path: relativePath,
++      classification: classification.classification,
++      adaptation: classification.adaptation,
++      governanceDoc: classification.governanceDoc,
++      status: verdict.status,
++      reason: verdict.reason,
++      releaseBlocking: verdict.releaseBlocking,
++      releaseEvidenceAllowed: verdict.releaseEvidenceAllowed,
++      missingRequirements: verdict.missingRequirements,
++      legacyMatches,
++      validatorLink,
++      sourceStamp: {
++        present: stamp.present,
++        fields: stamp.fields,
++        missingFields: stamp.missingFields,
++        complete: stamp.complete,
++      },
++      sourceCard: sourceCard ? {
++        id: sourceCard.id,
++        originRef: sourceCard.originRef,
++        repoFullName: sourceCard.repoFullName,
++        decision: sourceCard.decision,
++        fieldsComplete: sourceCardFieldsComplete(sourceCard),
++      } : null,
++      courtDecision: courtDecision ? {
++        sourceRef: courtDecision.sourceRef,
++        decision: courtDecision.decision,
++        category: courtDecision.category,
++      } : null,
++      sourceChain: verdict.sourceChain,
++    });
++  }
++
++  const summary = summarizeSourceFiles(files);
++  const sourceStampGate = buildSourceStampGate(files, summary);
++
++  return {
++    status: sourceStampGate.status,
++    summary,
++    files,
++    legacyBoundary: legacyHash.boundary,
++    sourceStampGate,
++  };
++}
