@@ -17,5 +17,6 @@ Operating rule:
 Current source repo:
 - `trugurpala/pala-os-v6`
 
-Latest report:
-- `reports/pala-os-v6/2026-06-08-phase-a-source-court-hardening.md`
+Latest reports:
+- `reports/pala-os-v6/2026-06-08-phase-c-changed-files-manifest.md`
+- `reports/pala-os-v6/2026-06-08-phase-c-implementation-report.md`
