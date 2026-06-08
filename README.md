@@ -1,6 +1,6 @@
 # Pala OS Bilgi Bankasi
 
-Private knowledge bank for Pala OS repo reports, hardening records, and review links.
+Public knowledge bank for Pala OS repo reports, hardening records, and review links.
 
 Purpose:
 - Keep Codex-produced Pala OS reports in a GitHub-readable place.
@@ -11,8 +11,8 @@ Purpose:
 Operating rule:
 - For every substantial Pala OS repo change or diagnosis report, add a dated report here.
 - Include source repo, local branch if known, changed files, evidence commands, status, and next phase.
-- Keep this repo private unless the owner explicitly changes that policy.
-- Do not publish secrets, tokens, local credentials, or private runtime databases.
+- Keep this repo public so reviewers and web-based agents can read reports by URL.
+- Do not publish secrets, tokens, local credentials, private runtime databases, or sensitive customer data.
 
 Current source repo:
 - `trugurpala/pala-os-v6`

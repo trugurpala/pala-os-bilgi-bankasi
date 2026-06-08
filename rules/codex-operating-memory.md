@@ -6,10 +6,10 @@ When Codex produces a Pala OS report or performs meaningful local mutations in a
 
 Default behavior:
 - Repo: `trugurpala/pala-os-bilgi-bankasi`
-- Visibility: private
+- Visibility: public
 - Report format: dated Markdown under `reports/<source-repo>/`
 - Include: source repo, phase, changed files, new files, evidence commands, status, rollback note, and release posture.
-- Do not include secrets, API keys, local database dumps, or private runtime artifacts.
+- Do not include secrets, API keys, local database dumps, private runtime artifacts, or sensitive customer data.
 - Do not treat knowledge-bank publication as release approval.
 
 Owner phrase:
