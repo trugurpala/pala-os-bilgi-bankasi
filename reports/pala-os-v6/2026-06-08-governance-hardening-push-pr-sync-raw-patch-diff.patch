@@ -1,0 +1,3711 @@
+﻿# Governance Hardening Push + PR Body Sync - Raw Patch/Diff
+# Date: 2026-06-08
+# Source repo: trugurpala/pala-os-v6
+# Source commit pushed: 0392a739bf4159af76d6a47feba27a454dc78218
+# Note: this phase performed no additional source file mutation beyond pushing the existing commit and updating PR #1 body.
+# The raw patch below is the pushed source commit diff.
+
+commit 0392a739bf4159af76d6a47feba27a454dc78218
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Mon Jun 8 17:51:28 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Mon Jun 8 17:51:28 2026 +0300
+
+    chore: consolidate v6 governance hardening
+---
+ .dockerignore                          |  12 +
+ .github/CODEOWNERS                     |  15 +
+ .github/PULL_REQUEST_TEMPLATE.md       |  14 +
+ .github/workflows/pala.yml             |  83 ++++
+ README.md                              |   4 +
+ docs/dashboard-truth-contract.md       |  58 +++
+ docs/github-policy-pack.md             | 146 +++++--
+ docs/inheritance-backlog.json          |  24 ++
+ docs/source-stamp-contract.md          |  98 +++++
+ docs/v6-dunya-standardi-karargah-tr.md |   8 +
+ scripts/pala_github_gate_audit.ps1     | 272 +++++++++++--
+ src/bootstrap.js                       |  76 +++-
+ src/cli.js                             |  63 ++-
+ src/config.js                          |   6 +
+ src/core-foundation.js                 | 132 +++++++
+ src/dashboard.js                       | 240 +++++++++++-
+ src/environment-limits.js              | 173 +++++++++
+ src/operator-actions.js                | 147 +++++++
+ src/policy.js                          | 300 ++++++++++++++-
+ src/server.js                          |  36 ++
+ src/source-court.js                    | 680 +++++++++++++++++++++++++++++++++
+ test/pala-v6.test.js                   | 507 +++++++++++++++++++++++-
+ 22 files changed, 3025 insertions(+), 69 deletions(-)
+
+diff --git a/.dockerignore b/.dockerignore
+new file mode 100644
+index 0000000..f19dcc4
+--- /dev/null
++++ b/.dockerignore
+@@ -0,0 +1,12 @@
++legacy/**
++docs/legacy/**
++.pala/**
++node_modules/**
++dist/**
++coverage/**
++skills/registry/legacy-skills-index.json
++
++.git/**
++.github/**
++benchmark/benchmark-state.json
++*.log
+diff --git a/.github/CODEOWNERS b/.github/CODEOWNERS
+index 4d02b68..f2c708b 100644
+--- a/.github/CODEOWNERS
++++ b/.github/CODEOWNERS
+@@ -1 +1,16 @@
+ * @trugurpala
++
++.github/** @trugurpala
++src/** @trugurpala
++scripts/** @trugurpala
++test/** @trugurpala
++docs/** @trugurpala
++
++Dockerfile @trugurpala
++compose.yaml @trugurpala
++package.json @trugurpala
++AGENTS.md @trugurpala
++README.md @trugurpala
++PALA_RULES.md @trugurpala
++SECURITY.md @trugurpala
++ARCHITECTURE.md @trugurpala
+diff --git a/.github/PULL_REQUEST_TEMPLATE.md b/.github/PULL_REQUEST_TEMPLATE.md
+index bd4a22e..3e86a40 100644
+--- a/.github/PULL_REQUEST_TEMPLATE.md
++++ b/.github/PULL_REQUEST_TEMPLATE.md
+@@ -6,16 +6,30 @@
+ ## Why
+ - 
+ 
++## Review package
++- [ ] Implementation Report linked
++- [ ] Changed Files Manifest linked
++- [ ] Repo Change Review linked
++- [ ] Raw Patch/Diff linked or `NOT_AVAILABLE_WITH_REASON` explained
++- [ ] `No Review Package = No Court Decision`
++
+ ## Evidence
+ - [ ] Local command output attached
+ - [ ] Dashboard state reviewed
+ - [ ] Source card added when external code was involved
+ - [ ] Token estimate recorded
++- [ ] `npm.cmd test`
++- [ ] `npm.cmd run github:audit`
++- [ ] `node src/cli.js court`
+ 
+ ## Test plan
+ - [ ] `npm test`
+ - [ ] `node src/cli.js status`
+ - [ ] Relevant command verified locally
+ 
++## Release posture
++- [ ] `RELEASE_BLOCKED` confirmed unless owner approval and court evidence are present
++- [ ] No deploy/release/main push in this PR unless explicitly owner-approved
++
+ ## Rollback
+ - 
+diff --git a/.github/workflows/pala.yml b/.github/workflows/pala.yml
+index cfbd1a1..46048b3 100644
+--- a/.github/workflows/pala.yml
++++ b/.github/workflows/pala.yml
+@@ -8,11 +8,70 @@ on:
+     - cron: '17 2 * * *'
+ 
+ jobs:
++  source-court-audit:
++    runs-on: windows-latest
++    timeout-minutes: 10
++    env:
++      PALA_OPEN_BROWSER: '0'
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '24.14.1'
++      - name: Source Court audit
++        shell: pwsh
++        run: |
++          node src/cli.js source audit --json | Set-Content source-audit.json
++          $audit = Get-Content source-audit.json -Raw | ConvertFrom-Json
++          if ($audit.status -eq 'BLOCKED') {
++            throw "Source Court audit is BLOCKED"
++          }
++          if (-not $audit.sourceStampGate) {
++            throw "sourceStampGate missing from Source Court audit"
++          }
++
++  legacy-boundary:
++    runs-on: windows-latest
++    timeout-minutes: 10
++    env:
++      PALA_OPEN_BROWSER: '0'
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '24.14.1'
++      - name: Legacy boundary scan
++        shell: pwsh
++        run: |
++          $required = @(
++            'legacy/**',
++            'docs/legacy/**',
++            '.pala/**',
++            'node_modules/**',
++            'dist/**',
++            'coverage/**',
++            'skills/registry/legacy-skills-index.json'
++          )
++          $dockerignore = Get-Content .dockerignore -Raw
++          foreach ($entry in $required) {
++            if ($dockerignore -notmatch [regex]::Escape($entry)) {
++              throw ".dockerignore missing $entry"
++            }
++          }
++          node src/cli.js source audit --json | Set-Content source-audit.json
++          $audit = Get-Content source-audit.json -Raw | ConvertFrom-Json
++          if ($audit.legacyBoundary.status -ne 'PASS') {
++            throw "Explicit Source Court legacy boundary is not PASS"
++          }
++
+   test:
+     runs-on: windows-latest
+     timeout-minutes: 10
+     env:
+       PALA_OPEN_BROWSER: '0'
++    needs:
++      - source-court-audit
++      - legacy-boundary
+     steps:
+       - uses: actions/checkout@v4
+       - uses: actions/setup-node@v4
+@@ -25,6 +84,30 @@ jobs:
+       - name: Capture status
+         run: node src/cli.js status
+ 
++  court:
++    runs-on: windows-latest
++    timeout-minutes: 10
++    env:
++      PALA_OPEN_BROWSER: '0'
++    needs:
++      - test
++    steps:
++      - uses: actions/checkout@v4
++      - uses: actions/setup-node@v4
++        with:
++          node-version: '24.14.1'
++      - name: Court remains release blocked
++        shell: pwsh
++        run: |
++          node src/cli.js court | Set-Content court.json
++          $court = Get-Content court.json -Raw | ConvertFrom-Json
++          if ($court.decision -ne 'RELEASE_BLOCKED') {
++            throw "Court decision changed from RELEASE_BLOCKED"
++          }
++          if (-not $court.sourceStampGate) {
++            throw "sourceStampGate missing from court output"
++          }
++
+   nightly-cron:
+     if: github.event_name == 'schedule'
+     runs-on: windows-latest
+diff --git a/README.md b/README.md
+index 7b7bd47..c7eba0f 100644
+--- a/README.md
++++ b/README.md
+@@ -66,6 +66,7 @@ On Windows, you can also double-click `launch.cmd` to bootstrap and open the dec
+ - `sak evidence add --standard nist-ssdf --detail "..."` - write proof into the ledger.
+ - `sak evidence sprint --mode machine-gate --max 10 --include-satisfied false --json` - generate machine-gate evidence plan payload for next actions.
+ - `sak screenshot --url data:text/html,...` - capture screenshot evidence or a placeholder if Playwright is missing.
++- `sak core audit --json` - inspect the core foundation radar for `sak`, SQLite, standards, source cards, court/release, and cron.
+ - `sak audit` - print the tool/source audit and court state.
+ - `sak cron run` - run local watcher jobs and record evidence.
+ - `sak court` - inspect blocked standards and release readiness.
+@@ -105,6 +106,9 @@ On Windows, you can also double-click `launch.cmd` to bootstrap and open the dec
+ - `/api/screenshots`
+ - `/api/sources`
+ - `/api/benchmark`
++- `/api/environment-limits`
++- `/api/operator-actions`
++- `/api/core-foundation`
+ - `/api/skills`
+ - `/api/court`
+ - `/api/tools`
+diff --git a/docs/dashboard-truth-contract.md b/docs/dashboard-truth-contract.md
+new file mode 100644
+index 0000000..a023f81
+--- /dev/null
++++ b/docs/dashboard-truth-contract.md
+@@ -0,0 +1,58 @@
++# Dashboard Truth Contract
++
++Pala OS v6 dashboard is a court surface. It must render current evidence state, not optimism.
++
++## Status Rules
++
++- Unknown external or runtime state returns `NOT_AVAILABLE_WITH_REASON`.
++- Missing evidence returns `PARTIAL`.
++- Missing owner approval returns `RELEASE_BLOCKED`.
++- Docker daemon absence means Docker Boot cannot return `PASS`.
++- Source Court `PARTIAL` keeps the Source Court panel `PARTIAL`.
++- Legacy archive data can appear only through sanitized Source Court summary.
++- Raw `legacy/**` file lists must not be exposed in dashboard state.
++- Token economy estimates must be marked `estimated`.
++- Overall dashboard status must never be greener than the riskiest child panel.
++
++## Panel Truth Table
++
++| Panel | Data Source | Evidence Source | Fallback State | PASS Condition | Truth Risk |
++|---|---|---|---|---|---|
++| Overview | `buildAppState.summary`, `court`, `sourceStampGate` | SQLite evidence counts, source cards, ledger, court | `RELEASE_BLOCKED` | Court not release-blocked, source gate `PASS`, ledger has evidence | Overview can hide downstream blockers if greener than child panels |
++| Mission Control | `route`, `nextActions`, `jobRuns`, `runs` | SQLite `command_runs` and `job_runs` | `NOT_AVAILABLE_WITH_REASON` | Mission/run ledger proves active mission state and no blocking court state | Route text can look decisive without mission evidence |
++| CI Court | GitHub bridge and audit state | GitHub CLI/API readback and workflow runs | `NOT_AVAILABLE_WITH_REASON` | GitHub governance readback and required checks are proven | CI green without branch protection/review can fake governance |
++| Evidence Center | `ledger`, `sourceCards`, `evidenceSprint` | SQLite ledger records and source-card table | `PARTIAL` | Ledger has records and source cards exist | Empty evidence must never display `PASS` |
++| Source Court | `sanitizeSourceCourtAudit(buildSourceCourtAudit())` | Source Court summary and `sourceStampGate` | `NOT_AVAILABLE_WITH_REASON` | `sourceStampGate` is `PASS` with no release-blocking source-chain gaps | Raw legacy/source files must not leak into dashboard state |
++| Skill Registry | Seed skill registry | `skills/registry/seed-skills.json` | `NOT_AVAILABLE_WITH_REASON` | Seed registry loads and legacy registry is not default-loaded | Legacy skill index must not become active skills |
++| MCP Health | MCP registry and stdio proof | MCP health CLI/test output | `NOT_AVAILABLE_WITH_REASON` | Live MCP health proof is attached to dashboard state | Registry presence is not live MCP health |
++| Docker Boot | Latest `.pala/evidence/docker` smoke JSON | Docker version, compose config/build/up/health/down evidence | `NOT_AVAILABLE_WITH_REASON` | Docker daemon available, compose build/up succeeds, API health passes, compose down succeeds | Compose config alone is not runtime proof |
++| Benchmark Radar | `benchmark/benchmark-state.json` | Benchmark categories and evidence counts | `NOT_AVAILABLE_WITH_REASON` | Fixture-backed benchmark suite has no blocked category | Placeholder benchmarks can look like proof |
++| Token Economy | `tokenBudget` and `tokenSnapshots` | SQLite token snapshots or deterministic estimate | `PARTIAL` | Measured token accounting exists with confidence metadata | Estimates can be mistaken for measured savings |
++| Release Court | `evaluateCourt()` | Owner approval, required standards, source cards, ledger, source gate | `RELEASE_BLOCKED` | Owner approval present and no release blockers remain | Release must never turn green without owner approval |
++
++## API Contract
++
++`/api/state` must include `dashboardTruthContract` with:
++
++- `status`
++- `rules`
++- `summary`
++- `panels`
++
++Each panel entry must include:
++
++- `id`
++- `panel`
++- `status`
++- `dataSource`
++- `evidenceSource`
++- `fallbackState`
++- `passCondition`
++- `truthRisk`
++- `statusMapping`
++- `evidencePresent`
++- `estimated`
++
++## Court Rule
++
++Dashboard truth is not release approval. A truthful dashboard can show working subsystems while the release remains `RELEASE_BLOCKED`.
+diff --git a/docs/github-policy-pack.md b/docs/github-policy-pack.md
+index 3c6cc5c..dd679f2 100644
+--- a/docs/github-policy-pack.md
++++ b/docs/github-policy-pack.md
+@@ -1,43 +1,125 @@
+-# GitHub Policy Pack (V6 Command-Law Surface)
++# GitHub Policy Pack
+ 
+-Bu doküman V6 için GitHub tarafını policy as code olarak nasıl kilitli tuttuğumuzu tanımlar.
++Status: `RELEASE_BLOCKED`
+ 
+-## Required policy surface
++This document defines the GitHub governance surface for Pala OS v6. GitHub is the operational source of record, but GitHub state is not enough to release. Court, evidence, source-chain, and owner approval still control release.
+ 
+-- `main` branch branch-protection
+-- PR onayı + status checks
+-- CODEOWNERS review sınırı
+-- PR/Issue template zorunluluğu
+-- Actions ile gece-nöbeti (cron) çalıştırımı
++## Enforcement Target
+ 
+-## Branch settings checklist
++Primary target:
+ 
+-- Require pull request before merging `main`
+-- Dismiss stale reviews on new commits
+-- Require at least one approved review for merges
+-- Restrict who can push to protected branch (`@trugurpala` and approved owners)
+-- Enforce linear history on protected branches
+-- Do not allow bypass of checks for non-bot actors
++- Repository: `trugurpala/pala-os-v6`
++- Default branch: `main`
++- Required posture: protected by branch protection or an active repository ruleset
+ 
+-## Workflow checklist (repo current)
++Fallback:
+ 
+-- `test` job: node bootstrap, node test, status check
+-- `nightly-cron` job: schedule + `sak cron run`
+-- `npm test` as baseline proof command; active V6 tests stay scoped to `test/`, while `legacy/` remains quarantine reference material
+-- `node src/cli.js status` and `bak` calls before release
+-- `npm run github:audit` reads branch protection and latest Actions state when GitHub CLI authentication exists
++- If repository rulesets are unavailable, use branch protection on `main`.
++- If branch protection readback is unavailable, report `NOT_AVAILABLE_WITH_REASON`.
++- If neither branch protection nor an active ruleset is proven, report `BRANCH_PROTECTION_BLOCKED`.
+ 
+-## Evidence requirements
++## Required Branch Rules
+ 
+-- PR template has:
+-  - Evidence checkboxes
+-  - Dashboard state check
+-  - Source-card check when external code is involved
+-- Release issue form requires:
+-  - Evidence text
+-  - Owner approval state
+-  - Rollback note
++`main` must enforce:
+ 
+-## Governance lock
++- Require pull request before merge.
++- Require at least one approving review.
++- Require CODEOWNERS review.
++- Dismiss stale approvals when new commits are pushed.
++- Require status checks before merge.
++- Require conversation resolution when available.
++- Block force pushes.
++- Block branch deletion.
++- Prefer linear history when it does not create owner deadlock.
+ 
+-- `Release`, `push`, `core overwrite`, and policy edits remain owner-locked via court flow.
++## Required Checks
++
++Initial required remote check:
++
++- `test`
++
++Phase B workflow stabilizes these additional local job names:
++
++- `source-court-audit`
++- `legacy-boundary`
++- `court`
++
++These extra jobs become required only after they exist on GitHub and their check-run names are proven by readback. `nightly-cron` is schedule-only and must not be a required PR check.
++
++## CODEOWNERS Policy
++
++Governance-critical paths must be owner-controlled:
++
++- `.github/**`
++- `src/**`
++- `scripts/**`
++- `test/**`
++- `docs/**`
++- `Dockerfile`
++- `compose.yaml`
++- `package.json`
++- `AGENTS.md`
++- `README.md`
++- `PALA_RULES.md`
++- `SECURITY.md`
++- `ARCHITECTURE.md`
++
++## PR Review Package
++
++Every implementation PR must include:
++
++1. Implementation Report.
++2. Changed Files Manifest.
++3. Repo Change Review.
++4. Raw Patch/Diff, or `NOT_AVAILABLE_WITH_REASON`.
++
++No Review Package = No Court Decision.
++
++If these artefacts are missing, the phase is at most `PARTIAL`; it cannot be marked `PASS`.
++
++## Solo-Owner Deadlock Risk
++
++This repo may be operated by a single owner account. If GitHub prevents the PR author from approving their own PR and no second reviewer exists, strict review can create a merge deadlock.
++
++Risk status:
++
++- Governance target remains required.
++- The risk must be reported as `PARTIAL` until a second approved reviewer/team or documented owner emergency path exists.
++- Any emergency bypass must be recorded in court/evidence and must not silently mark release ready.
++
++## Emergency Owner Bypass
++
++Emergency bypass is allowed only as an owner-controlled event.
++
++Required evidence:
++
++- Reason for bypass.
++- Affected branch/PR/commit.
++- Commands or GitHub setting screenshots/readback.
++- Court note confirming why normal review could not be used.
++- Follow-up issue or report to restore normal governance.
++
++Bypass never equals release approval.
++
++## Evidence Commands
++
++Run before release or merge decisions:
++
++```powershell
++npm.cmd run github:audit
++gh api repos/trugurpala/pala-os-v6/branches/main --jq "{name,protected}"
++gh api repos/trugurpala/pala-os-v6/branches/main/protection --jq "{required_status_checks,required_pull_request_reviews,required_linear_history,allow_force_pushes,allow_deletions}"
++gh api repos/trugurpala/pala-os-v6/rulesets --jq ".[] | {name,target,enforcement,conditions,rules}"
++node src/cli.js court
++npm.cmd test
++```
++
++## Governance Lock
++
++Release, push, direct `main` write, branch-protection change, ruleset change, force-push, delete, deploy, and policy overwrite remain owner-controlled.
++
++Expected safe state until all evidence and owner approval exist:
++
++```text
++RELEASE_BLOCKED
++```
+diff --git a/docs/inheritance-backlog.json b/docs/inheritance-backlog.json
+index ef5a140..c6678ef 100644
+--- a/docs/inheritance-backlog.json
++++ b/docs/inheritance-backlog.json
+@@ -4,6 +4,30 @@
+   "status": "RELEASE_BLOCKED",
+   "objectiveScope": "read-only inheritance audit for Pala OS V6",
+   "sourceCourtDecisions": [
++    {
++      "sourceRef": "trugurpala/pala-os:docs/v6-dunya-standardi-karargah-tr.md",
++      "category": "governance-doc",
++      "decision": "ADAPT",
++      "phase": "ADAPT_NOW",
++      "riskLevel": "medium",
++      "allowedUse": [
++        "governance wording",
++        "world-standard command-center plan",
++        "source-card discipline pattern"
++      ],
++      "blockedUse": [
++        "blind copy as V6 truth without source stamp",
++        "release evidence without validator chain",
++        "policy claims without local tests"
++      ],
++      "requiredEvidence": [
++        "source stamp on active governance doc",
++        "source-card match",
++        "source-court validator link",
++        "source audit JSON"
++      ],
++      "notes": "This active governance doc is adapted from the legacy pala-os source tree and must stay tied to the V6 source-stamp gate."
++    },
+     {
+       "sourceRef": "trugurpala/pala-os:mcp-server",
+       "category": "mcp-server",
+diff --git a/docs/source-stamp-contract.md b/docs/source-stamp-contract.md
+new file mode 100644
+index 0000000..324b0fb
+--- /dev/null
++++ b/docs/source-stamp-contract.md
+@@ -0,0 +1,98 @@
++# Pala OS V6 Source Stamp Contract
++
++Status: `RELEASE_BLOCKED`
++
++This contract defines the Phase A source-court audit rules. It is audit-mode
++only until the owner explicitly approves enforce-mode.
++
++## Classification Semantics
++
++| Class | Meaning | Release evidence |
++| --- | --- | --- |
++| `PALA_ORIGINAL` | Active V6 material written for this repo. | Allowed when validator links it. |
++| `LEGACY_ADAPTED` | Active material adapted from old Pala sources. | Allowed only with the full source chain. |
++| `OSS_ADAPTED` | Active material adapted from an external OSS source. | Allowed only with source card and court decision; code adaptations also need a stamp. |
++| `REFERENCE_ONLY` | Historical or contextual material. | Never release evidence. |
++| `GOVERNANCE_DOC` | Material that can affect court, release, gate, or agent behavior. | Tracked as governance influence; adapted docs need the source chain. |
++
++`README.md`, `AGENTS.md`, `PALA_RULES.md`, `SECURITY.md`,
++`ARCHITECTURE.md`, court decisions, release-gate documents, and governance
++documents are never treated as automatic `REFERENCE_ONLY` material.
++
++## Required Source Stamp Fields
++
++```ts
++/**
++ * @palaSourceRef <source-url-or-path>
++ * @palaSourceRepo <repo-or-local-archive>
++ * @palaCourtDecision <ADAPT|ADOPT|IMPORT_LATER|QUARANTINE|REJECT>
++ * @palaCourtId <court-id>
++ * @palaRewritePolicy <short rewrite policy>
++ * @palaSavedEstimate <estimate-or-NOT_AVAILABLE_WITH_REASON>
++ */
++```
++
++`LEGACY_ADAPTED` active material always requires a source stamp.
++`OSS_ADAPTED` code adaptations require a source stamp. OSS pattern-only
++material still requires a source card and court decision.
++
++## Source Card Minimum Fields
++
++A source card must carry:
++
++- origin type and origin ref
++- repo or local archive path
++- visibility
++- commit, local archive ref, or explicit unavailable reason
++- license or `NOT_AVAILABLE_WITH_REASON`
++- court decision
++- risk level
++- allowed layer
++- summary or evidence URI
++
++Source cards alone do not produce `PASS`.
++
++## Court Decision Requirement
++
++Adapted active material must match a court decision. The validator accepts
++court decisions from the machine-readable inheritance backlog or future source
++court records. The decision must identify the source family and carry an
++allowed court decision such as `ADAPT`, `ADOPT`, `IMPORT_LATER`,
++`QUARANTINE`, or `REJECT`.
++
++## Verdict Rules
++
++`PASS` is allowed only when the required chain is complete:
++
++1. Source stamp when required.
++2. Source card.
++3. Court decision.
++4. Validator link.
++5. Required fields complete.
++
++`BLOCKED` is returned when adapted active material is missing any required
++chain item.
++
++`PARTIAL` is reserved for non-release-blocking audit states such as
++governance tracking or reference-only material.
++
++`NOT_AVAILABLE_WITH_REASON` is returned when a configured source-court scope
++cannot be inspected or when there are no active source-court files.
++
++## Governance Docs Versus Reference Material
++
++`GOVERNANCE_DOC` material can influence agent behavior, release decisions,
++court decisions, source-card rules, or gate wording. It is tracked even when it
++is Pala-original.
++
++`REFERENCE_ONLY` material preserves historical context. It cannot satisfy a
++release gate and cannot make the dashboard green.
++
++## Audit Mode And Future Enforce Mode
++
++Phase A runs in audit-mode. Audit-mode reports source-chain gaps and exposes
++`sourceStampGate` in court output. It does not delete legacy material, rewrite
++source cards, push to GitHub, or approve release.
++
++Future enforce-mode may block release automatically when `sourceStampGate` is
++`BLOCKED`. Owner approval is required before enforce-mode is activated.
+diff --git a/docs/v6-dunya-standardi-karargah-tr.md b/docs/v6-dunya-standardi-karargah-tr.md
+index 7434c72..5ab9bee 100644
+--- a/docs/v6-dunya-standardi-karargah-tr.md
++++ b/docs/v6-dunya-standardi-karargah-tr.md
+@@ -51,3 +51,11 @@
+ - Kesin upstream isimleri, selection matrix tamamlandıktan sonra source card ile kilitlenecek; bu plan karar yöntemini sabitliyor.
+ - Windows local-first ana ortam; SaaS/multi-tenant sonraki faz.
+ - Sertifika iddiası yok; hedef dünya standardı disiplinini yerel kanıt sistemine çevirmek.
++<!--
++@palaSourceRef legacy/pala-os/source/docs/v6-dunya-standardi-karargah-tr.md
++@palaSourceRepo trugurpala/pala-os
++@palaCourtDecision ADAPT
++@palaCourtId MIGRATION-V6-001
++@palaRewritePolicy Adapted for v6 strict governance, not blind copied.
++@palaSavedEstimate 1d_estimated
++-->
+diff --git a/scripts/pala_github_gate_audit.ps1 b/scripts/pala_github_gate_audit.ps1
+index 8240c97..40f0a93 100644
+--- a/scripts/pala_github_gate_audit.ps1
++++ b/scripts/pala_github_gate_audit.ps1
+@@ -4,6 +4,7 @@ param(
+ )
+ 
+ $ErrorActionPreference = 'Stop'
++$repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+ 
+ function Invoke-GhJson {
+   param(
+@@ -34,6 +35,38 @@ function Invoke-GhJson {
+   }
+ }
+ 
++function ConvertFrom-GhOutput {
++  param(
++    [Parameter(Mandatory = $true)]
++    [object]$Result,
++    [object]$Fallback = $null
++  )
++
++  if ($Result.exitCode -ne 0 -or [string]::IsNullOrWhiteSpace($Result.output)) {
++    return $Fallback
++  }
++
++  return ($Result.output | ConvertFrom-Json)
++}
++
++function Read-TextFile {
++  param([Parameter(Mandatory = $true)][string]$Path)
++  $resolved = Join-Path $repoRoot $Path
++  if (-not (Test-Path $resolved)) {
++    return ''
++  }
++  return Get-Content $resolved -Raw
++}
++
++function Test-RequiredText {
++  param(
++    [string]$Text,
++    [string[]]$Required
++  )
++
++  return @($Required | Where-Object { $Text -notmatch [regex]::Escape($_) })
++}
++
+ $ghAvailable = $null -ne (Get-Command gh -ErrorAction SilentlyContinue)
+ $authStatus = $null
+ if ($ghAvailable) {
+@@ -42,7 +75,7 @@ if ($ghAvailable) {
+ 
+ $repoInfo = $null
+ if ($ghAvailable) {
+-  $repoResult = Invoke-GhJson @('repo', 'view', $Repo, '--json', 'nameWithOwner,visibility,defaultBranchRef,url')
++  $repoResult = Invoke-GhJson @('repo', 'view', $Repo, '--json', 'nameWithOwner,visibility,defaultBranchRef,url,isPrivate')
+   if ($repoResult.exitCode -eq 0) {
+     $repoInfo = $repoResult.output | ConvertFrom-Json
+   }
+@@ -53,18 +86,29 @@ $branchReports = foreach ($branch in $Branches) {
+     [pscustomobject]@{
+       branch = $branch
+       protected = $false
+-      status = 'GH_UNAVAILABLE'
++      status = 'NOT_AVAILABLE_WITH_REASON'
+       details = 'GitHub CLI not installed or not on PATH.'
++      protection = $null
++      requiredChecks = @()
++      reviewRequired = $false
++      codeOwnerReviewRequired = $false
+     }
+     continue
+   }
+ 
+   $encodedBranch = $branch -replace '/', '%2F'
++  $branchInfo = Invoke-GhJson @(
++    'api',
++    "repos/$Repo/branches/$encodedBranch",
++    '--jq',
++    '{name,protected,protection_url}'
++  )
++  $branchMetadata = ConvertFrom-GhOutput -Result $branchInfo -Fallback $null
+   $protection = Invoke-GhJson @(
+     'api',
+     "repos/$Repo/branches/$encodedBranch/protection",
+     '--jq',
+-    '{required_status_checks, enforce_admins, required_pull_request_reviews, restrictions, required_linear_history, allow_force_pushes, allow_deletions}'
++    '{required_status_checks, enforce_admins, required_pull_request_reviews, restrictions, required_linear_history, allow_force_pushes, allow_deletions, required_conversation_resolution}'
+   )
+ 
+   if ($protection.exitCode -ne 0) {
+@@ -75,18 +119,167 @@ $branchReports = foreach ($branch in $Branches) {
+     }
+     [pscustomobject]@{
+       branch = $branch
+-      protected = $false
+-      status = 'UNPROTECTED_OR_UNREADABLE'
++      protected = [bool]($branchMetadata -and $branchMetadata.protected)
++      status = 'BLOCKED'
+       details = $details
++      protection = $null
++      requiredChecks = @()
++      reviewRequired = $false
++      codeOwnerReviewRequired = $false
+     }
+     continue
+   }
+ 
++  $protectionDetails = $protection.output | ConvertFrom-Json
++  $requiredChecks = @($protectionDetails.required_status_checks.contexts)
++  $review = $protectionDetails.required_pull_request_reviews
++  $reviewCount = 0
++  if ($review -and $null -ne $review.required_approving_review_count) {
++    $reviewCount = [int]$review.required_approving_review_count
++  }
++
+   [pscustomobject]@{
+     branch = $branch
+     protected = $true
+-    status = 'PROTECTED'
+-    details = ($protection.output | ConvertFrom-Json)
++    status = 'PASS'
++    details = 'Branch protection readback succeeded.'
++    protection = $protectionDetails
++    requiredChecks = $requiredChecks
++    reviewRequired = ($reviewCount -ge 1)
++    codeOwnerReviewRequired = [bool]$review.require_code_owner_reviews
++  }
++}
++
++$rulesets = @()
++if ($ghAvailable) {
++  $rulesetResult = Invoke-GhJson @(
++    'api',
++    "repos/$Repo/rulesets",
++    '--jq',
++    '[.[] | {id,name,target,enforcement,conditions,rules}]'
++  )
++  if ($rulesetResult.exitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($rulesetResult.output)) {
++    if ($rulesetResult.output.Trim() -eq '[]') {
++      $rulesets = @()
++    } else {
++      $rulesets = @($rulesetResult.output | ConvertFrom-Json)
++    }
++  }
++}
++
++$activeBranchRulesets = @($rulesets | Where-Object { $_.target -eq 'branch' -and $_.enforcement -eq 'active' })
++$mainProtection = @($branchReports | Where-Object { $_.branch -eq 'main' } | Select-Object -First 1)
++$mainProtected = [bool]($mainProtection -and $mainProtection.protected)
++$mainHasActiveRuleset = @($activeBranchRulesets).Count -gt 0
++
++$requiredChecks = @()
++if ($mainProtection -and $mainProtection.requiredChecks) {
++  $requiredChecks = @($mainProtection.requiredChecks | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
++}
++$hasTestRequired = $requiredChecks -contains 'test'
++
++$codeownersText = Read-TextFile '.github/CODEOWNERS'
++$prTemplateText = Read-TextFile '.github/PULL_REQUEST_TEMPLATE.md'
++$workflowText = Read-TextFile '.github/workflows/pala.yml'
++
++$codeownersMissing = Test-RequiredText -Text $codeownersText -Required @(
++  '.github/**',
++  'src/**',
++  'scripts/**',
++  'test/**',
++  'docs/**',
++  'Dockerfile',
++  'compose.yaml',
++  'package.json',
++  'AGENTS.md',
++  'README.md',
++  'PALA_RULES.md',
++  'SECURITY.md',
++  'ARCHITECTURE.md'
++)
++$prTemplateMissing = Test-RequiredText -Text $prTemplateText -Required @(
++  'Implementation Report',
++  'Changed Files Manifest',
++  'Repo Change Review',
++  'Raw Patch/Diff',
++  'No Review Package = No Court Decision',
++  'RELEASE_BLOCKED'
++)
++$workflowMissing = Test-RequiredText -Text $workflowText -Required @(
++  'source-court-audit:',
++  'legacy-boundary:',
++  'test:',
++  'court:',
++  'nightly-cron:'
++)
++
++$localPolicyMissing = @()
++$localPolicyMissing += @($codeownersMissing | ForEach-Object { "CODEOWNERS missing $_" })
++$localPolicyMissing += @($prTemplateMissing | ForEach-Object { "PR template missing $_" })
++$localPolicyMissing += @($workflowMissing | ForEach-Object { "workflow missing $_" })
++
++$branchProtectionGate = if ($mainProtected -or $mainHasActiveRuleset) {
++  [ordered]@{
++    status = 'PASS'
++    reasons = @('main branch protection or active branch ruleset readback exists')
++    blocker = $null
++  }
++} else {
++  [ordered]@{
++    status = 'BLOCKED'
++    reasons = @('main branch is not protected and no active branch ruleset was read back')
++    blocker = 'BRANCH_PROTECTION_BLOCKED'
++  }
++}
++
++$requiredChecksGate = if ($hasTestRequired -or $mainHasActiveRuleset) {
++  [ordered]@{
++    status = 'PASS'
++    requiredChecks = $requiredChecks
++    reasons = @('required checks readback includes test or active ruleset exists')
++  }
++} elseif ($mainProtected) {
++  [ordered]@{
++    status = 'BLOCKED'
++    requiredChecks = $requiredChecks
++    reasons = @('main is protected but required check test is missing')
++  }
++} else {
++  [ordered]@{
++    status = 'BLOCKED'
++    requiredChecks = $requiredChecks
++    reasons = @('required checks cannot pass before main protection/ruleset readback exists')
++  }
++}
++
++$reviewGate = if ($mainProtection -and $mainProtection.reviewRequired -and $mainProtection.codeOwnerReviewRequired) {
++  [ordered]@{
++    status = 'PASS'
++    reasons = @('required PR review and CODEOWNERS review are enabled')
++  }
++} elseif ($mainHasActiveRuleset) {
++  [ordered]@{
++    status = 'PARTIAL'
++    reasons = @('active branch ruleset exists; review requirements need detailed ruleset validation')
++  }
++} else {
++  [ordered]@{
++    status = 'BLOCKED'
++    reasons = @('required PR review and CODEOWNERS review are not proven')
++  }
++}
++
++$localPolicyGate = if (@($localPolicyMissing).Count -eq 0) {
++  [ordered]@{
++    status = 'PASS'
++    reasons = @('CODEOWNERS, PR template, and workflow governance markers are present')
++    missing = @()
++  }
++} else {
++  [ordered]@{
++    status = 'BLOCKED'
++    reasons = @('local governance markers are incomplete')
++    missing = @($localPolicyMissing)
+   }
+ }
+ 
+@@ -103,14 +296,25 @@ if ($ghAvailable) {
+   }
+ }
+ 
+-$unprotectedCount = @($branchReports | Where-Object { -not $_.protected }).Count
+-$latestFailureCount = @($actions | Where-Object { $_.conclusion -eq 'failure' }).Count
++$blockedReasons = @()
++foreach ($gate in @($branchProtectionGate, $requiredChecksGate, $reviewGate, $localPolicyGate)) {
++  if ($gate.status -eq 'BLOCKED') {
++    $blockedReasons += @($gate.reasons)
++  }
++}
++
++$overallStatus = if (@($blockedReasons).Count -gt 0) {
++  'BLOCKED'
++} elseif ($reviewGate.status -eq 'PARTIAL') {
++  'PARTIAL'
++} else {
++  'PASS'
++}
++
+ $currentHead = $null
+ if (@($actions).Count -gt 0) {
+   $currentHead = @($actions)[0].head_sha
+ }
+-$currentHeadFailureCount = @($actions | Where-Object { $_.head_sha -eq $currentHead -and $_.conclusion -eq 'failure' }).Count
+-$currentHeadInProgressCount = @($actions | Where-Object { $_.head_sha -eq $currentHead -and $_.status -ne 'completed' }).Count
+ 
+ [ordered]@{
+   ok = $true
+@@ -120,23 +324,41 @@ $currentHeadInProgressCount = @($actions | Where-Object { $_.head_sha -eq $curre
+   ghAuthenticated = ($ghAvailable -and $authStatus.exitCode -eq 0)
+   repoInfo = $repoInfo
+   branches = @($branchReports)
++  rulesets = @($rulesets)
++  activeBranchRulesets = @($activeBranchRulesets)
++  localPolicy = [ordered]@{
++    codeownersPresent = -not [string]::IsNullOrWhiteSpace($codeownersText)
++    prTemplatePresent = -not [string]::IsNullOrWhiteSpace($prTemplateText)
++    workflowPresent = -not [string]::IsNullOrWhiteSpace($workflowText)
++    codeownersMissing = @($codeownersMissing)
++    prTemplateMissing = @($prTemplateMissing)
++    workflowMissing = @($workflowMissing)
++  }
++  gates = [ordered]@{
++    branchProtection = $branchProtectionGate
++    requiredChecks = $requiredChecksGate
++    review = $reviewGate
++    localPolicy = $localPolicyGate
++  }
+   latestActions = @($actions)
+   summary = [ordered]@{
++    status = $overallStatus
++    gate = $overallStatus
++    blocker = if ($overallStatus -eq 'BLOCKED' -and $branchProtectionGate.blocker) { $branchProtectionGate.blocker } else { $null }
+     branchesChecked = @($branchReports).Count
+-    unprotectedBranches = $unprotectedCount
+-    latestFailuresAllHeads = $latestFailureCount
++    unprotectedBranches = @($branchReports | Where-Object { -not $_.protected }).Count
++    activeBranchRulesets = @($activeBranchRulesets).Count
++    requiredChecks = @($requiredChecks)
+     currentHead = $currentHead
+-    currentHeadFailures = $currentHeadFailureCount
+-    currentHeadInProgress = $currentHeadInProgressCount
+-    gate = if ($unprotectedCount -eq 0 -and $currentHeadFailureCount -eq 0 -and $currentHeadInProgressCount -eq 0) { 'PASS' } else { 'BLOCKED' }
+-  }
+-  recommendation = if ($unprotectedCount -gt 0) {
+-    'Enable branch protection or rulesets with required PR review and required checks before release.'
+-  } elseif ($currentHeadInProgressCount -gt 0) {
+-    'Wait for the current head Actions run to finish before release.'
+-  } elseif ($currentHeadFailureCount -gt 0) {
+-    'Fix failing current-head Actions before release.'
++    blockedReasons = @($blockedReasons)
++  }
++  recommendation = if ($branchProtectionGate.status -eq 'BLOCKED') {
++    'Enable branch protection or an active branch ruleset for main with required PR review and required checks before release.'
++  } elseif ($requiredChecksGate.status -eq 'BLOCKED') {
++    'Add required status checks, starting with test.'
++  } elseif ($reviewGate.status -ne 'PASS') {
++    'Confirm required PR review and CODEOWNERS review in remote protection/ruleset readback.'
+   } else {
+-    'GitHub gate read-back is clean.'
++    'GitHub governance readback is clean. Release still depends on court and owner approval.'
+   }
+-} | ConvertTo-Json -Depth 12
++} | ConvertTo-Json -Depth 16
+diff --git a/src/bootstrap.js b/src/bootstrap.js
+index 549a2f3..168e56b 100644
+--- a/src/bootstrap.js
++++ b/src/bootstrap.js
+@@ -1,8 +1,10 @@
+ import fs from 'node:fs/promises';
++import path from 'node:path';
+ import { spawn } from 'node:child_process';
+ import {
+   BATTALIONS_PATH,
+   DASHBOARD_STATE_PATH,
++  DOCKER_EVIDENCE_DIR,
+   POLICY_PATH,
+   ROOT_DIR,
+   ensureAppDirs,
+@@ -32,7 +34,9 @@ import { catalogSeed, STANDARD_CATALOG, searchStandards } from './standards.js';
+ import { battalionCatalog, EVIDENCE_BATTALIONS } from './evidence-battalions.js';
+ import {
+   buildEvidenceSprint,
++  buildDashboardTruthContract,
+   evaluateCourt,
++  evaluateSourceStampGate,
+   evaluateStandards,
+   suggestNextActions,
+   summarizeEvaluations,
+@@ -48,6 +52,10 @@ import {
+   summarizeSkillRegistry,
+ } from './skill-registry.js';
+ import { ensureBenchmarkState, loadBenchmarkState, summarizeBenchmarkState } from './benchmark.js';
++import { ENVIRONMENT_LIMIT_RADAR, summarizeEnvironmentLimits } from './environment-limits.js';
++import { OPERATOR_ACTION_QUEUE, summarizeOperatorActions } from './operator-actions.js';
++import { buildCoreFoundationRadar } from './core-foundation.js';
++import { buildSourceCourtAudit, sanitizeSourceCourtAudit } from './source-court.js';
+ 
+ export async function bootstrapApp() {
+   await ensureAppDirs();
+@@ -89,6 +97,36 @@ function estimateTokenSnapshot(profile, query, standards, events) {
+   };
+ }
+ 
++async function loadLatestDockerEvidence() {
++  try {
++    const entries = await fs.readdir(DOCKER_EVIDENCE_DIR);
++    const latest = entries
++      .filter((entry) => /^docker-smoke-.*\.json$/i.test(entry))
++      .sort()
++      .at(-1);
++
++    if (!latest) {
++      return null;
++    }
++
++    const payload = await fs.readFile(path.join(DOCKER_EVIDENCE_DIR, latest), 'utf8');
++    return {
++      ...JSON.parse(payload),
++      evidenceFile: path.join('.pala', 'evidence', 'docker', latest).replaceAll('\\', '/'),
++    };
++  } catch (error) {
++    if (error?.code === 'ENOENT') {
++      return null;
++    }
++
++    return {
++      ok: false,
++      status: 'NOT_AVAILABLE_WITH_REASON',
++      reason: `docker evidence unreadable: ${error instanceof Error ? error.message : String(error)}`,
++    };
++  }
++}
++
+ export async function buildAppState(db, { profile = 'dashboard', query = '' } = {}) {
+   const standards = loadStandards(db);
+   const evidenceCounts = loadEvidenceCounts(db);
+@@ -101,10 +139,20 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+   const tokenSnapshots = loadRecentTokenSnapshots(db, 5);
+   const ledger = readLedgerRecords(250);
+   const github = await getGithubBridgeStatus();
++  const sourceCourtAudit = sanitizeSourceCourtAudit(await buildSourceCourtAudit({
++    rootDir: ROOT_DIR,
++    sourceCards,
++  }));
++  const sourceStampGate = evaluateSourceStampGate(sourceCourtAudit);
+   const skillRegistry = await loadSeedSkillRegistry();
+   const skillRegistrySummary = summarizeSkillRegistry(skillRegistry);
+   const benchmarkState = await loadBenchmarkState();
+   const benchmarkSummary = summarizeBenchmarkState(benchmarkState);
++  const dockerEvidence = await loadLatestDockerEvidence();
++  const environmentLimits = ENVIRONMENT_LIMIT_RADAR;
++  const environmentLimitSummary = summarizeEnvironmentLimits(environmentLimits);
++  const operatorActionQueue = OPERATOR_ACTION_QUEUE;
++  const operatorActionSummary = summarizeOperatorActions(operatorActionQueue);
+   const viewSummary = summarizeEvaluations(evaluatedStandards);
+   const summary = summarizeEvaluations(globalStandards);
+   const evidenceSprint = buildEvidenceSprint(standards, evidenceCounts, {
+@@ -121,6 +169,7 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     sourceCards,
+     runs,
+     ledger,
++    sourceStampGate,
+   });
+ 
+   const state = {
+@@ -134,6 +183,11 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     skillRegistrySummary,
+     benchmarkState,
+     benchmarkSummary,
++    dockerEvidence,
++    environmentLimits,
++    environmentLimitSummary,
++    operatorActionQueue,
++    operatorActionSummary,
+     skillRegistryViews: {
+       list: listRegistrySkills(skillRegistry),
+       core: listRegistrySkills(skillRegistry, { status: 'draft' }).slice(0, 6),
+@@ -157,6 +211,8 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     standards: evaluatedStandards,
+     events,
+     sourceCards,
++    sourceCourtAudit,
++    sourceStampGate,
+     jobRuns,
+     runs,
+     tokenSnapshots,
+@@ -175,6 +231,10 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     evidenceSprint,
+   };
+ 
++  state.coreFoundation = buildCoreFoundationRadar(state);
++  state.coreFoundationSummary = state.coreFoundation.summary;
++  state.dashboardTruthContract = buildDashboardTruthContract(state);
++
+   saveDashboardState(db, 'last', state);
+   return state;
+ }
+@@ -186,9 +246,12 @@ export async function runCronCycle(db) {
+     'ledger-watch',
+     'evidence-watch',
+     'source-drift',
++    'core-foundation-watch',
+     'secret-watch',
+     'docker-watch',
+     'mcp-watch',
++    'environment-limit-watch',
++    'operator-action-watch',
+     'github-watch',
+     'token-watch',
+     'standard-watch',
+@@ -197,12 +260,19 @@ export async function runCronCycle(db) {
+ 
+   watchers.forEach((watcher, index) => {
+     const finishedAt = new Date(startedAt.getTime() + 15 + (index * 5));
++    const detail = watcher === 'environment-limit-watch'
++      ? `${state.environmentLimitSummary.total} environments tracked; ${(state.environmentLimitSummary.byStatus?.['not-external'] ?? 0)} not external`
++      : watcher === 'operator-action-watch'
++        ? `${state.operatorActionSummary.ready}/${state.operatorActionSummary.total} operator actions ready; token reduction ${state.operatorActionSummary.expectedContextReduction}`
++      : watcher === 'core-foundation-watch'
++        ? `${state.coreFoundationSummary.active}/${state.coreFoundationSummary.total} core components active; ${state.coreFoundationSummary.ownerGated} owner-gated`
++      : state.summary.blocked > 0
++        ? `blocked required standards: ${state.summary.blocked}`
++        : 'no blockers detected';
+     addJobRun(db, {
+       jobName: watcher,
+       status: state.summary.blocked > 0 && watcher === 'court-watch' ? 'attention' : 'ok',
+-      detail: state.summary.blocked > 0
+-        ? `blocked required standards: ${state.summary.blocked}`
+-        : 'no blockers detected',
++      detail,
+       startedAt: startedAt.toISOString(),
+       finishedAt: finishedAt.toISOString(),
+       runtimeMs: finishedAt.getTime() - startedAt.getTime(),
+diff --git a/src/cli.js b/src/cli.js
+index 1343f17..a4c064f 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -8,6 +8,7 @@ import {
+   addToolUsage,
+   finishRun,
+   loadEvidenceCounts,
++  loadRecentSourceCards,
+   loadStandards,
+   startRun,
+ } from './db.js';
+@@ -23,6 +24,9 @@ import { runDockerSmoke } from './docker-smoke.js';
+ import { buildLegacyAudit } from './legacy-audit.js';
+ import { archiveLegacySource } from './legacy-archive.js';
+ import { writeLegacySkillIndex } from './legacy-skills.js';
++import { buildCoreFoundationRadar } from './core-foundation.js';
++import { ROOT_DIR } from './config.js';
++import { buildSourceCourtAudit } from './source-court.js';
+ 
+ function printHelp() {
+   console.log(`Pala OS V6
+@@ -35,12 +39,14 @@ Commands:
+   sak status
+   sak bak <query>
+   sak ingest --repo owner/name [--path local/path] [--visibility public|private|internal|local|unknown] [--commit sha] [--license MIT] [--summary text]
++  sak source audit [--json]
+   sak legacy audit --path C:\\legacy\\repo [--json]
+   sak legacy archive --path C:\\legacy\\repo [--out legacy/pala-os/source] [--force] [--json]
+   sak legacy skills index --path C:\\legacy\\repo [--out skills/registry/legacy-skills-index.json] [--json]
+   sak evidence add --standard nist-ssdf --detail "..."
+   sak evidence sprint [--mode machine-gate] [--max 10] [--include-satisfied true|false] [--json]
+   sak screenshot --url http://127.0.0.1:8787 [--selector ...] [--full-page]
++  sak core audit [--json]
+   sak audit
+   sak cron run
+   sak court
+@@ -132,12 +138,17 @@ function selectCourtStandards(standards) {
+ 
+ function buildCourtDecisionPayload(court, state) {
+   const { sourceCards = [], ledger = [] } = state;
++  const sourceStampGate = state.sourceStampGate ?? court?.sourceStampGate ?? {
++    status: 'NOT_AVAILABLE_WITH_REASON',
++    reasons: ['source court audit not available'],
++  };
+   const blockedStandards = selectCourtStandards(state.standards);
+   const blockedRequired = court?.blockedRequired ?? 0;
+   const ownerApproved = Boolean(court?.ownerApproved);
+   const hasSourceCards = sourceCards.length > 0;
+   const hasLedgerEvidence = ledger.length > 0;
+-  const releaseReady = ownerApproved && blockedRequired === 0 && hasSourceCards && hasLedgerEvidence;
++  const sourceStampGatePassable = sourceStampGate.status !== 'BLOCKED';
++  const releaseReady = ownerApproved && blockedRequired === 0 && hasSourceCards && hasLedgerEvidence && sourceStampGatePassable;
+   const gate = releaseReady ? 'PASS' : 'BLOCKED';
+ 
+   return {
+@@ -153,6 +164,7 @@ function buildCourtDecisionPayload(court, state) {
+       sourceCards: sourceCards.length,
+       ledgerRecords: ledger.length,
+       courtDecision: court?.decision ?? 'RELEASE_BLOCKED',
++      sourceStampGateStatus: sourceStampGate.status,
+       releaseStatus: releaseReady ? 'GECERLI' : 'BASARISIZ',
+     },
+     releaseGate: {
+@@ -163,8 +175,10 @@ function buildCourtDecisionPayload(court, state) {
+       hasSourceCards,
+       hasLedgerEvidence,
+       blockedRequired,
++      sourceStampGateStatus: sourceStampGate.status,
+       route: state.route,
+     },
++    sourceStampGate,
+     releaseReady,
+     sourceCardsCount: sourceCards.length,
+     ledgerRecordsCount: ledger.length,
+@@ -383,6 +397,32 @@ async function main() {
+     return;
+   }
+ 
++  if (command === 'source' && subcommand === 'audit') {
++    const flags = parseFlags(rest);
++    const outputJson = normalizeSprintBoolean(flags.json, true);
++    const { db } = await bootstrapApp();
++    const result = await withCommandRun(db, 'source audit', 'Inspect source court stamp chain', async () => {
++      const sourceCards = loadRecentSourceCards(db, 12);
++      const audit = await buildSourceCourtAudit({
++        rootDir: ROOT_DIR,
++        sourceCards,
++        legacyMode: 'explicit',
++      });
++      return {
++        message: 'source court audit generated',
++        audit,
++      };
++    });
++
++    if (!outputJson) {
++      console.log(`${result.audit.status}: ${result.audit.sourceStampGate.reasons.join('; ')}`);
++      return;
++    }
++
++    console.log(JSON.stringify(result.audit, null, 2));
++    return;
++  }
++
+   if (command === 'screenshot') {
+     const flags = parseFlags([subcommand, ...rest].filter(Boolean));
+     const positionalUrl = subcommand.startsWith('--') ? '' : subcommand;
+@@ -460,6 +500,27 @@ async function main() {
+     return;
+   }
+ 
++  if (command === 'core' && subcommand === 'audit') {
++    const flags = parseFlags(rest);
++    const outputJson = normalizeSprintBoolean(flags.json, true);
++    const { db } = await bootstrapApp();
++    const result = await withCommandRun(db, 'core audit', 'Inspect Pala core foundation radar', async () => {
++      const state = await buildAppState(db, { profile: 'dashboard' });
++      const radar = buildCoreFoundationRadar(state);
++      return { message: 'core foundation radar generated', radar };
++    });
++
++    if (!outputJson) {
++      for (const component of result.radar.components) {
++        console.log(`${component.id}: ${component.status} (${component.verdict}) - ${component.currentEvidence}`);
++      }
++      return;
++    }
++
++    console.log(JSON.stringify({ ok: true, ...result.radar }, null, 2));
++    return;
++  }
++
+   if (command === 'cron' && subcommand === 'run') {
+     const { db } = await bootstrapApp();
+     const result = await withCommandRun(db, 'cron run', 'Run local watcher jobs', async () => {
+diff --git a/src/config.js b/src/config.js
+index 36362ce..1127d02 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -25,6 +25,12 @@ export const SKILLS_REGISTRY_DIR = path.resolve(
+   process.env.PALA_SKILLS_REGISTRY_DIR ?? path.join(SKILLS_DIR, 'registry'),
+ );
+ export const BENCHMARK_DIR = path.resolve(process.env.PALA_BENCHMARK_DIR ?? path.join(ROOT_DIR, 'benchmark'));
++export const SOURCE_STAMP_CONTRACT_PATH = path.resolve(
++  process.env.PALA_SOURCE_STAMP_CONTRACT_PATH ?? path.join(ROOT_DIR, 'docs', 'source-stamp-contract.md'),
++);
++export const INHERITANCE_BACKLOG_PATH = path.resolve(
++  process.env.PALA_INHERITANCE_BACKLOG_PATH ?? path.join(ROOT_DIR, 'docs', 'inheritance-backlog.json'),
++);
+ export const DB_PATH = path.resolve(process.env.PALA_DB_PATH ?? path.join(DB_DIR, 'pala-v6.sqlite'));
+ export const POLICY_PATH = path.resolve(process.env.PALA_POLICY_PATH ?? path.join(RULES_DIR, 'world-standards.json'));
+ export const BATTALIONS_PATH = path.resolve(process.env.PALA_BATTALIONS_PATH ?? path.join(RULES_DIR, 'evidence-battalions.json'));
+diff --git a/src/core-foundation.js b/src/core-foundation.js
+new file mode 100644
+index 0000000..23b4b8f
+--- /dev/null
++++ b/src/core-foundation.js
+@@ -0,0 +1,132 @@
++export const CORE_FOUNDATION_REFERENCES = [
++  'https://nodejs.org/api/sqlite.html',
++  'https://csrc.nist.gov/pubs/sp/800/218/final',
++  'https://slsa.dev/spec/latest/',
++  'https://slsa.dev/spec/v1.0/provenance',
++  'https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches',
++  'docs/world-standards-map.md',
++  'AGENTS.md',
++];
++
++function statusBucket(status) {
++  if (status === 'active') return 'active';
++  if (status === 'owner-gated') return 'ownerGated';
++  if (status === 'active-watch' || status === 'needs-hardening') return 'watch';
++  return 'blocked';
++}
++
++export function buildCoreFoundationRadar(state) {
++  const standardsTotal = state.summary?.total ?? 0;
++  const required = state.summary?.required ?? state.summary?.byPolicy?.required ?? 0;
++  const recommended = state.summary?.recommended ?? state.summary?.byPolicy?.recommended ?? 0;
++  const machineGates = state.summary?.machineGates ?? 0;
++  const dashboardCards = state.summary?.dashboardCards ?? 0;
++  const cronWatchers = state.summary?.cronWatchers ?? 0;
++  const ledgerCount = state.ledger?.length ?? 0;
++  const sourceCardCount = state.sourceCards?.length ?? 0;
++  const runCount = state.runs?.length ?? 0;
++  const eventCount = state.events?.length ?? 0;
++  const jobCount = state.jobRuns?.length ?? 0;
++  const blockedRequired = state.summary?.blocked ?? 0;
++  const courtDecision = state.court?.decision ?? 'UNKNOWN';
++  const ownerApproved = Boolean(state.court?.ownerApproved);
++
++  const components = [
++    {
++      id: 'sak-cli',
++      title: 'sak CLI',
++      layer: 'command',
++      status: runCount > 0 ? 'active' : 'needs-hardening',
++      verdict: runCount > 0 ? 'GECERLI' : 'KANIT YOK',
++      currentEvidence: `${runCount} command runs recorded`,
++      decision: 'Keep as the operator entrypoint; add new actions as audited subcommands, not hidden automation.',
++      noFakeControl: 'Every meaningful command is wrapped with run start/finish ledger evidence.',
++      requiredNextProof: 'Add core audit command and keep command output in test coverage.',
++      sourceRefs: ['README.md', 'src/cli.js', 'docs/world-standards-map.md'],
++    },
++    {
++      id: 'sqlite-evidence-ledger',
++      title: 'SQLite Evidence Ledger',
++      layer: 'database',
++      status: ledgerCount > 0 ? 'active-watch' : 'needs-hardening',
++      verdict: ledgerCount > 0 ? 'KISMEN' : 'KANIT YOK',
++      currentEvidence: `${ledgerCount} JSONL records; ${eventCount} recent DB events`,
++      decision: 'Keep SQLite as the local ledger database, but monitor Node built-in SQLite maturity and backup/export needs.',
++      noFakeControl: 'DB tables and append-only JSONL both receive events, tool usage, jobs, gate decisions, and runs.',
++      requiredNextProof: 'Add backup/export and ledger parse-failure audit before calling the ledger hardened.',
++      sourceRefs: ['https://nodejs.org/api/sqlite.html', 'src/db.js', 'src/ledger.js'],
++    },
++    {
++      id: 'standards-policy-engine',
++      title: '60 Standards Policy Engine',
++      layer: 'policy',
++      status: standardsTotal === 60 && required === 42 && recommended === 18 && machineGates >= 15 ? 'active' : 'needs-hardening',
++      verdict: standardsTotal === 60 ? 'GECERLI' : 'BASARISIZ',
++      currentEvidence: `${standardsTotal} standards; ${required} required; ${recommended} recommended; ${machineGates} machine gates`,
++      decision: 'Keep the 60-standard catalog as the first policy battalion; future standards enter backlog first, then owner-reviewed catalog.',
++      noFakeControl: 'Required standards without evidence remain blocked; recommended standards do not count as release green.',
++      requiredNextProof: 'Keep source refs, evidence hints, and machine-gate order tested whenever the catalog changes.',
++      sourceRefs: ['https://csrc.nist.gov/pubs/sp/800/218/final', 'https://slsa.dev/spec/latest/', 'src/standards.js'],
++    },
++    {
++      id: 'source-card-gate',
++      title: 'Source Card Gate',
++      layer: 'import-control',
++      status: sourceCardCount > 0 ? 'active' : 'needs-hardening',
++      verdict: sourceCardCount > 0 ? 'GECERLI' : 'KANIT YOK',
++      currentEvidence: `${sourceCardCount} source cards in local state`,
++      decision: 'Keep external code and old Pala copies behind quarantine/source-card decisions before any adapter import.',
++      noFakeControl: 'Ingest writes source-card ledger evidence; external source is not core truth by default.',
++      requiredNextProof: 'Require license, commit pin, visibility, decision, risk, and allowed layer before upstream adoption.',
++      sourceRefs: ['docs/oss-upstream-matrix.md', 'src/bootstrap.js', 'src/db.js'],
++    },
++    {
++      id: 'court-release-gate',
++      title: 'Court / Release Gate',
++      layer: 'release-control',
++      status: courtDecision === 'RELEASE_BLOCKED' && !ownerApproved ? 'owner-gated' : blockedRequired > 0 ? 'needs-hardening' : 'active-watch',
++      verdict: courtDecision === 'RELEASE_BLOCKED' ? 'BASARISIZ' : 'KISMEN',
++      currentEvidence: `${courtDecision}; ownerApproved=${ownerApproved}; blockedRequired=${blockedRequired}`,
++      decision: 'Keep release blocked unless owner approval, source cards, ledger evidence, and zero blocked required standards all exist.',
++      noFakeControl: 'Release PASS cannot be produced from dashboard optimism; it is computed from owner, standards, source, and ledger evidence.',
++      requiredNextProof: 'Enable GitHub branch protection/rulesets before treating current-head CI as release sufficient.',
++      sourceRefs: ['https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches', 'src/policy.js', 'src/cli.js'],
++    },
++    {
++      id: 'cron-watchers',
++      title: 'Cron Watchers',
++      layer: 'operations',
++      status: jobCount > 0 ? 'active' : 'needs-hardening',
++      verdict: jobCount > 0 ? 'GECERLI' : 'KANIT YOK',
++      currentEvidence: `${jobCount} recent job runs; ${cronWatchers} standards carry cron watcher flags`,
++      decision: 'Keep cron read/evidence-oriented. It may recommend actions but must not rewrite repo files or perform risky writes silently.',
++      noFakeControl: 'Cron writes watcher jobs and token snapshots to the ledger; it does not mark release ready.',
++      requiredNextProof: 'Add provider drift and core-foundation watch outputs to routine cron evidence.',
++      sourceRefs: ['src/bootstrap.js', 'docs/world-standards-map.md'],
++    },
++  ];
++
++  const byStatus = {};
++  const byVerdict = {};
++  for (const component of components) {
++    byStatus[component.status] = (byStatus[component.status] ?? 0) + 1;
++    byVerdict[component.verdict] = (byVerdict[component.verdict] ?? 0) + 1;
++  }
++
++  return {
++    version: 1,
++    status: 'control-target',
++    noFakeDone: 'Core foundation radar is not release approval. It states which core parts are active, watched, owner-gated, or still needing hardening.',
++    references: CORE_FOUNDATION_REFERENCES,
++    summary: {
++      total: components.length,
++      active: components.filter((component) => statusBucket(component.status) === 'active').length,
++      watch: components.filter((component) => statusBucket(component.status) === 'watch').length,
++      ownerGated: components.filter((component) => statusBucket(component.status) === 'ownerGated').length,
++      blocked: components.filter((component) => statusBucket(component.status) === 'blocked').length,
++      byStatus,
++      byVerdict,
++    },
++    components,
++  };
++}
+diff --git a/src/dashboard.js b/src/dashboard.js
+index 6106e6c..8bf07ee 100644
+--- a/src/dashboard.js
++++ b/src/dashboard.js
+@@ -8,9 +8,10 @@ function escapeHtml(value) {
+ }
+ 
+ function pillClass(status) {
+-  if (status === 'blocked' || status === 'bad' || status === 'attention') return 'bad';
+-  if (status === 'required' || status === 'pass' || status === 'good' || status === 'ok') return 'good';
+-  if (status === 'recommended' || status === 'neutral') return 'neutral';
++  const normalized = String(status ?? '').toLowerCase();
++  if (normalized === 'blocked' || normalized === 'release_blocked' || normalized === 'bad' || normalized === 'attention') return 'bad';
++  if (normalized === 'required' || normalized === 'pass' || normalized === 'good' || normalized === 'ok') return 'good';
++  if (normalized === 'recommended' || normalized === 'neutral') return 'neutral';
+   return 'warn';
+ }
+ 
+@@ -255,6 +256,55 @@ function buildConnectorCards(state) {
+   ];
+ }
+ 
++function renderLimitRefs(environment) {
++  const refs = environment.sourceRefs ?? [];
++  if (refs.length === 0) {
++    return '<span class="muted-inline">no source</span>';
++  }
++
++  return refs.slice(0, 2).map((ref) => {
++    if (!String(ref).startsWith('http')) {
++      return `<span class="source-link local">${escapeHtml(ref)}</span>`;
++    }
++
++    return `<a class="source-link" href="${escapeHtml(ref)}" target="_blank" rel="noreferrer">${escapeHtml(linkLabel(ref))}</a>`;
++  }).join(' ');
++}
++
++function renderCoreRefs(component) {
++  const refs = component.sourceRefs ?? [];
++  if (refs.length === 0) {
++    return '<span class="muted-inline">no source</span>';
++  }
++
++  return refs.slice(0, 3).map((ref) => {
++    if (!String(ref).startsWith('http')) {
++      return `<span class="source-link local">${escapeHtml(ref)}</span>`;
++    }
++
++    return `<a class="source-link" href="${escapeHtml(ref)}" target="_blank" rel="noreferrer">${escapeHtml(linkLabel(ref))}</a>`;
++  }).join(' ');
++}
++
++function renderLimitSummary(environment) {
++  return (environment.limits ?? []).slice(0, 2).map((limit) => {
++    const values = [
++      limit.value,
++      limit.hobby ? `Hobby ${limit.hobby}` : '',
++      limit.pro ? `Pro ${limit.pro}` : '',
++      limit.enforced ? `Enforced ${limit.enforced}` : '',
++      limit.recommended ? `Recommended ${limit.recommended}` : '',
++    ].filter(Boolean).join(' | ');
++
++    return `${limit.name}: ${values || limit.interpretation || 'tracked'}`;
++  }).join(' / ');
++}
++
++function renderActionCommand(action) {
++  const command = action.command || action.prompt || 'No command recorded';
++  return `<code class="command-snippet">${escapeHtml(command)}</code>`;
++}
++
+ function renderMeter(value, total, className = 'neutral') {
+   const safeTotal = Math.max(1, total);
+   const width = Math.max(0, Math.min(100, Math.round((value / safeTotal) * 100)));
+@@ -277,6 +327,16 @@ export function renderDashboardPage(state) {
+   const authorityRows = buildAuthorityRows(state.standards);
+   const connectorCards = buildConnectorCards(state);
+   const roleCards = buildRoleCards(state);
++  const environmentLimitRows = state.environmentLimits?.environments ?? [];
++  const operatorActionRows = state.operatorActionQueue?.actions ?? [];
++  const coreFoundationRows = state.coreFoundation?.components ?? [];
++  const dashboardTruth = state.dashboardTruthContract ?? {
++    status: 'NOT_AVAILABLE_WITH_REASON',
++    panels: [],
++    summary: {},
++  };
++  const truthPanels = dashboardTruth.panels ?? [];
++  const tokenTruth = truthPanels.find((panel) => panel.id === 'token-economy');
+   const courtTone = state.summary.blocked > 0 ? 'bad' : 'good';
+   const actionTone = state.summary.blocked > 0 ? 'warn' : 'good';
+   const jobsAttention = state.jobRuns.filter((jobRun) => jobRun.status !== 'ok').length;
+@@ -829,6 +889,16 @@ export function renderDashboardPage(state) {
+       color: var(--soft);
+       line-height: 1.55;
+     }
++    .command-snippet {
++      display: block;
++      max-width: 72ch;
++      white-space: normal;
++      overflow-wrap: anywhere;
++      font-family: var(--mono);
++      font-size: 12px;
++      line-height: 1.55;
++      color: #d0f5ff;
++    }
+     tr:hover td {
+       background: rgba(255,255,255,0.02);
+     }
+@@ -915,6 +985,14 @@ export function renderDashboardPage(state) {
+           <span>Command Deck</span>
+           <small>${escapeHtml(routeLabel)}</small>
+         </a>
++        <a href="#core-foundation">
++          <span>Core Radar</span>
++          <small>${state.coreFoundationSummary.active}/${state.coreFoundationSummary.total} active</small>
++        </a>
++        <a href="#truth-contract">
++          <span>Truth Contract</span>
++          <small>${escapeHtml(dashboardTruth.status)}</small>
++        </a>
+         <a href="#standards">
+           <span>Standard Radar</span>
+           <small>${state.summary.total} record</small>
+@@ -927,6 +1005,14 @@ export function renderDashboardPage(state) {
+           <span>Connector Dock</span>
+           <small>${connectorCards.length} tools</small>
+         </a>
++        <a href="#environment-limits">
++          <span>Limit Radar</span>
++          <small>${state.environmentLimitSummary.total} env</small>
++        </a>
++        <a href="#operator-actions">
++          <span>Action Queue</span>
++          <small>${state.operatorActionSummary.ready}/${state.operatorActionSummary.total} ready</small>
++        </a>
+         <a href="#skills">
+           <span>Skill Registry</span>
+           <small>${state.skillRegistrySummary.total} skill</small>
+@@ -977,7 +1063,7 @@ export function renderDashboardPage(state) {
+           <div class="signal-box">
+             <h3>Token Economy</h3>
+             <div class="signal-value">${state.tokenBudget.actualTokens}</div>
+-            <p>Plan ${state.tokenBudget.plannedTokens} | latest route estimate for this profile. Unknown is shown as unknown, not zero.</p>
++            <p>${tokenTruth?.estimated ? 'Estimated, not measured.' : 'Measured.'} Plan ${state.tokenBudget.plannedTokens} | action queue expects ${escapeHtml(state.operatorActionSummary.expectedContextReduction)} context reduction by using scoped command packs first.</p>
+           </div>
+         </div>
+       </section>
+@@ -1025,6 +1111,80 @@ export function renderDashboardPage(state) {
+           </div>
+         </article>
+ 
++        <article id="truth-contract" class="panel span-12">
++          <div class="section-head">
++            <div>
++              <h3>Dashboard Truth Contract</h3>
++              <p>Panel yesili veri kaynagi, evidence ve fallback zinciri olmadan uretilemez. Unknown NOT_AVAILABLE_WITH_REASON, eksik kanit PARTIAL, owner onayi yoksa RELEASE_BLOCKED kalir.</p>
++            </div>
++            <div class="mini-note">${escapeHtml(dashboardTruth.status)} | ${truthPanels.length} panels</div>
++          </div>
++          <div class="table-wrap">
++            <table>
++              <thead>
++                <tr>
++                  <th>Panel</th>
++                  <th>Status</th>
++                  <th>Data Source</th>
++                  <th>Evidence</th>
++                  <th>Fallback</th>
++                  <th>Truth Risk</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${truthPanels.map((truthPanel) => `
++                  <tr>
++                    <td>${escapeHtml(truthPanel.panel)}<br><span class="muted-inline">${escapeHtml(truthPanel.id)}</span></td>
++                    <td><span class="status-pill-mini ${pillClass(truthPanel.status)}">${escapeHtml(truthPanel.status)}</span>${truthPanel.estimated ? '<br><span class="muted-inline">estimated</span>' : ''}</td>
++                    <td>${escapeHtml(truthPanel.dataSource)}</td>
++                    <td>${escapeHtml(truthPanel.evidenceSource)}<br><span class="muted-inline">${truthPanel.evidencePresent ? 'evidence present' : 'evidence missing'}</span></td>
++                    <td>${escapeHtml(truthPanel.fallbackState)}<br><span class="muted-inline">${escapeHtml(truthPanel.statusMapping)}</span></td>
++                    <td>${escapeHtml(truthPanel.truthRisk)}</td>
++                  </tr>
++                `).join('') || '<tr><td colspan="6">NOT_AVAILABLE_WITH_REASON</td></tr>'}
++              </tbody>
++            </table>
++          </div>
++        </article>
++
++        <article id="core-foundation" class="panel span-12">
++          <div class="section-head">
++            <div>
++              <h3>Core Foundation Radar</h3>
++              <p>Yeni cekirdek karari burada tutulur: sak, SQLite ledger, policy engine, source card, court/release gate ve cron ayni kanit diliyle izlenir.</p>
++            </div>
++            <div class="mini-note">${state.coreFoundationSummary.active}/${state.coreFoundationSummary.total} active | ${state.coreFoundationSummary.ownerGated} owner-gated</div>
++          </div>
++          <div class="table-wrap">
++            <table>
++              <thead>
++                <tr>
++                  <th>Core</th>
++                  <th>Layer</th>
++                  <th>Status</th>
++                  <th>Evidence</th>
++                  <th>Decision</th>
++                  <th>Next Proof</th>
++                  <th>Sources</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${coreFoundationRows.map((component) => `
++                  <tr>
++                    <td>${escapeHtml(component.title)}</td>
++                    <td>${escapeHtml(component.layer)}</td>
++                    <td><span class="status-pill-mini ${pillClass(component.status === 'owner-gated' ? 'bad' : component.status === 'active' ? 'good' : 'warn')}">${escapeHtml(component.status)}</span><br><span class="muted-inline">${escapeHtml(component.verdict)}</span></td>
++                    <td>${escapeHtml(component.currentEvidence)}</td>
++                    <td>${escapeHtml(component.decision)}<br><span class="muted-inline">${escapeHtml(component.noFakeControl)}</span></td>
++                    <td>${escapeHtml(component.requiredNextProof)}</td>
++                    <td>${renderCoreRefs(component)}</td>
++                  </tr>
++                `).join('')}
++              </tbody>
++            </table>
++          </div>
++        </article>
++
+         <article class="panel span-5">
+           <div class="section-head">
+             <div>
+@@ -1151,6 +1311,78 @@ export function renderDashboardPage(state) {
+           </div>
+         </article>
+ 
++        <article id="environment-limits" class="panel span-12">
++          <div class="section-head">
++            <div>
++              <h3>Environment Limit Radar</h3>
++              <p>Provider limitleri sohbet notu olarak kalmaz. Her dis ortam icin limit, kaynak, son gozlem ve no-fake yorumu burada tutulur.</p>
++            </div>
++            <div class="mini-note">${state.environmentLimitSummary.total} tracked environments</div>
++          </div>
++          <div class="table-wrap">
++            <table>
++              <thead>
++                <tr>
++                  <th>Provider</th>
++                  <th>Surface</th>
++                  <th>Status</th>
++                  <th>Observed Use</th>
++                  <th>Limit</th>
++                  <th>Source</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${environmentLimitRows.map((environment) => `
++                  <tr>
++                    <td>${escapeHtml(environment.provider)}</td>
++                    <td>${escapeHtml(environment.surface)}</td>
++                    <td><span class="status-pill-mini ${pillClass(environment.status === 'not-external' ? 'bad' : environment.status === 'watch' ? 'warn' : 'good')}">${escapeHtml(environment.status)}</span></td>
++                    <td>${escapeHtml(environment.observedUse?.value ?? environment.observedUse?.label ?? '')}</td>
++                    <td>${escapeHtml(renderLimitSummary(environment))}</td>
++                    <td>${renderLimitRefs(environment)}</td>
++                  </tr>
++                `).join('')}
++              </tbody>
++            </table>
++          </div>
++        </article>
++
++        <article id="operator-actions" class="panel span-12">
++          <div class="section-head">
++            <div>
++              <h3>Operator Action Queue</h3>
++              <p>Cron ve dashboard ayni aksiyon defterine bakar. Hazir olanlar komut verir; browser/Playwright gibi yuzeyler kanit uretemezse Codex-assisted veya owner-gated kalir.</p>
++            </div>
++            <div class="mini-note">${state.operatorActionSummary.ready}/${state.operatorActionSummary.total} ready | ${escapeHtml(state.operatorActionSummary.expectedContextReduction)} token cut</div>
++          </div>
++          <div class="table-wrap">
++            <table>
++              <thead>
++                <tr>
++                  <th>Action</th>
++                  <th>Executor</th>
++                  <th>Status</th>
++                  <th>Command / Prompt</th>
++                  <th>Proof</th>
++                  <th>Token Impact</th>
++                </tr>
++              </thead>
++              <tbody>
++                ${operatorActionRows.map((action) => `
++                  <tr>
++                    <td>${escapeHtml(action.title)}</td>
++                    <td>${escapeHtml(action.executor)}<br><span class="muted-inline">${escapeHtml(action.mode)}</span></td>
++                    <td><span class="status-pill-mini ${pillClass(String(action.status).startsWith('ready') ? 'good' : action.ownerGate ? 'bad' : 'warn')}">${escapeHtml(action.status)}</span></td>
++                    <td>${renderActionCommand(action)}</td>
++                    <td>${escapeHtml(action.proof)}<br><span class="muted-inline">${escapeHtml(action.fallback)}</span></td>
++                    <td>${escapeHtml(action.tokenImpact?.level ?? 'unknown')}<br><span class="muted-inline">${escapeHtml(action.tokenImpact?.estimatedSavings ?? '')}</span></td>
++                  </tr>
++                `).join('')}
++              </tbody>
++            </table>
++          </div>
++        </article>
++
+         <article class="panel span-12">
+           <div class="section-head">
+             <div>
+diff --git a/src/environment-limits.js b/src/environment-limits.js
+new file mode 100644
+index 0000000..865eee1
+--- /dev/null
++++ b/src/environment-limits.js
+@@ -0,0 +1,173 @@
++export const ENVIRONMENT_LIMIT_RADAR = {
++  version: 1,
++  status: 'control-target',
++  generatedAt: '2026-06-08T08:05:00.000Z',
++  noFakeDone: 'Environment limits are source-checked operating constraints, not release approval or product-ready evidence.',
++  environments: [
++    {
++      id: 'vercel-static-upload',
++      provider: 'Vercel',
++      surface: 'Static deployment upload',
++      status: 'within-observed-limit',
++      observedUse: {
++        label: 'Pala OS V6 public source snapshot zip',
++        valueBytes: 71268842,
++        value: '71,268,842 bytes',
++        checkedAt: '2026-06-08T08:03:37.000Z',
++        evidence: 'curl HEAD returned HTTP 200 with Content-Length 71268842 for the Vercel zip URL.',
++      },
++      limits: [
++        {
++          name: 'CLI static file uploads',
++          hobby: '100 MB',
++          pro: '1 GB',
++          interpretation: 'The current 71,268,842 byte package is below the Hobby static upload threshold.',
++        },
++      ],
++      sourceAuthority: 'vercel.com',
++      sourceRefs: [
++        'https://vercel.com/docs/limits',
++        'https://vercel.com/docs/limits/overview',
++      ],
++      nextCheck: 'Re-check before every public download deployment because platform limits can change.',
++    },
++    {
++      id: 'github-release-assets',
++      provider: 'GitHub',
++      surface: 'Release asset distribution',
++      status: 'usable-with-private-repo-caveat',
++      observedUse: {
++        label: 'Pala OS V6 GitHub prerelease source snapshot',
++        valueBytes: 71268842,
++        value: '71,268,842 bytes',
++        checkedAt: '2026-06-08T07:57:25.000Z',
++        evidence: 'GitHub release asset uploaded with digest and size reported by gh release view.',
++      },
++      limits: [
++        {
++          name: 'Release assets per release',
++          value: '1000 assets',
++          interpretation: 'The current release uses 2 assets: zip and sha256.',
++        },
++        {
++          name: 'Release asset file size',
++          value: 'under 2 GiB per file',
++          interpretation: 'The current 71,268,842 byte package is below the release asset file-size limit.',
++        },
++      ],
++      sourceAuthority: 'docs.github.com',
++      sourceRefs: [
++        'https://docs.github.com/articles/about-releases',
++        'https://docs.github.com/rest/releases/assets',
++      ],
++      nextCheck: 'Use GitHub release only when account access is acceptable; private repo assets are not public download links.',
++    },
++    {
++      id: 'github-repository-limits',
++      provider: 'GitHub',
++      surface: 'Repository storage and push health',
++      status: 'watch',
++      observedUse: {
++        label: 'Pala OS V6 source repo',
++        value: 'tracked source only; large generated zip is kept out of git',
++        checkedAt: '2026-06-08T08:05:00.000Z',
++        evidence: 'git archive and Vercel upload keep generated download artefacts outside tracked source.',
++      },
++      limits: [
++        {
++          name: 'Single git object',
++          recommended: '1 MB',
++          enforced: '100 MB',
++          interpretation: 'Generated zip files stay outside git; use releases, Vercel, or object storage for binaries.',
++        },
++        {
++          name: 'Single push',
++          enforced: '2 GiB',
++          interpretation: 'Keep large transfers out of normal git history.',
++        },
++        {
++          name: 'On-disk repository size',
++          recommended: '10 GB',
++          interpretation: 'Monitor archive/import work so legacy salvage does not bloat the repository.',
++        },
++      ],
++      sourceAuthority: 'docs.github.com',
++      sourceRefs: [
++        'https://docs.github.com/en/repositories/creating-and-managing-repositories/repository-limits',
++        'https://docs.github.com/en/get-started/using-git/troubleshooting-the-2-gb-push-limit',
++      ],
++      nextCheck: 'Run git status, git count-objects, and GitHub gate audit before large archive or release work.',
++    },
++    {
++      id: 'github-actions-limits',
++      provider: 'GitHub',
++      surface: 'Actions usage and storage',
++      status: 'watch',
++      observedUse: {
++        label: 'Current-head push and PR checks',
++        value: 'success on 98bbf1f',
++        checkedAt: '2026-06-08T07:54:42.000Z',
++        evidence: 'npm run github:audit reported currentHeadFailures 0 and currentHeadInProgress 0.',
++      },
++      limits: [
++        {
++          name: 'Workflow run time',
++          value: '35 days per workflow run',
++          interpretation: 'Long-running automation must still report gate state and not hide stuck approvals.',
++        },
++        {
++          name: 'Environment gate approval time',
++          value: '30 days',
++          interpretation: 'Owner approval windows are finite and must stay visible in court.',
++        },
++      ],
++      sourceAuthority: 'docs.github.com',
++      sourceRefs: [
++        'https://docs.github.com/en/actions/reference/actions-limits',
++        'https://docs.github.com/actions/reference/usage-limits-billing-and-administration',
++      ],
++      nextCheck: 'Keep GitHub Actions limits in the provider radar before adding heavier CI or artifact jobs.',
++    },
++    {
++      id: 'localhost-download',
++      provider: 'Localhost',
++      surface: 'Local HTTP file server',
++      status: 'not-external',
++      observedUse: {
++        label: '127.0.0.1 download page',
++        value: 'local-machine only',
++        checkedAt: '2026-06-08T08:00:19.000Z',
++        evidence: 'Local Python HTTP server returned HTTP 200, but 127.0.0.1 is not reachable from the office.',
++      },
++      limits: [
++        {
++          name: 'External access',
++          value: 'not available',
++          interpretation: 'Use Vercel, Drive, GitHub release, or another externally reachable host for off-machine download.',
++        },
++      ],
++      sourceAuthority: 'local-law',
++      sourceRefs: [
++        'docs/world-standards-map.md',
++        'AGENTS.md',
++      ],
++      nextCheck: 'Never present localhost as an external link.',
++    },
++  ],
++};
++
++export function summarizeEnvironmentLimits(radar = ENVIRONMENT_LIMIT_RADAR) {
++  const byStatus = {};
++  const byProvider = {};
++
++  for (const environment of radar.environments ?? []) {
++    byStatus[environment.status] = (byStatus[environment.status] ?? 0) + 1;
++    byProvider[environment.provider] = (byProvider[environment.provider] ?? 0) + 1;
++  }
++
++  return {
++    total: radar.environments?.length ?? 0,
++    byStatus,
++    byProvider,
++  };
++}
+diff --git a/src/operator-actions.js b/src/operator-actions.js
+new file mode 100644
+index 0000000..1d68c4c
+--- /dev/null
++++ b/src/operator-actions.js
+@@ -0,0 +1,147 @@
++export const OPERATOR_ACTION_QUEUE = {
++  version: 1,
++  status: 'control-target',
++  generatedAt: '2026-06-08T08:35:00.000Z',
++  noFakeDone: 'Dashboard actions are operator guidance until command output, screenshot, API response, or ledger evidence exists.',
++  tokenEconomy: {
++    strategy: 'prefer command packs and task-scoped prompts over full-repo paste',
++    expectedContextReduction: '60-85%',
++    rule: 'Use sak bak, API summaries, and generated host prompts before loading broad repo context.',
++  },
++  actions: [
++    {
++      id: 'dashboard-health-check',
++      title: 'Verify live dashboard health',
++      executor: 'codex-cli',
++      mode: 'read-only-command',
++      status: 'ready',
++      ownerGate: false,
++      trigger: 'cron-and-dashboard',
++      command: 'Invoke-WebRequest http://127.0.0.1:8787/api/health -UseBasicParsing',
++      prompt: 'Codex: check /api/health and report court, db, ledgerCount, sourceCardCount.',
++      proof: 'HTTP 200 plus JSON health payload.',
++      fallback: 'If the dashboard is down, run npm.cmd run start with PALA_OPEN_BROWSER=0.',
++      tokenImpact: {
++        level: 'high',
++        estimatedSavings: 'Avoids pasting dashboard HTML or full repo state.',
++      },
++    },
++    {
++      id: 'browser-visual-check',
++      title: 'Capture dashboard visual proof',
++      executor: 'browser-playwright',
++      mode: 'codex-assisted-browser',
++      status: 'needs-playwright',
++      ownerGate: false,
++      trigger: 'manual-or-cron-after-ui-change',
++      command: 'node src/cli.js screenshot --url http://127.0.0.1:8787 --label dashboard-proof --full-page',
++      prompt: 'Codex: capture the dashboard, confirm the target panel is visible, and attach screenshot evidence.',
++      proof: 'Screenshot png and metadata paths written by sak screenshot.',
++      fallback: 'If Playwright or Browser automation is unavailable, use HTTP checks and mark visual proof pending.',
++      tokenImpact: {
++        level: 'medium',
++        estimatedSavings: 'Screenshot proof replaces long visual descriptions in chat.',
++      },
++    },
++    {
++      id: 'cursor-site-task-plan',
++      title: 'Prepare Cursor site-task prompt',
++      executor: 'cursor',
++      mode: 'copy-to-agent',
++      status: 'planned',
++      ownerGate: false,
++      trigger: 'when-user-says-site-yap',
++      command: 'node src/cli.js bak "site yap cursor standards"',
++      prompt: 'Cursor: build only after reading Pala rules. Produce local run proof, test proof, screenshot proof, and do not claim release-ready.',
++      proof: 'Generated prompt pack plus Cursor diff and local verification.',
++      fallback: 'If Cursor rules are missing, export rules first and keep work in Codex.',
++      tokenImpact: {
++        level: 'high',
++        estimatedSavings: 'Task-scoped host prompt avoids sending the full policy catalog to Cursor.',
++      },
++    },
++    {
++      id: 'vercel-public-link-check',
++      title: 'Check public Vercel download links',
++      executor: 'codex-cli',
++      mode: 'read-only-command',
++      status: 'ready',
++      ownerGate: false,
++      trigger: 'before-external-link-report',
++      command: 'Invoke-WebRequest https://pala-os-v6-public-download.vercel.app/ -Method Head -UseBasicParsing',
++      prompt: 'Codex: run HEAD checks for page, zip, and checksum; compare content length with environment limit radar.',
++      proof: 'HTTP 200, Content-Length, checksum link, and limit interpretation.',
++      fallback: 'If Vercel fails, do not call the link external; use Drive or GitHub release only after access proof.',
++      tokenImpact: {
++        level: 'medium',
++        estimatedSavings: 'Provider HEAD proof replaces repeated manual link explanations.',
++      },
++    },
++    {
++      id: 'github-gate-audit',
++      title: 'Audit GitHub branch and Actions gate',
++      executor: 'github-cli',
++      mode: 'read-only-command',
++      status: 'ready',
++      ownerGate: false,
++      trigger: 'pre-push-and-pre-release',
++      command: 'npm.cmd run github:audit',
++      prompt: 'Codex: summarize branch protection, current HEAD Actions, and release gate status.',
++      proof: 'github:audit JSON with gate, branches, and currentHeadFailures.',
++      fallback: 'If gh auth is unavailable, mark GitHub gate unknown and keep release blocked.',
++      tokenImpact: {
++        level: 'high',
++        estimatedSavings: 'One audit JSON replaces broad GitHub UI screenshots and manual status text.',
++      },
++    },
++    {
++      id: 'token-context-pack',
++      title: 'Build task-scoped context pack',
++      executor: 'sak',
++      mode: 'token-saver',
++      status: 'ready',
++      ownerGate: false,
++      trigger: 'before-long-agent-session',
++      command: 'node src/cli.js bak "<task query>"',
++      prompt: 'Codex: use the pack first, then read only files needed for the current task.',
++      proof: 'Context pack includes matching standards, evidence counts, recent events, and relevant skills.',
++      fallback: 'If the pack is too broad, narrow the query before opening more files.',
++      tokenImpact: {
++        level: 'very-high',
++        estimatedSavings: 'Avoids full-repo context and keeps cross-agent prompts small.',
++      },
++    },
++  ],
++};
++
++export function summarizeOperatorActions(queue = OPERATOR_ACTION_QUEUE) {
++  const byStatus = {};
++  const byExecutor = {};
++  let ready = 0;
++  let ownerGated = 0;
++  let tokenSavingActions = 0;
++
++  for (const action of queue.actions ?? []) {
++    byStatus[action.status] = (byStatus[action.status] ?? 0) + 1;
++    byExecutor[action.executor] = (byExecutor[action.executor] ?? 0) + 1;
++    if (String(action.status).startsWith('ready')) {
++      ready += 1;
++    }
++    if (action.ownerGate) {
++      ownerGated += 1;
++    }
++    if (action.tokenImpact?.level) {
++      tokenSavingActions += 1;
++    }
++  }
++
++  return {
++    total: queue.actions?.length ?? 0,
++    ready,
++    ownerGated,
++    tokenSavingActions,
++    byStatus,
++    byExecutor,
++    expectedContextReduction: queue.tokenEconomy?.expectedContextReduction ?? 'unknown',
++  };
++}
+diff --git a/src/policy.js b/src/policy.js
+index 7467525..08619ff 100644
+--- a/src/policy.js
++++ b/src/policy.js
+@@ -317,11 +317,14 @@ export function summarizeJobs(jobRuns) {
+   );
+ }
+ 
+-export function evaluateCourt({ summary, sourceCards, runs, ledger }) {
++export function evaluateCourt({ summary, sourceCards, runs, ledger, sourceStampGate = null }) {
+   const ownerApproved = process.env.PALA_OWNER_APPROVED === '1';
+   const blockedRequired = summary.byStatus.blocked ?? summary.blocked ?? 0;
+   const evidencePressure = sourceCards.length === 0 ? 'source cards missing' : 'source cards present';
+   const ledgerPressure = Array.isArray(ledger) && ledger.length === 0 ? 'ledger empty' : 'ledger has records';
++  const sourceStampPressure = sourceStampGate?.status
++    ? `source stamp gate ${sourceStampGate.status}`
++    : 'source stamp gate not available';
+   const baseReason = ownerApproved
+     ? 'owner approval present'
+     : 'owner approval missing';
+@@ -329,10 +332,303 @@ export function evaluateCourt({ summary, sourceCards, runs, ledger }) {
+   return {
+     decision: 'RELEASE_BLOCKED',
+     ownerApproved,
+-    reason: `${baseReason}; ${blockedRequired} required standard(s) still blocked; ${evidencePressure}; ${ledgerPressure}`,
++    reason: `${baseReason}; ${blockedRequired} required standard(s) still blocked; ${evidencePressure}; ${ledgerPressure}; ${sourceStampPressure}`,
+     blockedRequired,
+     runCount: runs?.length ?? 0,
+     evidenceCount: sourceCards.length,
++    sourceStampGate: sourceStampGate ?? {
++      status: 'NOT_AVAILABLE_WITH_REASON',
++      reasons: ['source court audit not available'],
++    },
++  };
++}
++
++export function evaluateSourceStampGate(sourceCourtAudit) {
++  if (!sourceCourtAudit?.sourceStampGate) {
++    return {
++      status: 'NOT_AVAILABLE_WITH_REASON',
++      reasons: ['source court audit not available'],
++    };
++  }
++
++  return {
++    status: sourceCourtAudit.sourceStampGate.status,
++    reasons: sourceCourtAudit.sourceStampGate.reasons ?? [],
++    summary: sourceCourtAudit.summary ?? {},
++  };
++}
++
++const TRUTH_STATUS_RANK = {
++  PASS: 0,
++  PARTIAL: 1,
++  NOT_AVAILABLE_WITH_REASON: 2,
++  BLOCKED: 3,
++  RELEASE_BLOCKED: 4,
++};
++
++function truthStatusRank(status) {
++  return TRUTH_STATUS_RANK[status] ?? TRUTH_STATUS_RANK.NOT_AVAILABLE_WITH_REASON;
++}
++
++function normalizeTruthStatus(status) {
++  const normalized = String(status ?? '').trim().toUpperCase();
++  if (normalized === 'PASS') return 'PASS';
++  if (normalized === 'PARTIAL') return 'PARTIAL';
++  if (normalized === 'BLOCKED') return 'BLOCKED';
++  if (normalized === 'RELEASE_BLOCKED') return 'RELEASE_BLOCKED';
++  return 'NOT_AVAILABLE_WITH_REASON';
++}
++
++function worstTruthStatus(statuses) {
++  return statuses
++    .map(normalizeTruthStatus)
++    .sort((left, right) => truthStatusRank(right) - truthStatusRank(left))[0] ?? 'NOT_AVAILABLE_WITH_REASON';
++}
++
++function panel({
++  id,
++  panel: panelName,
++  status,
++  dataSource,
++  evidenceSource,
++  fallbackState,
++  passCondition,
++  truthRisk,
++  statusMapping,
++  evidencePresent = false,
++  estimated = false,
++}) {
++  return {
++    id,
++    panel: panelName,
++    status: normalizeTruthStatus(status),
++    dataSource,
++    evidenceSource,
++    fallbackState,
++    passCondition,
++    truthRisk,
++    statusMapping,
++    evidencePresent: Boolean(evidencePresent),
++    estimated: Boolean(estimated),
++  };
++}
++
++function dockerTruthStatus(dockerEvidence) {
++  if (!dockerEvidence) {
++    return 'NOT_AVAILABLE_WITH_REASON';
++  }
++
++  if (dockerEvidence.ok && dockerEvidence.healthProbe?.ok && dockerEvidence.composeUp?.ok && dockerEvidence.composeBuild?.ok) {
++    return 'PASS';
++  }
++
++  const combinedError = [
++    dockerEvidence.reason,
++    dockerEvidence.dockerVersion?.stderr,
++    dockerEvidence.composeBuild?.stderr,
++    dockerEvidence.composeUp?.stderr,
++    dockerEvidence.composeDown?.stderr,
++  ].filter(Boolean).join(' ');
++
++  if (/dockerDesktopLinuxEngine|daemon|connect to the docker API|pipe/i.test(combinedError)) {
++    return 'NOT_AVAILABLE_WITH_REASON';
++  }
++
++  if (dockerEvidence.composeConfig?.ok || dockerEvidence.composeServices?.ok) {
++    return 'PARTIAL';
++  }
++
++  return 'BLOCKED';
++}
++
++function githubTruthStatus(github) {
++  if (github?.configured) {
++    return 'PASS';
++  }
++
++  if (github?.detectedOnly) {
++    return 'PARTIAL';
++  }
++
++  return 'NOT_AVAILABLE_WITH_REASON';
++}
++
++export function buildDashboardTruthContract(appState) {
++  const sourceStatus = normalizeTruthStatus(appState.sourceStampGate?.status);
++  const dockerStatus = dockerTruthStatus(appState.dockerEvidence);
++  const tokenEstimated = true;
++  const hasLedger = Array.isArray(appState.ledger) && appState.ledger.length > 0;
++  const hasSourceCards = Array.isArray(appState.sourceCards) && appState.sourceCards.length > 0;
++  const hasJobRuns = Array.isArray(appState.jobRuns) && appState.jobRuns.length > 0;
++  const hasMcpRegistry = (appState.skillRegistrySummary?.total ?? 0) > 0;
++  const benchmarkBlocked = (appState.benchmarkSummary?.byStatus?.blocked ?? 0) > 0;
++  const releaseBlocked = appState.court?.decision === 'RELEASE_BLOCKED' || appState.court?.ownerApproved !== true;
++
++  const panels = [
++    panel({
++      id: 'overview',
++      panel: 'Overview',
++      status: releaseBlocked ? 'RELEASE_BLOCKED' : sourceStatus === 'PASS' && hasLedger ? 'PASS' : 'PARTIAL',
++      dataSource: 'buildAppState.summary + court + sourceStampGate',
++      evidenceSource: 'SQLite standards/evidence counts, source cards, ledger, court',
++      fallbackState: 'RELEASE_BLOCKED',
++      passCondition: 'Court not release-blocked, source gate PASS, ledger has evidence.',
++      truthRisk: 'High: overview can hide downstream blockers if it is greener than child panels.',
++      statusMapping: 'owner approval missing => RELEASE_BLOCKED; missing evidence => PARTIAL.',
++      evidencePresent: hasLedger && hasSourceCards,
++    }),
++    panel({
++      id: 'mission-control',
++      panel: 'Mission Control',
++      status: hasJobRuns ? 'PARTIAL' : 'NOT_AVAILABLE_WITH_REASON',
++      dataSource: 'route, nextActions, jobRuns, runs',
++      evidenceSource: 'SQLite command_runs and job_runs',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'Mission/run ledger proves active mission state and no blocking court state.',
++      truthRisk: 'Medium: route text can look decisive without mission evidence.',
++      statusMapping: 'missing run/job evidence => NOT_AVAILABLE_WITH_REASON; live-but-not-release-proof => PARTIAL.',
++      evidencePresent: hasJobRuns,
++    }),
++    panel({
++      id: 'ci-court',
++      panel: 'CI Court',
++      status: githubTruthStatus(appState.github),
++      dataSource: 'github bridge status and GitHub audit evidence',
++      evidenceSource: 'GitHub CLI/API readback and workflow runs',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'GitHub governance readback configured and required checks proven.',
++      truthRisk: 'High: CI green without branch protection/review can be fake governance.',
++      statusMapping: 'unknown GitHub state => NOT_AVAILABLE_WITH_REASON; detected-only => PARTIAL.',
++      evidencePresent: Boolean(appState.github?.configured || appState.github?.detectedOnly),
++    }),
++    panel({
++      id: 'evidence-center',
++      panel: 'Evidence Center',
++      status: hasLedger && hasSourceCards ? 'PASS' : 'PARTIAL',
++      dataSource: 'ledger, sourceCards, evidenceSprint',
++      evidenceSource: 'SQLite ledger records and source-card table',
++      fallbackState: 'PARTIAL',
++      passCondition: 'Ledger has records and source cards exist.',
++      truthRisk: 'High: empty evidence must never display PASS.',
++      statusMapping: 'empty ledger or no source cards => PARTIAL.',
++      evidencePresent: hasLedger && hasSourceCards,
++    }),
++    panel({
++      id: 'source-court',
++      panel: 'Source Court',
++      status: sourceStatus,
++      dataSource: 'sanitizeSourceCourtAudit(buildSourceCourtAudit())',
++      evidenceSource: 'Source Court summary and sourceStampGate',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'sourceStampGate PASS with no release-blocking chain gaps.',
++      truthRisk: 'High: raw legacy/source files must not leak into dashboard state.',
++      statusMapping: 'sourceStampGate BLOCKED => BLOCKED; PARTIAL => PARTIAL; missing => NOT_AVAILABLE_WITH_REASON.',
++      evidencePresent: Boolean(appState.sourceCourtAudit?.summary),
++    }),
++    panel({
++      id: 'skill-registry',
++      panel: 'Skill Registry',
++      status: hasMcpRegistry ? 'PASS' : 'NOT_AVAILABLE_WITH_REASON',
++      dataSource: 'seed skill registry',
++      evidenceSource: 'skills/registry/seed-skills.json via loadSeedSkillRegistry',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'Seed registry loads and legacy registry is not default-loaded.',
++      truthRisk: 'Medium: legacy skill index must not be treated as active skills.',
++      statusMapping: 'missing registry => NOT_AVAILABLE_WITH_REASON; seed registry loaded => PASS.',
++      evidencePresent: hasMcpRegistry,
++    }),
++    panel({
++      id: 'mcp-health',
++      panel: 'MCP Health',
++      status: hasMcpRegistry ? 'PARTIAL' : 'NOT_AVAILABLE_WITH_REASON',
++      dataSource: 'MCP read registry and CLI/stdio proof',
++      evidenceSource: 'mcp health CLI/test output; no live MCP process stored in dashboard state',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'MCP health command or stdio proof is attached to dashboard state.',
++      truthRisk: 'Medium: registry presence is not the same as live MCP health.',
++      statusMapping: 'registry only => PARTIAL; no registry => NOT_AVAILABLE_WITH_REASON.',
++      evidencePresent: hasMcpRegistry,
++    }),
++    panel({
++      id: 'docker-boot',
++      panel: 'Docker Boot',
++      status: dockerStatus,
++      dataSource: 'latest .pala/evidence/docker smoke JSON',
++      evidenceSource: 'docker version, compose config/build/up/health/down evidence',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'Docker daemon available, compose build/up succeeds, API health passes, compose down succeeds.',
++      truthRisk: 'High: compose config alone is not runtime proof.',
++      statusMapping: 'no docker evidence or daemon unavailable => NOT_AVAILABLE_WITH_REASON; compose-only => PARTIAL.',
++      evidencePresent: Boolean(appState.dockerEvidence),
++    }),
++    panel({
++      id: 'benchmark-radar',
++      panel: 'Benchmark Radar',
++      status: benchmarkBlocked ? 'PARTIAL' : (appState.benchmarkSummary?.total ?? 0) > 0 ? 'PARTIAL' : 'NOT_AVAILABLE_WITH_REASON',
++      dataSource: 'benchmark/benchmark-state.json',
++      evidenceSource: 'benchmark categories and evidence counts',
++      fallbackState: 'NOT_AVAILABLE_WITH_REASON',
++      passCondition: 'Fixture-backed benchmark suite has no blocked category.',
++      truthRisk: 'Medium: benchmark placeholders can look like proof.',
++      statusMapping: 'blocked or fixture-missing benchmark => PARTIAL; no state => NOT_AVAILABLE_WITH_REASON.',
++      evidencePresent: (appState.benchmarkSummary?.total ?? 0) > 0,
++    }),
++    panel({
++      id: 'token-economy',
++      panel: 'Token Economy',
++      status: 'PARTIAL',
++      dataSource: 'tokenBudget and tokenSnapshots',
++      evidenceSource: 'SQLite token_snapshots or deterministic estimate',
++      fallbackState: 'PARTIAL',
++      passCondition: 'Measured token accounting exists with confidence metadata.',
++      truthRisk: 'Medium: estimates can be mistaken for measured savings.',
++      statusMapping: 'estimated token accounting => PARTIAL.',
++      evidencePresent: Boolean(appState.tokenBudget),
++      estimated: tokenEstimated,
++    }),
++    panel({
++      id: 'release-court',
++      panel: 'Release Court',
++      status: releaseBlocked ? 'RELEASE_BLOCKED' : 'PASS',
++      dataSource: 'evaluateCourt()',
++      evidenceSource: 'owner approval, required standards, source cards, ledger, sourceStampGate',
++      fallbackState: 'RELEASE_BLOCKED',
++      passCondition: 'Owner approval present, no blocked required standards, source cards, ledger evidence, source gate not blocked.',
++      truthRisk: 'Critical: release must never turn green without owner approval.',
++      statusMapping: 'owner approval missing => RELEASE_BLOCKED.',
++      evidencePresent: Boolean(appState.court),
++    }),
++  ];
++
++  const overall = releaseBlocked
++    ? 'RELEASE_BLOCKED'
++    : worstTruthStatus(panels.map((item) => item.status));
++  const byStatus = panels.reduce((summary, item) => {
++    summary[item.status] = (summary[item.status] ?? 0) + 1;
++    return summary;
++  }, {});
++
++  return {
++    status: overall,
++    generatedAt: new Date().toISOString(),
++    rules: {
++      unknown: 'NOT_AVAILABLE_WITH_REASON',
++      evidenceMissing: 'PARTIAL',
++      ownerApprovalMissing: 'RELEASE_BLOCKED',
++      dockerDaemonMissing: 'Docker Boot cannot be PASS',
++      sourceCourtPartial: 'Source Court panel remains PARTIAL',
++      legacyBoundary: 'Dashboard reads only sanitized Source Court summary',
++      tokenEconomy: 'Estimated token values must be marked estimated',
++    },
++    summary: {
++      panelCount: panels.length,
++      byStatus,
++      highestRiskStatus: overall,
++      releaseBlocked,
++      allPanelStatuses: panels.map((item) => item.status),
++      overallNotGreenerThanPanels: truthStatusRank(overall) >= Math.max(...panels.map((item) => truthStatusRank(item.status))),
++    },
++    panels,
+   };
+ }
+ 
+diff --git a/src/server.js b/src/server.js
+index d0d68a8..fd75338 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -56,6 +56,9 @@ export function createAppServer({ db, openBrowser = false, port = DEFAULT_PORT }
+           sourceCardCount: state.sourceCards.length,
+           blocked: state.summary.blocked,
+           skillRegistryCount: state.skillRegistrySummary.total,
++          dashboardTruthStatus: state.dashboardTruthContract?.status ?? 'NOT_AVAILABLE_WITH_REASON',
++          dashboardTruthSummary: state.dashboardTruthContract?.summary ?? null,
++          sourceStampGate: state.sourceStampGate,
+         }, null, 2));
+         return;
+       }
+@@ -114,6 +117,39 @@ export function createAppServer({ db, openBrowser = false, port = DEFAULT_PORT }
+         return;
+       }
+ 
++      if (request.method === 'GET' && url.pathname === '/api/environment-limits') {
++        const state = await buildAppState(db, { profile: 'dashboard' });
++        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
++        response.end(JSON.stringify({
++          ok: true,
++          summary: state.environmentLimitSummary,
++          radar: state.environmentLimits,
++        }, null, 2));
++        return;
++      }
++
++      if (request.method === 'GET' && url.pathname === '/api/operator-actions') {
++        const state = await buildAppState(db, { profile: 'dashboard' });
++        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
++        response.end(JSON.stringify({
++          ok: true,
++          summary: state.operatorActionSummary,
++          queue: state.operatorActionQueue,
++        }, null, 2));
++        return;
++      }
++
++      if (request.method === 'GET' && url.pathname === '/api/core-foundation') {
++        const state = await buildAppState(db, { profile: 'dashboard' });
++        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
++        response.end(JSON.stringify({
++          ok: true,
++          summary: state.coreFoundationSummary,
++          radar: state.coreFoundation,
++        }, null, 2));
++        return;
++      }
++
+       if (request.method === 'GET' && url.pathname === '/api/screenshots') {
+         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+         response.end(JSON.stringify({
+diff --git a/src/source-court.js b/src/source-court.js
+new file mode 100644
+index 0000000..a6bf410
+--- /dev/null
++++ b/src/source-court.js
+@@ -0,0 +1,680 @@
++import { createHash } from 'node:crypto';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++
++export const SOURCE_CLASSES = {
++  PALA_ORIGINAL: 'PALA_ORIGINAL',
++  LEGACY_ADAPTED: 'LEGACY_ADAPTED',
++  OSS_ADAPTED: 'OSS_ADAPTED',
++  REFERENCE_ONLY: 'REFERENCE_ONLY',
++  GOVERNANCE_DOC: 'GOVERNANCE_DOC',
++};
++
++export const SOURCE_STATUSES = {
++  PASS: 'PASS',
++  PARTIAL: 'PARTIAL',
++  BLOCKED: 'BLOCKED',
++  NOT_AVAILABLE_WITH_REASON: 'NOT_AVAILABLE_WITH_REASON',
++};
++
++const ACTIVE_DIRS = ['src', 'scripts', 'docs', 'plans', 'prompts'];
++const ROOT_GOVERNANCE_DOCS = new Set([
++  'README.md',
++  'AGENTS.md',
++  'PALA_RULES.md',
++  'SECURITY.md',
++  'ARCHITECTURE.md',
++]);
++const REQUIRED_STAMP_FIELDS = [
++  'palaSourceRef',
++  'palaSourceRepo',
++  'palaCourtDecision',
++  'palaCourtId',
++  'palaRewritePolicy',
++  'palaSavedEstimate',
++];
++const COURT_DECISIONS = new Set(['ADOPT', 'ADAPT', 'IMPORT_LATER', 'QUARANTINE', 'REJECT', 'ADAPT_PATTERN']);
++const BUILD_ARTIFACT_DIRS = new Set(['dist', 'build', 'coverage', '.next', 'out']);
++const LEGACY_MODE_EXPLICIT = 'explicit';
++const LEGACY_MODE_DISABLED = 'disabled';
++
++function toPosix(value) {
++  return String(value).replaceAll(path.sep, '/').replaceAll('\\', '/');
++}
++
++function relativeTo(rootDir, targetPath) {
++  return toPosix(path.relative(rootDir, targetPath));
++}
++
++function normalizeCard(card) {
++  return {
++    id: card.id ?? null,
++    originType: card.origin_type ?? card.originType ?? '',
++    originRef: card.origin_ref ?? card.originRef ?? '',
++    repoFullName: card.repo_full_name ?? card.repoFullName ?? '',
++    visibility: card.visibility ?? '',
++    commitSha: card.commit_sha ?? card.commitSha ?? '',
++    license: card.license ?? '',
++    decision: card.decision ?? '',
++    riskLevel: card.risk_level ?? card.riskLevel ?? '',
++    allowedLayer: card.allowed_layer ?? card.allowedLayer ?? '',
++    summary: card.summary ?? '',
++    evidenceUri: card.evidence_uri ?? card.evidenceUri ?? '',
++  };
++}
++
++function hasText(value) {
++  return String(value ?? '').trim().length > 0;
++}
++
++function sourceCardFieldsComplete(card) {
++  if (!card) {
++    return false;
++  }
++  const normalized = normalizeCard(card);
++  return [
++    normalized.originRef || normalized.repoFullName,
++    normalized.visibility,
++    normalized.commitSha || normalized.originRef,
++    normalized.license || 'NOT_AVAILABLE_WITH_REASON',
++    normalized.decision,
++    normalized.riskLevel,
++    normalized.allowedLayer,
++    normalized.summary || normalized.evidenceUri,
++  ].every(hasText);
++}
++
++function isExcludedPath(relativePath) {
++  const normalized = toPosix(relativePath);
++  const [first] = normalized.split('/');
++
++  if (!normalized || normalized.startsWith('../')) {
++    return true;
++  }
++  if (normalized.startsWith('legacy/') || normalized === 'legacy') {
++    return true;
++  }
++  if (normalized.startsWith('.git/') || normalized === '.git') {
++    return true;
++  }
++  if (normalized.startsWith('node_modules/') || normalized === 'node_modules') {
++    return true;
++  }
++  if (normalized.startsWith('.pala/db/') || normalized.startsWith('.pala/runtime/')) {
++    return true;
++  }
++  return BUILD_ARTIFACT_DIRS.has(first);
++}
++
++async function pathExists(targetPath) {
++  try {
++    await fs.access(targetPath);
++    return true;
++  } catch {
++    return false;
++  }
++}
++
++async function listFilesRecursive(rootDir, startPath, { respectExcludes = true } = {}) {
++  const files = [];
++  if (!(await pathExists(startPath))) {
++    return files;
++  }
++
++  const entries = await fs.readdir(startPath, { withFileTypes: true });
++  for (const entry of entries) {
++    const fullPath = path.join(startPath, entry.name);
++    const relativePath = relativeTo(rootDir, fullPath);
++    if (respectExcludes && isExcludedPath(relativePath)) {
++      continue;
++    }
++    if (entry.isDirectory()) {
++      files.push(...await listFilesRecursive(rootDir, fullPath, { respectExcludes }));
++      continue;
++    }
++    if (entry.isFile()) {
++      files.push(fullPath);
++    }
++  }
++
++  return files;
++}
++
++async function discoverActiveFiles(rootDir) {
++  const discovered = new Set();
++
++  for (const activeDir of ACTIVE_DIRS) {
++    const dirPath = path.join(rootDir, activeDir);
++    for (const filePath of await listFilesRecursive(rootDir, dirPath)) {
++      discovered.add(filePath);
++    }
++  }
++
++  for (const docName of ROOT_GOVERNANCE_DOCS) {
++    const docPath = path.join(rootDir, docName);
++    if (await pathExists(docPath)) {
++      discovered.add(docPath);
++    }
++  }
++
++  return [...discovered].sort((a, b) => relativeTo(rootDir, a).localeCompare(relativeTo(rootDir, b)));
++}
++
++async function discoverLegacyFiles(rootDir) {
++  const legacyRoot = path.join(rootDir, 'legacy');
++  return listFilesRecursive(rootDir, legacyRoot, { respectExcludes: false });
++}
++
++function hashContent(content) {
++  return createHash('sha256').update(content).digest('hex');
++}
++
++function buildLegacyBoundary({ legacyMode, files = [] }) {
++  if (legacyMode !== LEGACY_MODE_EXPLICIT) {
++    return {
++      status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++      mode: LEGACY_MODE_DISABLED,
++      files: 0,
++      reason: 'legacy archive is quarantined and not read by default product surfaces',
++      allowedReaders: ['source audit', 'legacy audit', 'legacy archive', 'legacy skills index'],
++      forbiddenReaders: ['runtime', 'dashboard truth', 'docker package', 'default test discovery', 'active skill loader', 'default agent context'],
++    };
++  }
++
++  return {
++    status: files.length > 0 ? SOURCE_STATUSES.PASS : SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++    mode: LEGACY_MODE_EXPLICIT,
++    files: files.length,
++    reason: files.length > 0
++      ? 'legacy archive read by explicit source-court audit'
++      : 'explicit legacy audit requested but no legacy archive files were found',
++    allowedReaders: ['source audit', 'legacy audit', 'legacy archive', 'legacy skills index'],
++    forbiddenReaders: ['runtime', 'dashboard truth', 'docker package', 'default test discovery', 'active skill loader', 'default agent context'],
++  };
++}
++
++async function buildLegacyHashIndex(rootDir, { legacyMode = LEGACY_MODE_DISABLED } = {}) {
++  if (legacyMode !== LEGACY_MODE_EXPLICIT) {
++    return {
++      index: new Map(),
++      boundary: buildLegacyBoundary({ legacyMode }),
++    };
++  }
++
++  const index = new Map();
++  const files = await discoverLegacyFiles(rootDir);
++  for (const filePath of files) {
++    const content = await fs.readFile(filePath, 'utf8').catch(() => null);
++    if (content === null) {
++      continue;
++    }
++    const hash = hashContent(content);
++    const relativePath = relativeTo(rootDir, filePath);
++    const matches = index.get(hash) ?? [];
++    matches.push(relativePath);
++    index.set(hash, matches);
++  }
++  return {
++    index,
++    boundary: buildLegacyBoundary({ legacyMode, files }),
++  };
++}
++
++export function parseSourceStamp(content) {
++  const fields = {};
++  const pattern = /@(pala[A-Za-z]+)\s+([^\r\n*]+)/g;
++  const scanContent = content.replace(/```[\s\S]*?```/g, '');
++  let match = pattern.exec(scanContent);
++  while (match) {
++    fields[match[1]] = match[2].trim();
++    match = pattern.exec(scanContent);
++  }
++
++  const missingFields = REQUIRED_STAMP_FIELDS.filter((field) => !hasText(fields[field]));
++  const present = REQUIRED_STAMP_FIELDS.some((field) => hasText(fields[field]));
++
++  return {
++    present,
++    fields,
++    requiredFields: REQUIRED_STAMP_FIELDS,
++    missingFields,
++    complete: present && missingFields.length === 0,
++  };
++}
++
++function looksLikeLegacySource(stamp) {
++  const sourceRef = String(stamp.fields.palaSourceRef ?? '').toLowerCase();
++  const sourceRepo = String(stamp.fields.palaSourceRepo ?? '').toLowerCase();
++  return [
++    sourceRef,
++    sourceRepo,
++  ].some((value) => {
++    return value.includes('legacy/pala-os')
++      || value.includes('trugurpala/pala-os:')
++      || value.endsWith('trugurpala/pala-os')
++      || /trugurpala\/pala-os-v[0-5](?:$|[:/])/.test(value);
++  });
++}
++
++function hasOssSourceStamp(stamp) {
++  if (!stamp.present) {
++    return false;
++  }
++  return !looksLikeLegacySource(stamp);
++}
++
++function isGovernanceDoc(relativePath, content) {
++  if (isCodeSurface(relativePath)) {
++    return false;
++  }
++
++  const basename = path.basename(relativePath);
++  if (ROOT_GOVERNANCE_DOCS.has(basename) && !relativePath.includes('/')) {
++    return true;
++  }
++
++  const lowerPath = relativePath.toLowerCase();
++  const lowerContent = content.toLowerCase();
++  return [
++    'court',
++    'release',
++    'gate',
++    'governance',
++    'source-court',
++    'source-card',
++    'world-standards',
++    'github-policy',
++    'agent-contracts',
++  ].some((token) => lowerPath.includes(token) || lowerContent.includes(token));
++}
++
++function isReferenceOnly(relativePath) {
++  const normalized = relativePath.toLowerCase();
++  return normalized.startsWith('docs/legacy/')
++    || normalized.includes('/archive/')
++    || normalized.endsWith('/reference.md');
++}
++
++function isCodeSurface(relativePath) {
++  return relativePath.startsWith('src/') || relativePath.startsWith('scripts/');
++}
++
++function classifyFile({ relativePath, content, legacyMatches, stamp }) {
++  const governanceDoc = isGovernanceDoc(relativePath, content);
++  const referenceOnly = isReferenceOnly(relativePath);
++  let adaptation = null;
++
++  if (referenceOnly) {
++    return {
++      classification: SOURCE_CLASSES.REFERENCE_ONLY,
++      adaptation: null,
++      governanceDoc: false,
++      referenceOnly: true,
++    };
++  }
++
++  if (looksLikeLegacySource(stamp) || legacyMatches.length > 0) {
++    adaptation = SOURCE_CLASSES.LEGACY_ADAPTED;
++  } else if (hasOssSourceStamp(stamp)) {
++    adaptation = SOURCE_CLASSES.OSS_ADAPTED;
++  }
++
++  if (governanceDoc) {
++    return {
++      classification: SOURCE_CLASSES.GOVERNANCE_DOC,
++      adaptation,
++      governanceDoc: true,
++      referenceOnly: false,
++    };
++  }
++
++  if (adaptation) {
++    return {
++      classification: adaptation,
++      adaptation,
++      governanceDoc: false,
++      referenceOnly: false,
++    };
++  }
++
++  return {
++    classification: SOURCE_CLASSES.PALA_ORIGINAL,
++    adaptation: null,
++    governanceDoc: false,
++    referenceOnly: false,
++  };
++}
++
++function sourceTokensForMatch({ stamp, legacyMatches }) {
++  return [
++    stamp.fields.palaSourceRef,
++    stamp.fields.palaSourceRepo,
++    ...legacyMatches,
++  ].filter(hasText).map((value) => String(value).toLowerCase());
++}
++
++function findMatchingSourceCard(sourceCards, { stamp, legacyMatches }) {
++  const tokens = sourceTokensForMatch({ stamp, legacyMatches });
++  return sourceCards.map(normalizeCard).find((card) => {
++    const cardValues = [
++      card.originRef,
++      card.repoFullName,
++      card.evidenceUri,
++    ].filter(hasText).map((value) => String(value).toLowerCase());
++
++    return cardValues.some((cardValue) => {
++      return tokens.some((token) => token.includes(cardValue) || cardValue.includes(token.split(':')[0]));
++    });
++  }) ?? null;
++}
++
++function loadCourtDecisionRows(rawDecisions) {
++  return (rawDecisions ?? []).map((decision) => ({
++    sourceRef: decision.sourceRef ?? '',
++    decision: decision.decision ?? '',
++    category: decision.category ?? '',
++    riskLevel: decision.riskLevel ?? '',
++  }));
++}
++
++async function readDefaultCourtDecisions(rootDir) {
++  const backlogPath = path.join(rootDir, 'docs', 'inheritance-backlog.json');
++  try {
++    const payload = JSON.parse(await fs.readFile(backlogPath, 'utf8'));
++    return loadCourtDecisionRows(payload.sourceCourtDecisions ?? []);
++  } catch {
++    return [];
++  }
++}
++
++function findMatchingCourtDecision(courtDecisions, { stamp, legacyMatches }) {
++  const tokens = sourceTokensForMatch({ stamp, legacyMatches });
++  const stampDecision = String(stamp.fields.palaCourtDecision ?? '').trim();
++
++  return loadCourtDecisionRows(courtDecisions).find((decision) => {
++    const sourceRef = String(decision.sourceRef ?? '').toLowerCase();
++    const decisionName = String(decision.decision ?? '').trim();
++    const sourceMatches = tokens.some((token) => {
++      const normalizedToken = token.replace('legacy/pala-os/source', 'trugurpala/pala-os');
++      return sourceRef && (normalizedToken.includes(sourceRef.split(':')[0]) || sourceRef.includes(normalizedToken.split('/source/')[0]));
++    });
++    const decisionMatches = !stampDecision || decisionName === stampDecision || COURT_DECISIONS.has(decisionName);
++    return sourceMatches && decisionMatches;
++  }) ?? null;
++}
++
++function buildValidatorLink(relativePath, contentHash) {
++  return `source-court:${relativePath}#${contentHash.slice(0, 12)}`;
++}
++
++function validateFileChain({ classification, adaptation, relativePath, stamp, sourceCard, courtDecision, validatorLink }) {
++  const effectiveAdaptation = adaptation ?? (
++    classification === SOURCE_CLASSES.LEGACY_ADAPTED || classification === SOURCE_CLASSES.OSS_ADAPTED
++      ? classification
++      : null
++  );
++  const adapted = Boolean(effectiveAdaptation);
++  const requiresStamp = effectiveAdaptation === SOURCE_CLASSES.LEGACY_ADAPTED
++    || (effectiveAdaptation === SOURCE_CLASSES.OSS_ADAPTED && isCodeSurface(relativePath));
++  const releaseEvidenceAllowed = classification !== SOURCE_CLASSES.REFERENCE_ONLY;
++  const sourceCardComplete = sourceCardFieldsComplete(sourceCard);
++  const courtDecisionComplete = Boolean(courtDecision?.decision);
++  const stampComplete = stamp.complete;
++  const missingRequirements = [];
++
++  if (adapted) {
++    if (requiresStamp && !stamp.present) {
++      missingRequirements.push('sourceStamp');
++    } else if (requiresStamp && !stampComplete) {
++      missingRequirements.push(...stamp.missingFields);
++    }
++    if (!sourceCard) {
++      missingRequirements.push('sourceCard');
++    } else if (!sourceCardComplete) {
++      missingRequirements.push('sourceCardRequiredFields');
++    }
++    if (!courtDecision) {
++      missingRequirements.push('courtDecision');
++    }
++    if (!validatorLink) {
++      missingRequirements.push('validatorLink');
++    }
++  }
++
++  const sourceChain = {
++    sourceStamp: requiresStamp ? stampComplete : !adapted || stampComplete,
++    sourceCard: adapted ? sourceCardComplete : false,
++    courtDecision: adapted ? courtDecisionComplete : false,
++    validatorLink: Boolean(validatorLink),
++    requiredFieldsComplete: missingRequirements.length === 0,
++    required: adapted,
++  };
++
++  if (missingRequirements.length > 0) {
++    return {
++      status: SOURCE_STATUSES.BLOCKED,
++      releaseBlocking: true,
++      releaseEvidenceAllowed,
++      missingRequirements: [...new Set(missingRequirements)],
++      sourceChain,
++      reason: `source chain incomplete for ${effectiveAdaptation}`,
++    };
++  }
++
++  if (adapted) {
++    return {
++      status: SOURCE_STATUSES.PASS,
++      releaseBlocking: false,
++      releaseEvidenceAllowed,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'full source chain present',
++    };
++  }
++
++  if (classification === SOURCE_CLASSES.REFERENCE_ONLY) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      releaseBlocking: false,
++      releaseEvidenceAllowed: false,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'reference-only material cannot be release evidence',
++    };
++  }
++
++  if (classification === SOURCE_CLASSES.GOVERNANCE_DOC) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      releaseBlocking: false,
++      releaseEvidenceAllowed,
++      missingRequirements: [],
++      sourceChain,
++      reason: 'governance influence tracked; source chain not required unless adapted',
++    };
++  }
++
++  return {
++    status: SOURCE_STATUSES.PASS,
++    releaseBlocking: false,
++    releaseEvidenceAllowed,
++    missingRequirements: [],
++    sourceChain,
++    reason: 'Pala-original active file',
++  };
++}
++
++export function summarizeSourceFiles(files) {
++  return files.reduce((summary, file) => {
++    summary.activeFiles += 1;
++    summary.classifiedFiles += 1;
++    if (file.status === SOURCE_STATUSES.BLOCKED) summary.blockedFiles += 1;
++    if (file.status === SOURCE_STATUSES.PARTIAL) summary.partialFiles += 1;
++    if (file.classification === SOURCE_CLASSES.GOVERNANCE_DOC) summary.governanceDocs += 1;
++    if (file.adaptation === SOURCE_CLASSES.LEGACY_ADAPTED || file.classification === SOURCE_CLASSES.LEGACY_ADAPTED) summary.legacyAdapted += 1;
++    if (file.adaptation === SOURCE_CLASSES.OSS_ADAPTED || file.classification === SOURCE_CLASSES.OSS_ADAPTED) summary.ossAdapted += 1;
++    if (file.classification === SOURCE_CLASSES.PALA_ORIGINAL) summary.palaOriginal += 1;
++    if (file.classification === SOURCE_CLASSES.REFERENCE_ONLY) summary.referenceOnly += 1;
++    return summary;
++  }, {
++    activeFiles: 0,
++    classifiedFiles: 0,
++    blockedFiles: 0,
++    partialFiles: 0,
++    governanceDocs: 0,
++    legacyAdapted: 0,
++    ossAdapted: 0,
++    palaOriginal: 0,
++    referenceOnly: 0,
++  });
++}
++
++export function buildSourceStampGate(files, summary) {
++  if (summary.activeFiles === 0) {
++    return {
++      status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++      reasons: ['no active source-court files found in configured scope'],
++    };
++  }
++
++  const blocked = files.filter((file) => file.status === SOURCE_STATUSES.BLOCKED);
++  if (blocked.length > 0) {
++    return {
++      status: SOURCE_STATUSES.BLOCKED,
++      reasons: blocked.slice(0, 20).map((file) => `${file.path}: ${file.reason}`),
++    };
++  }
++
++  if (summary.partialFiles > 0) {
++    return {
++      status: SOURCE_STATUSES.PARTIAL,
++      reasons: ['non-release-blocking governance/reference files need audit tracking'],
++    };
++  }
++
++  return {
++    status: SOURCE_STATUSES.PASS,
++    reasons: ['all active source-court files are classified and no adapted chain is missing'],
++  };
++}
++
++export function sanitizeSourceCourtAudit(audit) {
++  return {
++    status: audit.status,
++    summary: audit.summary,
++    sourceStampGate: audit.sourceStampGate,
++    legacyBoundary: audit.legacyBoundary ?? buildLegacyBoundary({ legacyMode: LEGACY_MODE_DISABLED }),
++  };
++}
++
++export async function buildSourceCourtAudit({
++  rootDir = process.cwd(),
++  sourceCards = [],
++  courtDecisions = null,
++  legacyMode = LEGACY_MODE_DISABLED,
++} = {}) {
++  const resolvedRoot = path.resolve(rootDir);
++  const activeFiles = await discoverActiveFiles(resolvedRoot);
++  const legacyHash = await buildLegacyHashIndex(resolvedRoot, { legacyMode });
++  const legacyHashIndex = legacyHash.index;
++  const decisions = courtDecisions ?? await readDefaultCourtDecisions(resolvedRoot);
++  const files = [];
++
++  for (const filePath of activeFiles) {
++    const relativePath = relativeTo(resolvedRoot, filePath);
++    if (isExcludedPath(relativePath)) {
++      continue;
++    }
++
++    let content = '';
++    try {
++      content = await fs.readFile(filePath, 'utf8');
++    } catch {
++      files.push({
++        path: relativePath,
++        classification: SOURCE_CLASSES.PALA_ORIGINAL,
++        adaptation: null,
++        status: SOURCE_STATUSES.NOT_AVAILABLE_WITH_REASON,
++        reason: 'file could not be read as utf8',
++        releaseBlocking: false,
++        releaseEvidenceAllowed: false,
++        missingRequirements: [],
++        legacyMatches: [],
++        sourceStamp: { present: false, fields: {}, missingFields: REQUIRED_STAMP_FIELDS, complete: false },
++        sourceChain: {
++          sourceStamp: false,
++          sourceCard: false,
++          courtDecision: false,
++          validatorLink: false,
++          requiredFieldsComplete: false,
++          required: false,
++        },
++      });
++      continue;
++    }
++
++    const contentHash = hashContent(content);
++    const legacyMatches = legacyHashIndex.get(contentHash) ?? [];
++    const stamp = parseSourceStamp(content);
++    const classification = classifyFile({ relativePath, content, legacyMatches, stamp });
++    const sourceChainRequired = Boolean(classification.adaptation)
++      || classification.classification === SOURCE_CLASSES.LEGACY_ADAPTED
++      || classification.classification === SOURCE_CLASSES.OSS_ADAPTED;
++    const sourceCard = sourceChainRequired ? findMatchingSourceCard(sourceCards, { stamp, legacyMatches }) : null;
++    const courtDecision = sourceChainRequired ? findMatchingCourtDecision(decisions, { stamp, legacyMatches }) : null;
++    const validatorLink = buildValidatorLink(relativePath, contentHash);
++    const verdict = validateFileChain({
++      classification: classification.classification,
++      adaptation: classification.adaptation,
++      relativePath,
++      stamp,
++      sourceCard,
++      courtDecision,
++      validatorLink,
++    });
++
++    files.push({
++      path: relativePath,
++      classification: classification.classification,
++      adaptation: classification.adaptation,
++      governanceDoc: classification.governanceDoc,
++      status: verdict.status,
++      reason: verdict.reason,
++      releaseBlocking: verdict.releaseBlocking,
++      releaseEvidenceAllowed: verdict.releaseEvidenceAllowed,
++      missingRequirements: verdict.missingRequirements,
++      legacyMatches,
++      validatorLink,
++      sourceStamp: {
++        present: stamp.present,
++        fields: stamp.fields,
++        missingFields: stamp.missingFields,
++        complete: stamp.complete,
++      },
++      sourceCard: sourceCard ? {
++        id: sourceCard.id,
++        originRef: sourceCard.originRef,
++        repoFullName: sourceCard.repoFullName,
++        decision: sourceCard.decision,
++        fieldsComplete: sourceCardFieldsComplete(sourceCard),
++      } : null,
++      courtDecision: courtDecision ? {
++        sourceRef: courtDecision.sourceRef,
++        decision: courtDecision.decision,
++        category: courtDecision.category,
++      } : null,
++      sourceChain: verdict.sourceChain,
++    });
++  }
++
++  const summary = summarizeSourceFiles(files);
++  const sourceStampGate = buildSourceStampGate(files, summary);
++
++  return {
++    status: sourceStampGate.status,
++    summary,
++    files,
++    legacyBoundary: legacyHash.boundary,
++    sourceStampGate,
++  };
++}
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index 2796ffa..e49f8f6 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -679,6 +679,9 @@ test('cron run records watcher jobs and token snapshots', async (t) => {
+   const pack = JSON.parse(runCli(['bak', 'cron audit'], { PALA_ROOT_DIR: root }));
+ 
+   assert.ok(pack.appState.jobRuns.length >= 10);
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'core-foundation-watch'));
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'environment-limit-watch'));
++  assert.ok(pack.appState.jobRuns.some((jobRun) => jobRun.job_name === 'operator-action-watch'));
+   assert.ok(pack.appState.tokenSnapshots.length >= 1);
+ });
+ 
+@@ -708,6 +711,12 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+   assert.match(auditOutput, /RELEASE_BLOCKED/);
+   assert.match(auditOutput, /Build Web Data Visualization/);
+ 
++  const coreAudit = JSON.parse(runCli(['core', 'audit', '--json'], { PALA_ROOT_DIR: root }));
++  assert.equal(coreAudit.ok, true);
++  assert.equal(coreAudit.summary.total, 6);
++  assert.ok(coreAudit.components.some((component) => component.id === 'sak-cli'));
++  assert.ok(coreAudit.components.some((component) => component.id === 'court-release-gate' && component.status === 'owner-gated'));
++
+   const apiScript = `
+     import { spawn } from 'node:child_process';
+     import { setTimeout as delay } from 'node:timers/promises';
+@@ -743,6 +752,7 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     };
+ 
+     const rootHtml = await fetchWithRetry('http://127.0.0.1:${port}/', (response) => response.text());
++    const state = await fetchWithRetry('http://127.0.0.1:${port}/api/state', (response) => response.json());
+     const health = await fetchWithRetry('http://127.0.0.1:${port}/api/health', (response) => response.json());
+     const court = await fetchWithRetry('http://127.0.0.1:${port}/api/court', (response) => response.json());
+     const ledger = await fetchWithRetry('http://127.0.0.1:${port}/api/ledger', (response) => response.json());
+@@ -750,13 +760,16 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     const skills = await fetchWithRetry('http://127.0.0.1:${port}/api/skills', (response) => response.json());
+     const filteredSkills = await fetchWithRetry('http://127.0.0.1:${port}/api/skills?status=draft&q=operator', (response) => response.json());
+     const benchmark = await fetchWithRetry('http://127.0.0.1:${port}/api/benchmark', (response) => response.json());
++    const environmentLimits = await fetchWithRetry('http://127.0.0.1:${port}/api/environment-limits', (response) => response.json());
++    const operatorActions = await fetchWithRetry('http://127.0.0.1:${port}/api/operator-actions', (response) => response.json());
++    const coreFoundation = await fetchWithRetry('http://127.0.0.1:${port}/api/core-foundation', (response) => response.json());
+ 
+     try {
+       server.kill('SIGTERM');
+       await Promise.race([serverExit, delay(1000)]);
+     } catch {}
+ 
+-    console.log(JSON.stringify({ rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark }, null, 2));
++    console.log(JSON.stringify({ rootHtml, state, health, court, ledger, tools, skills, filteredSkills, benchmark, environmentLimits, operatorActions, coreFoundation }, null, 2));
+   `;
+ 
+   const apiOutput = execFileSync(process.execPath, ['--input-type=module', '-e', apiScript], {
+@@ -770,18 +783,40 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     encoding: 'utf8',
+   });
+ 
+-  const { rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark } = JSON.parse(apiOutput);
++  const { rootHtml, state, health, court, ledger, tools, skills, filteredSkills, benchmark, environmentLimits, operatorActions, coreFoundation } = JSON.parse(apiOutput);
+ 
+   assert.match(rootHtml, /Command Radar/);
++  assert.match(rootHtml, /Dashboard Truth Contract/);
++  assert.match(rootHtml, /Core Foundation Radar/);
++  assert.match(rootHtml, /SQLite Evidence Ledger/);
+   assert.match(rootHtml, /Reference Doctrine/);
+   assert.match(rootHtml, /Skill Registry/);
+   assert.match(rootHtml, /Connector Dock/);
++  assert.match(rootHtml, /Environment Limit Radar/);
++  assert.match(rootHtml, /Operator Action Queue/);
++  assert.match(rootHtml, /Vercel/);
++  assert.match(rootHtml, /GitHub/);
++  assert.match(rootHtml, /browser-playwright/);
+   assert.match(rootHtml, /Official Source Authority/);
+   assert.match(rootHtml, /csrc\.nist\.gov/);
+   assert.match(rootHtml, /KANIT YOK/);
+   assert.equal(health.ok, true);
+   assert.equal(health.court.decision, 'RELEASE_BLOCKED');
+   assert.equal(health.skillRegistryCount, 5);
++  assert.equal(health.dashboardTruthStatus, 'RELEASE_BLOCKED');
++  assert.ok(health.dashboardTruthSummary);
++  assert.ok(health.sourceStampGate);
++  assert.equal(state.dashboardTruthContract.status, 'RELEASE_BLOCKED');
++  assert.equal(state.dashboardTruthContract.panels.length, 11);
++  assert.equal(state.dashboardTruthContract.summary.overallNotGreenerThanPanels, true);
++  assert.equal(state.sourceCourtAudit.files, undefined);
++  assert.equal(state.dashboardTruthContract.panels.find((panel) => panel.id === 'release-court')?.status, 'RELEASE_BLOCKED');
++  assert.notEqual(state.dashboardTruthContract.panels.find((panel) => panel.id === 'docker-boot')?.status, 'PASS');
++  assert.equal(state.dashboardTruthContract.panels.find((panel) => panel.id === 'token-economy')?.estimated, true);
++  assert.equal(
++    state.dashboardTruthContract.panels.find((panel) => panel.id === 'source-court')?.status,
++    state.sourceStampGate.status,
++  );
+   assert.equal(court.decision, 'RELEASE_BLOCKED');
+   assert.ok(Array.isArray(ledger.records));
+   assert.ok(ledger.records.length > 0);
+@@ -795,6 +830,19 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+   assert.ok(filteredSkills.skills.some((skill) => skill.name === 'pala-os-operator'));
+   assert.equal(benchmark.ok, true);
+   assert.ok(Array.isArray(benchmark.benchmark.categories));
++  assert.equal(environmentLimits.ok, true);
++  assert.equal(environmentLimits.summary.total, 5);
++  assert.ok(environmentLimits.radar.environments.some((environment) => environment.id === 'vercel-static-upload'));
++  assert.ok(environmentLimits.radar.environments.some((environment) => environment.id === 'localhost-download' && environment.status === 'not-external'));
++  assert.equal(operatorActions.ok, true);
++  assert.equal(operatorActions.summary.total, 6);
++  assert.equal(operatorActions.summary.expectedContextReduction, '60-85%');
++  assert.ok(operatorActions.queue.actions.some((action) => action.id === 'browser-visual-check'));
++  assert.ok(operatorActions.queue.actions.some((action) => action.id === 'token-context-pack' && action.mode === 'token-saver'));
++  assert.equal(coreFoundation.ok, true);
++  assert.equal(coreFoundation.summary.total, 6);
++  assert.ok(coreFoundation.radar.components.some((component) => component.id === 'standards-policy-engine' && component.currentEvidence.includes('60 standards')));
++  assert.ok(coreFoundation.radar.components.some((component) => component.id === 'court-release-gate' && component.status === 'owner-gated'));
+ });
+ 
+ test('root-level scaffold docs exist for plans prompts benchmark and court', async () => {
+@@ -872,3 +920,458 @@ test('local MCP packaging and boot artifacts exist', async () => {
+   assert.match(compose, /pala-v6-mcp/);
+   assert.match(bootDoc, /RELEASE_BLOCKED/);
+ });
++
++test('source court classifies originals governance docs references and excluded paths', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'docs', 'legacy'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await mkdir(path.join(root, '.pala', 'runtime'), { recursive: true });
++  await mkdir(path.join(root, 'node_modules', 'pkg'), { recursive: true });
++  await mkdir(path.join(root, 'dist'), { recursive: true });
++
++  await writeFile(path.join(root, 'src', 'original.js'), 'export const original = true;\n');
++  await writeFile(path.join(root, 'README.md'), '# Governance README\nrelease gate and court overview\n');
++  await writeFile(path.join(root, 'docs', 'legacy', 'reference.md'), '# Old reference\n');
++  await writeFile(path.join(root, 'docs', 'legacy', 'copied-reference.md'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'docs', 'source-stamp-contract.md'), [
++    '# Source stamp contract',
++    '',
++    '```ts',
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/example.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' */',
++    '```',
++    '',
++  ].join('\n'));
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, '.pala', 'runtime', 'ignored.js'), 'ignored\n');
++  await writeFile(path.join(root, 'node_modules', 'pkg', 'ignored.js'), 'ignored\n');
++  await writeFile(path.join(root, 'dist', 'ignored.js'), 'ignored\n');
++
++  const audit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const byPath = new Map(audit.files.map((file) => [file.path, file]));
++
++  assert.equal(byPath.get('src/original.js')?.classification, 'PALA_ORIGINAL');
++  assert.notEqual(byPath.get('src/original.js')?.status, 'BLOCKED');
++  assert.equal(byPath.get('README.md')?.classification, 'GOVERNANCE_DOC');
++  assert.notEqual(byPath.get('README.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/legacy/reference.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/legacy/reference.md')?.releaseEvidenceAllowed, false);
++  assert.equal(byPath.get('docs/legacy/copied-reference.md')?.classification, 'REFERENCE_ONLY');
++  assert.equal(byPath.get('docs/source-stamp-contract.md')?.classification, 'GOVERNANCE_DOC');
++  assert.equal(byPath.get('docs/source-stamp-contract.md')?.sourceStamp.present, false);
++  assert.equal(byPath.get('src/copied.js')?.classification, 'LEGACY_ADAPTED');
++  assert.equal(byPath.get('src/copied.js')?.status, 'BLOCKED');
++  assert.ok(audit.files.every((file) => !file.path.startsWith('legacy/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('.pala/runtime/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('node_modules/')));
++  assert.ok(audit.files.every((file) => !file.path.startsWith('dist/')));
++});
++
++test('source court refuses PASS for incomplete legacy source chains', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'stamp-only.js'), [
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/stamp-only.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' * @palaCourtId MIGRATION-V6-001',
++    ' * @palaRewritePolicy Adapted for v6 strict governance, not blind copied.',
++    ' * @palaSavedEstimate 3d_estimated',
++    ' */',
++    'export const adapted = true;',
++    '',
++  ].join('\n'));
++  await writeFile(path.join(root, 'src', 'card-only.js'), 'export const cardOnly = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'card-only.js'), 'export const cardOnly = "legacy";\n');
++
++  const card = {
++    origin_type: 'local-path',
++    origin_ref: 'legacy/pala-os/source',
++    repo_full_name: 'trugurpala/pala-os',
++    visibility: 'local',
++    commit_sha: 'archive',
++    license: 'MIT',
++    decision: 'QUARANTINE',
++    risk_level: 'medium',
++    allowed_layer: 'adapter',
++    summary: 'legacy source under review',
++  };
++  const withStampOnly = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const withCardOnly = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [card],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++
++  const stampOnly = withStampOnly.files.find((file) => file.path === 'src/stamp-only.js');
++  const cardOnly = withCardOnly.files.find((file) => file.path === 'src/card-only.js');
++
++  assert.equal(stampOnly?.classification, 'LEGACY_ADAPTED');
++  assert.equal(stampOnly?.status, 'BLOCKED');
++  assert.ok(stampOnly?.missingRequirements.includes('sourceCard'));
++  assert.ok(stampOnly?.missingRequirements.includes('courtDecision'));
++  assert.equal(cardOnly?.classification, 'LEGACY_ADAPTED');
++  assert.equal(cardOnly?.status, 'BLOCKED');
++  assert.ok(cardOnly?.missingRequirements.includes('sourceStamp'));
++});
++
++test('source court gives PASS only when the full adapted chain is present', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'adapted.js'), [
++    '/**',
++    ' * @palaSourceRef legacy/pala-os/source/src/adapted.js',
++    ' * @palaSourceRepo trugurpala/pala-os',
++    ' * @palaCourtDecision ADAPT',
++    ' * @palaCourtId MIGRATION-V6-001',
++    ' * @palaRewritePolicy Adapted for v6 strict governance, not blind copied.',
++    ' * @palaSavedEstimate 3d_estimated',
++    ' */',
++    'export const adapted = true;',
++    '',
++  ].join('\n'));
++
++  const audit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [{
++      origin_type: 'local-path',
++      origin_ref: 'legacy/pala-os/source',
++      repo_full_name: 'trugurpala/pala-os',
++      visibility: 'local',
++      commit_sha: 'archive',
++      license: 'MIT',
++      decision: 'QUARANTINE',
++      risk_level: 'medium',
++      allowed_layer: 'adapter',
++      summary: 'legacy source under review',
++    }],
++    courtDecisions: [{
++      sourceRef: 'trugurpala/pala-os:src',
++      decision: 'ADAPT',
++      category: 'operator-cli-and-method',
++    }],
++  });
++  const adapted = audit.files.find((file) => file.path === 'src/adapted.js');
++
++  assert.equal(adapted?.classification, 'LEGACY_ADAPTED');
++  assert.equal(adapted?.status, 'PASS');
++  assert.equal(adapted?.sourceChain.sourceStamp, true);
++  assert.equal(adapted?.sourceChain.sourceCard, true);
++  assert.equal(adapted?.sourceChain.courtDecision, true);
++  assert.equal(adapted?.sourceChain.validatorLink, true);
++  assert.equal(adapted?.sourceChain.requiredFieldsComplete, true);
++});
++
++test('source audit CLI emits JSON and court includes sourceStampGate', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const sourceAudit = JSON.parse(runCli(['source', 'audit', '--json'], { PALA_ROOT_DIR: root }));
++  const court = JSON.parse(runCli(['court'], { PALA_ROOT_DIR: root }));
++
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED', 'NOT_AVAILABLE_WITH_REASON'].includes(sourceAudit.status));
++  assert.equal(typeof sourceAudit.summary.activeFiles, 'number');
++  assert.ok(Array.isArray(sourceAudit.files));
++  assert.ok(sourceAudit.sourceStampGate);
++  assert.ok(Array.isArray(sourceAudit.sourceStampGate.reasons));
++  assert.ok(court.sourceStampGate);
++  assert.equal(court.decision, 'RELEASE_BLOCKED');
++});
++
++test('legacy boundary keeps default source court off root legacy while explicit audit can read it', async (t) => {
++  const { buildSourceCourtAudit } = await import('../src/source-court.js');
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++
++  const defaultAudit = await buildSourceCourtAudit({ rootDir: root, sourceCards: [], courtDecisions: [] });
++  const explicitAudit = await buildSourceCourtAudit({
++    rootDir: root,
++    sourceCards: [],
++    courtDecisions: [],
++    legacyMode: 'explicit',
++  });
++  const defaultCopied = defaultAudit.files.find((file) => file.path === 'src/copied.js');
++  const explicitCopied = explicitAudit.files.find((file) => file.path === 'src/copied.js');
++
++  assert.equal(defaultAudit.legacyBoundary.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.equal(defaultCopied?.classification, 'PALA_ORIGINAL');
++  assert.equal(explicitAudit.legacyBoundary.status, 'PASS');
++  assert.equal(explicitCopied?.classification, 'LEGACY_ADAPTED');
++  assert.equal(explicitCopied?.status, 'BLOCKED');
++});
++
++test('dashboard state exposes only sanitized source court summary for legacy boundary', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  await mkdir(path.join(root, 'src'), { recursive: true });
++  await mkdir(path.join(root, 'legacy', 'pala-os', 'source', 'src'), { recursive: true });
++  await writeFile(path.join(root, 'src', 'copied.js'), 'export const copied = "legacy";\n');
++  await writeFile(path.join(root, 'legacy', 'pala-os', 'source', 'src', 'copied.js'), 'export const copied = "legacy";\n');
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const dashboardState = JSON.parse(await readFile(path.join(root, '.pala', 'state', 'last-dashboard-state.json'), 'utf8'));
++
++  assert.ok(dashboardState.sourceStampGate);
++  assert.equal(dashboardState.sourceCourtAudit.legacyBoundary.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.equal(dashboardState.sourceCourtAudit.files, undefined);
++  assert.ok(dashboardState.dashboardTruthContract);
++  assert.equal(dashboardState.dashboardTruthContract.panels.length, 11);
++  assert.equal(
++    dashboardState.dashboardTruthContract.panels.find((panel) => panel.id === 'source-court')?.status,
++    dashboardState.sourceStampGate.status,
++  );
++  assert.equal(dashboardState.dashboardTruthContract.panels.find((panel) => panel.id === 'release-court')?.status, 'RELEASE_BLOCKED');
++  assert.equal(dashboardState.court.decision, 'RELEASE_BLOCKED');
++});
++
++test('dashboard truth contract prevents fake green states', async () => {
++  const { buildDashboardTruthContract } = await import('../src/policy.js');
++  const contract = buildDashboardTruthContract({
++    summary: { blocked: 0 },
++    ledger: [],
++    sourceCards: [],
++    jobRuns: [],
++    runs: [],
++    github: {},
++    skillRegistrySummary: { total: 0 },
++    sourceStampGate: { status: 'PARTIAL', reasons: ['audit-only metadata missing'] },
++    sourceCourtAudit: {
++      summary: { activeFiles: 1 },
++      legacyBoundary: { status: 'NOT_AVAILABLE_WITH_REASON' },
++    },
++    benchmarkSummary: { total: 0, byStatus: {} },
++    court: { decision: 'RELEASE_BLOCKED', ownerApproved: false },
++    tokenBudget: { plannedTokens: 100, actualTokens: 120 },
++    dockerEvidence: null,
++  });
++
++  const panels = new Map(contract.panels.map((panel) => [panel.id, panel]));
++
++  assert.equal(contract.status, 'RELEASE_BLOCKED');
++  assert.equal(contract.summary.overallNotGreenerThanPanels, true);
++  assert.equal(panels.get('source-court')?.status, 'PARTIAL');
++  assert.equal(panels.get('release-court')?.status, 'RELEASE_BLOCKED');
++  assert.equal(panels.get('docker-boot')?.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.notEqual(panels.get('evidence-center')?.status, 'PASS');
++  assert.equal(panels.get('token-economy')?.estimated, true);
++  assert.equal(contract.rules.unknown, 'NOT_AVAILABLE_WITH_REASON');
++});
++
++test('dashboard truth contract treats docker daemon errors as not available', async () => {
++  const { buildDashboardTruthContract } = await import('../src/policy.js');
++  const contract = buildDashboardTruthContract({
++    ledger: [{ id: 1 }],
++    sourceCards: [{ id: 1 }],
++    jobRuns: [{ id: 1 }],
++    github: { configured: true },
++    skillRegistrySummary: { total: 5 },
++    sourceStampGate: { status: 'PASS', reasons: [] },
++    sourceCourtAudit: { summary: { activeFiles: 1 } },
++    benchmarkSummary: { total: 1, byStatus: {} },
++    court: { decision: 'PASS', ownerApproved: true },
++    tokenBudget: { plannedTokens: 100, actualTokens: 100 },
++    dockerEvidence: {
++      ok: false,
++      dockerVersion: {
++        stderr: 'open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.',
++      },
++      composeConfig: { ok: true },
++    },
++  });
++
++  const dockerPanel = contract.panels.find((panel) => panel.id === 'docker-boot');
++
++  assert.equal(dockerPanel?.status, 'NOT_AVAILABLE_WITH_REASON');
++  assert.notEqual(dockerPanel?.status, 'PASS');
++});
++
++test('skill registry ignores legacy skill index by default', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  const legacyIndexPath = path.join(root, 'skills', 'registry', 'legacy-skills-index.json');
++  await mkdir(path.dirname(legacyIndexPath), { recursive: true });
++  await writeFile(legacyIndexPath, `${JSON.stringify({
++    status: 'IMPORT_LATER',
++    skills: [{
++      name: 'legacy-only-skill',
++      domain: 'legacy',
++      status: 'import_later',
++      path: 'legacy/pala-os/source/skills/legacy-only/SKILL.md',
++      compatibility: ['codex'],
++    }],
++  }, null, 2)}\n`);
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root });
++  const payload = JSON.parse(runCli(['skills', 'list'], {
++    PALA_ROOT_DIR: root,
++    PALA_LEGACY_SKILLS_INDEX_PATH: legacyIndexPath,
++  }));
++
++  assert.equal(payload.summary.total, 5);
++  assert.ok(payload.skills.every((skill) => !String(skill.path).startsWith('legacy/')));
++  assert.ok(payload.skills.every((skill) => skill.name !== 'legacy-only-skill'));
++});
++
++test('docker package and ci boundaries exclude legacy production inputs', async () => {
++  const dockerIgnore = await readFile(path.join(repoRoot, '.dockerignore'), 'utf8');
++  const packageJson = JSON.parse(await readFile(path.join(repoRoot, 'package.json'), 'utf8'));
++  const dockerfile = await readFile(path.join(repoRoot, 'Dockerfile'), 'utf8');
++  const workflow = await readFile(path.join(repoRoot, '.github', 'workflows', 'pala.yml'), 'utf8');
++
++  [
++    'legacy/**',
++    'docs/legacy/**',
++    '.pala/**',
++    'node_modules/**',
++    'dist/**',
++    'coverage/**',
++    'skills/registry/legacy-skills-index.json',
++  ].forEach((entry) => {
++    assert.ok(dockerIgnore.includes(entry), `.dockerignore missing ${entry}`);
++  });
++
++  assert.equal(packageJson.scripts.test, 'node --test test/pala-v6.test.js');
++  assert.ok(!dockerfile.includes('COPY legacy'));
++  assert.ok(workflow.includes('Legacy boundary scan'));
++});
++
++test('github governance files declare Phase B review and ownership controls', async () => {
++  const codeowners = await readFile(path.join(repoRoot, '.github', 'CODEOWNERS'), 'utf8');
++  const prTemplate = await readFile(path.join(repoRoot, '.github', 'PULL_REQUEST_TEMPLATE.md'), 'utf8');
++  const workflow = await readFile(path.join(repoRoot, '.github', 'workflows', 'pala.yml'), 'utf8');
++  const policy = await readFile(path.join(repoRoot, 'docs', 'github-policy-pack.md'), 'utf8');
++
++  [
++    '.github/**',
++    'src/**',
++    'scripts/**',
++    'test/**',
++    'docs/**',
++    'Dockerfile',
++    'compose.yaml',
++    'package.json',
++    'AGENTS.md',
++    'README.md',
++    'PALA_RULES.md',
++    'SECURITY.md',
++    'ARCHITECTURE.md',
++  ].forEach((entry) => {
++    assert.ok(codeowners.includes(entry), `CODEOWNERS missing ${entry}`);
++  });
++
++  [
++    'Implementation Report',
++    'Changed Files Manifest',
++    'Repo Change Review',
++    'Raw Patch/Diff',
++    'No Review Package = No Court Decision',
++    'RELEASE_BLOCKED',
++  ].forEach((entry) => {
++    assert.ok(prTemplate.includes(entry), `PR template missing ${entry}`);
++  });
++
++  [
++    'source-court-audit:',
++    'legacy-boundary:',
++    'test:',
++    'court:',
++    'nightly-cron:',
++  ].forEach((jobName) => {
++    assert.ok(workflow.includes(jobName), `workflow missing stable job ${jobName}`);
++  });
++
++  assert.match(policy, /BRANCH_PROTECTION_BLOCKED/);
++  assert.match(policy, /Solo-Owner Deadlock Risk/);
++  assert.match(policy, /Emergency Owner Bypass/);
++});
++
++test('github audit emits machine-readable governance gates', async () => {
++  const output = execFileSync('powershell', [
++    '-NoProfile',
++    '-ExecutionPolicy',
++    'Bypass',
++    '-File',
++    path.join(repoRoot, 'scripts', 'pala_github_gate_audit.ps1'),
++  ], {
++    cwd: repoRoot,
++    env: {
++      ...process.env,
++      PALA_OPEN_BROWSER: '0',
++    },
++    encoding: 'utf8',
++  });
++  const audit = JSON.parse(output);
++
++  assert.equal(audit.ok, true);
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED'].includes(audit.summary.status));
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED'].includes(audit.gates.branchProtection.status));
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED'].includes(audit.gates.requiredChecks.status));
++  assert.ok(['PASS', 'PARTIAL', 'BLOCKED'].includes(audit.gates.review.status));
++  assert.equal(audit.gates.localPolicy.status, 'PASS');
++
++  if (audit.gates.branchProtection.status === 'BLOCKED') {
++    assert.equal(audit.summary.blocker, 'BRANCH_PROTECTION_BLOCKED');
++  }
++});
++
++test('github governance hardening keeps release court blocked without owner approval', async (t) => {
++  const root = await createWorkspace();
++  t.after(async () => {
++    await rm(root, { recursive: true, force: true });
++  });
++
++  runCli(['bootstrap'], { PALA_ROOT_DIR: root, PALA_OWNER_APPROVED: '0' });
++  const court = JSON.parse(runCli(['court'], { PALA_ROOT_DIR: root, PALA_OWNER_APPROVED: '0' }));
++
++  assert.equal(court.decision, 'RELEASE_BLOCKED');
++  assert.equal(court.releaseReady, false);
++});
