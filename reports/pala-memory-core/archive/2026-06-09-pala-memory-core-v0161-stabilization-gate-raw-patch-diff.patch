@@ -1,0 +1,695 @@
+﻿diff --git a/dashboard/index.html b/dashboard/index.html
+index 230a6a2..070e117 100644
+--- a/dashboard/index.html
++++ b/dashboard/index.html
+@@ -1,4 +1,4 @@
+-<!doctype html>
++﻿<!doctype html>
+ <html lang="tr">
+ <head>
+   <meta charset="utf-8" />
+@@ -216,6 +216,18 @@
+         <div class="card"><span>Tasks</span><strong id="stat-tasks">2</strong></div>
+       </section>
+ 
++      <section class="grid" id="token-grid" hidden>
++        <div class="card"><span>Token Budget</span><strong id="card-token-budget">—</strong></div>
++        <div class="card"><span>Context Risk</span><strong id="card-context-risk">—</strong></div>
++        <div class="card"><span>Files Read</span><strong id="card-files-read">—</strong></div>
++        <div class="card"><span>Files Blocked</span><strong id="card-files-blocked">—</strong></div>
++        <div class="card"><span>Prompt Cache Candidate</span><span id="card-prompt-cache-candidate">—</span></div>
++        <div class="card"><span>Compaction Needed</span><strong id="card-compaction">—</strong></div>
++        <div class="card"><span>Largest Token Sources</span><span id="card-largest-sources">—</span></div>
++        <div class="card"><span>Recommended Next Read</span><span id="card-recommended-read">—</span></div>
++        <div class="card"><span>Do Not Read</span><span id="card-do-not-read">—</span></div>
++      </section>
++
+       <section class="toolbar">
+         <input id="search" type="search" placeholder="Ara: sohbet, PDF, proje, tag, kaynak" autocomplete="off" />
+       </section>
+@@ -266,6 +278,7 @@
+         setText("stat-files", stats.files);
+         setText("stat-tasks", stats.open_tasks);
+         dashboardRecords = data.records || [];
++        renderTokenCards(data.token_intel || null);
+         renderTimeline(filteredRecords());
+       } catch (_error) {
+         // The static demo remains visible when no exported data exists.
+@@ -313,6 +326,44 @@
+       }
+     }
+ 
++    function renderTokenCards(tokenIntel) {
++      const tokenGrid = document.getElementById("token-grid");
++      if (!tokenGrid) return;
++      if (!tokenIntel) {
++        tokenGrid.hidden = true;
++        return;
++      }
++      const cards = tokenIntel.dashboard_cards || {};
++      const budget = cards.token_budget || {};
++      setText("card-token-budget", `${cards.files_read || 0}/${budget.safe_estimate || 0}`);
++      setText("card-context-risk", cards.context_risk || "—");
++      setText("card-files-read", cards.files_read || 0);
++      setText("card-files-blocked", cards.files_blocked || 0);
++      setText("card-prompt-cache-candidate", cards.prompt_cache_candidate || "—");
++      setText("card-compaction", cards.compaction_needed ? "YES" : "NO");
++      renderPathList("card-largest-sources", cards.largest_token_sources || []);
++      renderPathList("card-recommended-read", cards.recommended_next_read || []);
++      setText("card-do-not-read", (cards.do_not_read || []).join(", "));
++      tokenGrid.hidden = false;
++    }
++
++    function renderPathList(elementId, entries) {
++      const element = document.getElementById(elementId);
++      if (!element) return;
++      if (!Array.isArray(entries) || entries.length === 0) {
++        element.textContent = "—";
++        return;
++      }
++      element.textContent = "";
++      const lines = [];
++      for (const item of entries.slice(0, 4)) {
++        const path = String(item.path || item).slice(0, 72);
++        const estimate = item.estimated_tokens ? ` (~${item.estimated_tokens} tok)` : "";
++        lines.push(`${path}${estimate}`);
++      }
++      element.innerHTML = lines.map((line) => `<div>${line}</div>`).join("");
++    }
++
+     function formatTime(value) {
+       const date = new Date(value);
+       if (Number.isNaN(date.getTime())) return "--:--";
+diff --git a/docs/commands.md b/docs/commands.md
+index ca2e058..56c13ab 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -100,6 +100,26 @@ Useful filters:
+ | `--limit 5` | Limit visible results |
+ | `--json` | Print machine-readable output |
+ 
++## token intel
++
++Scans the repository and classifies files by context/token intake decision.
++
++Commands:
++
++- `python pala.py token intel`
++- `python pala.py token intel --json`
++
++Outputs:
++
++- `data/reports/token-intelligence.json`
++- dashboard token intelligence payload via `dashboard export --all`
++
++Decision classes:
++
++- `READ_FULL`
++- `SUMMARY_ONLY`
++- `DO_NOT_READ`
++
+ ## show
+ 
+ Shows one saved record by full id or id prefix.
+@@ -114,6 +134,7 @@ Print the Markdown/raw text body too:
+ python pala.py show 20260609T131509Z --raw
+ ```
+ 
++
+ ## brief today
+ 
+ Creates a daily Markdown brief from today's records.
+diff --git a/pala.py b/pala.py
+index d32713d..71a8753 100644
+--- a/pala.py
++++ b/pala.py
+@@ -13,6 +13,7 @@ import hashlib
+ import html.parser
+ import importlib.util
+ import http.server
++import math
+ import json
+ import os
+ import re
+@@ -34,6 +35,64 @@ REPORTS = DATA / "reports"
+ ATTACHMENTS = DATA / "attachments"
+ BACKUPS = DATA / "backups"
+ DASHBOARD = ROOT / "dashboard"
++TOKEN_INTEL_PATH = REPORTS / "token-intelligence.json"
++TOKEN_BUDGET_WINDOW = 128_000
++READ_FULL_MAX_BYTES = 35 * 1024
++SUMMARY_ONLY_MAX_BYTES = 16 * 1024
++LARGE_DOC_BYTES = 12 * 1024
++MAX_TOKEN_FILES_SCAN = 25_000
++TOKEN_READ_FULL = {
++    "README.md",
++    "INSTALL.md",
++    "AGENTS.md",
++    "docs/commands.md",
++    "docs/token-intelligence.md",
++    "pala.py",
++    "dashboard/index.html",
++}
++DO_NOT_READ_DIRS = {
++    ".git",
++    "__pycache__",
++    "node_modules",
++    "dist",
++    "build",
++    "coverage",
++    "output",
++}
++DO_NOT_READ_EXTENSIONS = {
++    ".png",
++    ".jpg",
++    ".jpeg",
++    ".gif",
++    ".bmp",
++    ".webp",
++    ".pdf",
++    ".zip",
++    ".tar",
++    ".gz",
++    ".7z",
++    ".xz",
++    ".bz2",
++    ".exe",
++    ".dll",
++    ".so",
++    ".mp3",
++    ".mp4",
++    ".mov",
++    ".mkv",
++    ".webm",
++}
++LOCK_FILES = {
++    "package-lock.json",
++    "pnpm-lock.yaml",
++    "yarn.lock",
++    "package-lock.yaml",
++    "composer.lock",
++    "cargo.lock",
++}
++DECISION_READ_FULL = "READ_FULL"
++DECISION_SUMMARY_ONLY = "SUMMARY_ONLY"
++DECISION_DO_NOT_READ = "DO_NOT_READ"
+ CONFIG_PATH = ROOT / "pala.config.json"
+ CONFIG_VERSION = 1
+ DEFAULT_KNOWLEDGE_BANK = Path.home() / "Desktop" / "Codex" / "pala-os-bilgi-bankasi"
+@@ -77,7 +136,8 @@ def configured_path(value: str | None, env_name: str, config_key: str, default:
+ def init_config(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     if CONFIG_PATH.exists() and not args.force:
+-        raise SystemExit(f"config already exists: {CONFIG_PATH}. Use --force to overwrite.")
++        print(f"config already exists: {CONFIG_PATH}")
++        return
+ 
+     knowledge_bank = Path(args.knowledge_bank).expanduser().resolve() if args.knowledge_bank else DEFAULT_KNOWLEDGE_BANK
+     drive_backup = Path(args.drive_target).expanduser().resolve() if args.drive_target else DEFAULT_DRIVE_BACKUP
+@@ -256,6 +316,87 @@ def format_list(items: list[str]) -> str:
+     return "\n".join(f"- {item}" for item in items)
+ 
+ 
++def estimate_tokens(size_bytes: int) -> int:
++    return max(1, math.ceil(size_bytes / 4))
++
++
++def relative_path(path: Path) -> str:
++    try:
++        return str(path.relative_to(ROOT).as_posix())
++    except ValueError:
++        return str(path)
++
++
++def classify_token_file(path: Path, size_bytes: int) -> tuple[str, str]:
++    rel = relative_path(path)
++    rel_lower = rel.lower()
++    parts = [part.lower() for part in path.relative_to(ROOT).parts] if path.is_relative_to(ROOT) else [rel_lower]
++    name = path.name.lower()
++
++    if not name:
++        return DECISION_DO_NOT_READ, "Unclear filename"
++
++    if any(part in DO_NOT_READ_DIRS for part in parts):
++        return DECISION_DO_NOT_READ, "Blocked directory policy"
++
++    if "data/backups" in rel_lower:
++        return DECISION_DO_NOT_READ, "Backup data should remain out of session context"
++
++    if "data/reports" in rel_lower:
++        return DECISION_DO_NOT_READ, "Reports are retained for receipts, not for direct context read"
++
++    if name in {".env", ".env.local", ".env.production", ".env.test"}:
++        return DECISION_DO_NOT_READ, "Environment file"
++
++    if name in LOCK_FILES or path.suffix.lower() == ".lock":
++        return DECISION_DO_NOT_READ, "Dependency lock file"
++
++    if any(secret in rel_lower for secret in ("secret", "credential", "password", "apikey", "api_key", "token_api")):
++        return DECISION_DO_NOT_READ, "Potential secret-bearing filename"
++
++    if path.suffix.lower() in DO_NOT_READ_EXTENSIONS:
++        return DECISION_DO_NOT_READ, "Binary or non-text extension"
++
++    if rel in TOKEN_READ_FULL:
++        return DECISION_READ_FULL, "Core project and policy source"
++
++    if rel_lower.startswith("schema/") and path.suffix.lower() == ".json":
++        return DECISION_READ_FULL, "Schema file"
++
++    if rel_lower.startswith("docs/"):
++        if rel_lower == "docs/token-intelligence.md":
++            return DECISION_READ_FULL, "Token policy anchor document"
++        if size_bytes > LARGE_DOC_BYTES:
++            return DECISION_SUMMARY_ONLY, "Large docs file"
++        return DECISION_SUMMARY_ONLY, "Docs should be summarised before deep use"
++
++    if rel_lower == "dashboard/records.json":
++        return DECISION_SUMMARY_ONLY, "Large dashboard export cache"
++
++    if rel_lower.startswith("data/records/"):
++        return DECISION_SUMMARY_ONLY, "Record list should be indexed, not fully re-read"
++
++    if rel_lower.startswith("data/backups/"):
++        return DECISION_SUMMARY_ONLY, "Backup packages are history artifacts"
++
++    if rel_lower.startswith("data/inbox/"):
++        return DECISION_SUMMARY_ONLY, "Inbox content should be selectively reviewed"
++
++    if "node_modules/" in rel_lower:
++        return DECISION_DO_NOT_READ, "Dependency tree"
++
++    if "dist/" in rel_lower or "build/" in rel_lower or "coverage/" in rel_lower:
++        return DECISION_DO_NOT_READ, "Build artifact"
++
++    if size_bytes > READ_FULL_MAX_BYTES:
++        return DECISION_SUMMARY_ONLY, "Large file, summary source preferred"
++
++    if size_bytes > SUMMARY_ONLY_MAX_BYTES:
++        return DECISION_SUMMARY_ONLY, "Token-priority summary"
++
++    return DECISION_READ_FULL, "Small text/source file"
++
++
+ def redact_text(value: str) -> str:
+     redacted = value
+     for pattern, replacement in SECRET_PATTERNS:
+@@ -629,6 +770,13 @@ def doctor_report(args: argparse.Namespace) -> None:
+         str(dashboard_data.relative_to(ROOT)) if dashboard_data.exists() else "run: python pala.py dashboard export --all",
+         "dashboard",
+     )
++    add_check(
++        checks,
++        "Token intelligence report",
++        "PASS" if TOKEN_INTEL_PATH.exists() else "WARN",
++        str(TOKEN_INTEL_PATH.relative_to(ROOT)) if TOKEN_INTEL_PATH.exists() else "run: python pala.py token intel",
++        "token-intel",
++    )
+ 
+     add_check(checks, "Recovery CLI", "PASS", "list/search/show commands are registered", "recovery")
+     add_check(checks, "ChatGPT export importer", "PASS", "zip/folder/json/html/md/txt import path is registered", "chatgpt")
+@@ -709,6 +857,139 @@ def doctor_report(args: argparse.Namespace) -> None:
+         raise SystemExit(1)
+ 
+ 
++def build_token_intel() -> dict[str, Any]:
++    ensure_dirs()
++    decisions: list[dict[str, Any]] = []
++    scanned = 0
++    for current_root, dirnames, filenames in os.walk(ROOT):
++        current_path = Path(current_root)
++        rel_parts = []
++        try:
++            rel_parts = [part.lower() for part in current_path.relative_to(ROOT).parts]
++        except ValueError:
++            rel_parts = [part.lower() for part in current_path.parts]
++        dirnames[:] = [d for d in dirnames if d not in DO_NOT_READ_DIRS and d != ".pala"]
++
++        for fname in filenames:
++            path = current_path / fname
++            if scanned >= MAX_TOKEN_FILES_SCAN:
++                break
++            if path.name == ".gitkeep":
++                continue
++            rel = relative_path(path)
++            if rel == ".pala/config.json":
++                continue
++            if rel == "pala.config.json":
++                continue
++            if rel == "data/records":
++                continue
++            try:
++                size = path.stat().st_size
++            except (OSError, FileNotFoundError):
++                continue
++            if not path.is_file():
++                continue
++            decision, reason = classify_token_file(path, size)
++            decisions.append(
++                {
++                    "path": rel,
++                    "size_bytes": size,
++                    "decision": decision,
++                    "reason": reason,
++                }
++            )
++            scanned += 1
++
++    read_full = [d for d in decisions if d["decision"] == DECISION_READ_FULL]
++    summary_only = [d for d in decisions if d["decision"] == DECISION_SUMMARY_ONLY]
++    do_not_read = [d for d in decisions if d["decision"] == DECISION_DO_NOT_READ]
++    largest_files = sorted(decisions, key=lambda d: d["size_bytes"], reverse=True)[:10]
++    top_summary = sorted(summary_only, key=lambda d: d["size_bytes"])[:5]
++    do_not_read_list = [item["path"] for item in sorted(do_not_read, key=lambda d: d["size_bytes"], reverse=True)[:12]]
++
++    read_full_tokens = sum(estimate_tokens(item["size_bytes"]) for item in read_full)
++    summary_tokens = sum(estimate_tokens(item["size_bytes"]) for item in summary_only)
++    predicted_tokens = read_full_tokens + math.ceil(summary_tokens * 0.25)
++    token_ratio = min(1.0, predicted_tokens / TOKEN_BUDGET_WINDOW) if TOKEN_BUDGET_WINDOW else 0.0
++    compaction_needed = token_ratio >= 0.7
++    if token_ratio >= 0.85:
++        risk = "HIGH"
++    elif token_ratio >= 0.5:
++        risk = "MEDIUM"
++    else:
++        risk = "LOW"
++
++    dashboard_cards: dict[str, Any] = {
++        "token_budget": {
++            "safe_estimate": TOKEN_BUDGET_WINDOW,
++            "predicted_tokens": predicted_tokens,
++            "context_ratio": round(token_ratio, 3),
++        },
++        "context_risk": risk,
++        "files_read": len(read_full) + len(summary_only),
++        "files_blocked": len(do_not_read),
++        "largest_token_sources": [
++            {
++                "path": item["path"],
++                "size_bytes": item["size_bytes"],
++                "estimated_tokens": estimate_tokens(item["size_bytes"]),
++            }
++            for item in largest_files[:10]
++        ],
++        "recommended_next_read": [
++            {
++                "path": item["path"],
++                "estimated_tokens": estimate_tokens(item["size_bytes"]),
++            }
++            for item in top_summary[:5]
++        ],
++        "do_not_read": do_not_read_list,
++        "prompt_cache_candidate": "README.md",
++        "compaction_needed": compaction_needed,
++    }
++
++    summary: dict[str, Any] = {
++        "files_scanned": len(decisions),
++        "read_full": len(read_full),
++        "summary_only": len(summary_only),
++        "do_not_read": len(do_not_read),
++        "largest_files": [
++            {
++                "path": item["path"],
++                "size_bytes": item["size_bytes"],
++                "estimated_tokens": estimate_tokens(item["size_bytes"]),
++                "decision": item["decision"],
++            }
++            for item in largest_files
++        ],
++    }
++
++    return {
++        "generated_at": now_utc().isoformat(),
++        "repo_root": str(ROOT),
++        "summary": summary,
++        "decisions": decisions,
++        "dashboard_cards": dashboard_cards,
++    }
++
++
++def run_token_intel(args: argparse.Namespace) -> None:
++    report = build_token_intel()
++    TOKEN_INTEL_PATH.write_text(json.dumps(report, indent=2, ensure_ascii=True), encoding="utf-8")
++    if args.json:
++        print(json.dumps(report, ensure_ascii=True, indent=2))
++        return
++
++    summary = report["summary"]
++    cards = report["dashboard_cards"]
++    print(f"scanned: {summary['files_scanned']}")
++    print(f"read_full: {summary['read_full']}")
++    print(f"summary_only: {summary['summary_only']}")
++    print(f"do_not_read: {summary['do_not_read']}")
++    print(f"context_risk: {cards['context_risk']}")
++    print(f"token_budget: {cards['token_budget']['safe_estimate']}")
++
++
+ def brief_today(_args: argparse.Namespace) -> None:
+     ensure_dirs()
+     records = load_today_records()
+@@ -1136,6 +1417,116 @@ def backup_drive(args: argparse.Namespace) -> None:
+     print(f"backup_status.google_drive=complete updated={updated}")
+ 
+ 
++def sync_run(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    scope = scope_label(args)
++    actions: list[str] = []
++
++    scoped_args = argparse.Namespace(
++        all=args.all,
++        date=args.date,
++        source=args.source,
++        project=args.project,
++        tag=args.tag,
++    )
++
++    backup_receipt(scoped_args)
++    actions.append("backup receipt")
++
++    if args.drive:
++        backup_drive(
++            argparse.Namespace(
++                all=args.all,
++                date=args.date,
++                source=args.source,
++                project=args.project,
++                tag=args.tag,
++                target=args.drive_target,
++            )
++        )
++        actions.append("drive backup")
++
++    if args.github or args.github_push:
++        backup_github(
++            argparse.Namespace(
++                all=args.all,
++                date=args.date,
++                source=args.source,
++                project=args.project,
++                tag=args.tag,
++                knowledge_bank=args.knowledge_bank,
++                commit=args.github_commit or args.github_push,
++                push=args.github_push,
++            )
++        )
++        actions.append("github backup")
++
++    dashboard_export(argparse.Namespace(all=args.all, date=args.date or today()))
++    actions.append("dashboard export")
++
++    vault_report(
++        argparse.Namespace(
++            all=args.all,
++            date=args.date,
++            source=args.source,
++            project=args.project,
++            tag=args.tag,
++            limit=args.limit,
++            output=args.report_output,
++            knowledge_bank=args.knowledge_bank,
++            drive_target=args.drive_target,
++            json=False,
++        )
++    )
++    actions.append("vault report")
++
++    records = records_for_args(scoped_args)
++    payload = {
++        "generated_at": now_utc().isoformat(),
++        "scope": scope,
++        "records": len(records),
++        "actions": actions,
++        "backup_status": {
++            "local": record_backup_status_counts(records, "local"),
++            "github": record_backup_status_counts(records, "github"),
++            "google_drive": record_backup_status_counts(records, "google_drive"),
++        },
++    }
++    receipt_path = REPORTS / f"{today()}-sync-{slug(scope)}-receipt.md"
++    lines = [
++        f"# Pala Memory Core Sync Receipt - {scope}",
++        "",
++        f"Created: {payload['generated_at']}",
++        f"Scope: {scope}",
++        f"Records: {len(records)}",
++        "",
++        "## Actions",
++        "",
++        format_list(actions),
++        "",
++        "## Backup Status",
++        "",
++        "### Local",
++        "",
++        format_counts_table(payload["backup_status"]["local"]),
++        "",
++        "### GitHub",
++        "",
++        format_counts_table(payload["backup_status"]["github"]),
++        "",
++        "### Google Drive",
++        "",
++        format_counts_table(payload["backup_status"]["google_drive"]),
++    ]
++    receipt_path.write_text("\n".join(lines), encoding="utf-8")
++    (REPORTS / f"{today()}-sync-{slug(scope)}-receipt.json").write_text(
++        json.dumps(payload, indent=2, ensure_ascii=True),
++        encoding="utf-8",
++    )
++    print(f"sync complete scope={scope} records={len(records)} actions={len(actions)}")
++    print(f"sync receipt saved {receipt_path.relative_to(ROOT)}")
++
++
+ def import_chatgpt_export(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     source = Path(args.path).expanduser().resolve()
+@@ -1551,6 +1942,12 @@ def dashboard_export(_args: argparse.Namespace) -> None:
+         },
+         "records": records,
+     }
++    if _args.all:
++        token_report = build_token_intel()
++        payload["token_intel"] = {
++            "summary": token_report["summary"],
++            "dashboard_cards": token_report["dashboard_cards"],
++        }
+     target = DASHBOARD / "records.json"
+     target.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
+     print(f"dashboard data saved {target.relative_to(ROOT)}")
+@@ -1627,6 +2024,12 @@ def build_parser() -> argparse.ArgumentParser:
+     search.add_argument("--json", action="store_true")
+     search.set_defaults(func=search_records)
+ 
++    token = sub.add_parser("token", help="token intelligence utilities")
++    token_sub = token.add_subparsers(dest="action", required=True)
++    token_intel = token_sub.add_parser("intel", help="generate token intelligence report")
++    token_intel.add_argument("--json", action="store_true", help="print JSON output")
++    token_intel.set_defaults(func=run_token_intel)
++
+     show = sub.add_parser("show", help="show one record by id or id prefix")
+     show.add_argument("identifier")
+     show.add_argument("--raw", action="store_true", help="print the Markdown/raw text body")
+@@ -1634,6 +2037,22 @@ def build_parser() -> argparse.ArgumentParser:
+     show.add_argument("--json", action="store_true")
+     show.set_defaults(func=show_record)
+ 
++    sync = sub.add_parser("sync", help="run receipt, optional backups, dashboard export, and vault report")
++    sync.add_argument("--all", action="store_true", help="include every record; this is the default when no date is given")
++    sync.add_argument("--date", default=None, help="limit sync to one date folder")
++    sync.add_argument("--source")
++    sync.add_argument("--project")
++    sync.add_argument("--tag", action="append")
++    sync.add_argument("--drive", action="store_true", help="also write a Drive-folder backup package")
++    sync.add_argument("--drive-target", help="Drive-folder backup target")
++    sync.add_argument("--github", action="store_true", help="also create a knowledge-bank backup package")
++    sync.add_argument("--github-commit", action="store_true", help="commit the knowledge-bank backup package")
++    sync.add_argument("--github-push", action="store_true", help="commit and push the knowledge-bank backup package")
++    sync.add_argument("--knowledge-bank", help="path to local knowledge-bank repository")
++    sync.add_argument("--report-output", help="custom vault report path")
++    sync.add_argument("--limit", type=int, default=200, help="maximum timeline records in vault report")
++    sync.set_defaults(func=sync_run)
++
+     brief = sub.add_parser("brief", help="create a brief")
+     brief_sub = brief.add_subparsers(dest="period", required=True)
+     today_cmd = brief_sub.add_parser("today", help="brief today's records")
+@@ -1757,6 +2176,13 @@ def build_parser() -> argparse.ArgumentParser:
+ 
+ 
+ def main() -> None:
++    for stream in (sys.stdout, sys.stderr):
++        reconfigure = getattr(stream, "reconfigure", None)
++        if reconfigure:
++            try:
++                reconfigure(encoding="utf-8", errors="replace")
++            except (OSError, ValueError):
++                pass
+     parser = build_parser()
+     args = parser.parse_args()
+     args.func(args)
+
+
+*** Begin Patch - Untracked docs/token-intelligence.md
+
+diff --git a/docs/token-intelligence.md b/docs/token-intelligence.md
+new file mode 100644
+index 0000000..386ed5f
+--- /dev/null
++++ b/docs/token-intelligence.md
+@@ -0,0 +1,54 @@
++# Pala Token Intelligence
++
++## Purpose
++Token decisions for repository intake should be predictable, safe, and low-noise so local context stays controlled and useful.
++
++## Token Intake Rules
++- Start with project policy and core CLI files.
++- Classify every artifact before full read.
++- Prefer summaries for bulky or repetitive artifacts.
++- Keep generated, backup, and secret-bearing outputs out of normal session context.
++
++## Decision Classes
++- `READ_FULL`
++- `SUMMARY_ONLY`
++- `DO_NOT_READ`
++
++## File Policy
++| Pattern | Decision | Reason |
++|---|---|---|
++| `README.md` | `READ_FULL` | Project baseline and intent |
++| `INSTALL.md` | `READ_FULL` | Setup context |
++| `AGENTS.md` | `READ_FULL` | Operating rules |
++| `pala.py` | `READ_FULL` | Core CLI logic |
++| `dashboard/index.html` | `READ_FULL` | Dashboard behavior and cards |
++| `docs/*.md` | `SUMMARY_ONLY` | Policy docs usually need summary first |
++| `data/records/*` | `SUMMARY_ONLY` | Operational history index |
++| `data/reports/*` | `DO_NOT_READ` | Generated output artifacts |
++| `data/backups/*` | `DO_NOT_READ` | Backup package history |
++| `data/attachments/*` | `DO_NOT_READ` | Media/artifact-heavy data |
++
++## External Source Policy
++- New external repo: inspect metadata/docs/structure before code-level reading.
++- MCP/SDK candidates: index first, summary second.
++- Public docs/blogs: read summary-level unless a concrete snippet is required.
++
++## Dashboard Cards
++- Token Budget
++- Context Risk
++- Files Read
++- Files Blocked
++- Largest Token Sources
++- Recommended Next Read
++- Do Not Read
++- Prompt Cache Candidate: first candidate for compact, reusable context seed to reduce repeated cold reads.
++- Compaction Needed
++
++## Codex Prompt Discipline
++- Keep prompts small and task-scoped.
++- Use command outputs as evidence.
++- Stay within local, reproducible checks before broad reads.
++
++## Next Steps
++- Keep decision policy stable until acceptance criteria are validated.
++- Tune card thresholds only with clear evidence from repeated scans.
+
