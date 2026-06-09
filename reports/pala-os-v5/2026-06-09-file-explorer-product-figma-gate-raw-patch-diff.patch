@@ -1,0 +1,150 @@
+diff --git a/TASKS.md b/TASKS.md
+index a137b48..d258465 100644
+--- a/TASKS.md
++++ b/TASKS.md
+@@ -12,11 +12,13 @@
+ - In progress: branch protection verification.
+ - In progress: source inventory.
+ - In progress: migration court.
++- In progress: file explorer Product/Figma gate.
+ 
+ ## Next
+ 
+ - First approved import candidate.
+-- Product/Figma gate.
++- Product/Figma gate evidence for file explorer.
++- v0.dev/shadcn file explorer UI shell after gate evidence exists.
+ - Stronger PR review and Code Owners plan.
+ - Enable Dependabot alerts / secret scanning if available.
+ - Dashboard ledger reader verification.
+diff --git a/docs/migration-court/adoption-plan.md b/docs/migration-court/adoption-plan.md
+index 12cd149..7276c15 100644
+--- a/docs/migration-court/adoption-plan.md
++++ b/docs/migration-court/adoption-plan.md
+@@ -16,7 +16,8 @@ This plan uses small PRs. Each PR needs a sourceRef, court decision, validation
+ | 5 | Skill registry index adapter | `pala-os` | `IMPORT_LATER` | Read-only adapter over approved registry subset |
+ | 6 | MCP server adapter research | `pala-os` | `QUARANTINE` | Research memo only; no server code or deploy config |
+ | 7 | Product/Figma gate | `pala-os`, `pala-os-v3` | `IMPORT_LATER` | Product gate blocks UI work until Figma/product evidence exists |
+-| 8 | Site/admin product decision | `pala-os` | `NEEDS_OWNER_APPROVAL` | Owner-approved product scope, auth/security review, and rollback plan |
++| 8 | File explorer UI shell | v0.dev, Figma, shadcn/ui | `IMPORT_LATER` | Product/Figma gate, generated output reference, responsive evidence, rollback note |
++| 9 | Site/admin product decision | `pala-os` | `NEEDS_OWNER_APPROVAL` | Owner-approved product scope, auth/security review, and rollback plan |
+ 
+ ## Import Rules Per PR
+ 
+diff --git a/docs/migration-court/next-import-candidates.md b/docs/migration-court/next-import-candidates.md
+index f6441b4..002f11e 100644
+--- a/docs/migration-court/next-import-candidates.md
++++ b/docs/migration-court/next-import-candidates.md
+@@ -12,6 +12,7 @@ These are candidates, not approvals.
+ | 3 | Tool opportunity gate schema | `pala-os-v3` | `IMPORT_LATER` | Classification can start as rules/docs | State enum docs and blocked-state examples |
+ | 4 | Dashboard reader upgrade | `pala-os-v4`, current v5 | `IMPORT_LATER` | Existing v5 panel already reads local APIs | Browser/API evidence that empty state stays non-success |
+ | 5 | Skill registry read-only index | `pala-os` | `IMPORT_LATER` | Can be read-only and scoped | Stocktake report and sourceRef for approved subset |
++| 6 | File explorer Product/Figma gate | v0.dev, Figma, `pala-os-v3`, `pala-os-v4` | `IMPORT_LATER` | Defines UI scope before product code import | Product scope, design source, data boundary, validation plan, rollback note |
+ 
+ ## Recommended Next Safe Action
+ 
+@@ -19,5 +20,6 @@ Pick one:
+ 
+ - First approved import candidate: CLI command vocabulary and 10-gate docs/rules.
+ - Product/Figma Gate for Pala OS v5 Control Tower.
++- File explorer Product/Figma Gate for the v5 roadmap item.
+ 
+ The CLI/gate docs path is safer because it does not require product design, external services, or UI implementation.
+diff --git a/docs/migration-court/product-figma-gate-2026-06-09.md b/docs/migration-court/product-figma-gate-2026-06-09.md
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/docs/migration-court/product-figma-gate-2026-06-09.md
+@@ -0,0 +1,65 @@
++# Product/Figma Gate - File Explorer
++
++Status: `PARTIAL`
++Date: 2026-06-09
++Target repo: `trugurpala/pala-os-v5`
++Target feature: file explorer UI for v5
++
++## Court Decision
++
++The file explorer is accepted as the next product-gate candidate, not as an approved implementation import.
++
++Decision: `IMPORT_LATER`
++
++This decision makes the roadmap item actionable by naming the evidence required before v0.dev, shadcn/ui, or old source output can enter v5.
++
++## Scope
++
++The first file explorer pass may include:
++
++- desktop window shell entry
++- navigation tree
++- file list
++- breadcrumbs
++- search
++- empty and loading states
++- selection state
++- settings/form entry point
++- responsive layout proof
++
++The first pass must not include:
++
++- real filesystem mutation
++- external service writes
++- secret access
++- runtime DB import
++- old source bulk copy
++- release, deploy, tag, or public readiness claim
++
++## Source Candidates
++
++| Source | Current decision | Use |
++| --- | --- | --- |
++| v0.dev prompt/output | `IMPORT_LATER` | Generate a fresh shadcn/ui-compatible UI shell after this gate records the prompt/output. |
++| Figma design frame | `IMPORT_LATER` | Required design evidence if the feature changes v5 product UI. |
++| `pala-os-v3` and `pala-os-v4` | `REFERENCE` | Patterns for dashboard truth and local control boundaries only. |
++| `pala-os` product/site code | `QUARANTINE` | No direct import; product/admin/site code needs a separate court. |
++
++## Required Proof Before Code
++
++| Requirement | Evidence |
++| --- | --- |
++| Product scope | A short spec naming the file explorer views, states, and non-goals. |
++| Design source | Figma frame URL or v0.dev prompt/output reference. |
++| Data boundary | Explicit choice between mock data, local read-only data, or approved local read-write behavior. |
++| SourceRef | Exact source path or generated output reference for every imported file. |
++| Validation | UI render evidence, responsive evidence, and command output for the repo checks that apply. |
++| Rollback | Normal git revert removes the feature without deleting runtime data. |
++
++## Current Result
++
++Status remains `PARTIAL`.
++
++The feature is now a named migration-court candidate. Implementation remains blocked until the evidence above exists.
+diff --git a/docs/product-gates.md b/docs/product-gates.md
+index 257d4c6..c7dd765 100644
+--- a/docs/product-gates.md
++++ b/docs/product-gates.md
+@@ -11,3 +11,24 @@ Before feature work:
+ - rollback path is named
+ 
+ Current state: product work is `BLOCKED` until the next approved task.
++
++## File Explorer Gate - 2026-06-09
++
++The next requested product surface is the file explorer for v5.
++
++Status: `PARTIAL`
++
++Decision:
++
++- UI implementation is still blocked until the feature has an explicit product/Figma gate record.
++- v0.dev or shadcn/ui output may be used only as an implementation source after the gate names the exact source prompt, generated files, review evidence, and rollback path.
++- No file-system read/write behavior is approved by this gate. The first pass must be a UI shell or mocked local data surface unless a separate filesystem permission decision exists.
++- No source repo product code may be copied into v5 without a migration-court sourceRef and file-level decision.
++
++Required evidence before implementation:
++
++- Feature scope: navigation tree, file list, breadcrumbs, search, empty state, selection, and settings entry points.
++- Design source: Figma frame link or v0.dev prompt/output reference.
++- Data boundary: static/mock, local read-only, or local read-write, with permission notes.
++- Validation plan: UI render evidence, responsive evidence, and no fake dashboard success.
++- Rollback note: normal git revert of the feature files must remove the feature without touching runtime state.
