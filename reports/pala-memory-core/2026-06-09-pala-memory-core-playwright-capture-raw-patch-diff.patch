@@ -1,0 +1,382 @@
+﻿commit 3f598b9349cbb2349da44d0c0e43b7990a1dff79
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:49:39 2026 +0300
+
+    Add optional Playwright capture preview
+---
+ INSTALL.md                       |  9 ++++++
+ README.md                        |  9 ++++++
+ docs/backlog.md                  |  1 +
+ docs/commands.md                 | 41 ++++++++++++++++++++++++
+ docs/connectors.md               | 13 ++++++++
+ docs/roadmap.md                  |  2 ++
+ docs/security.md                 | 11 +++++++
+ docs/v0.1-acceptance.md          |  2 ++
+ docs/v0.10-playwright-capture.md | 68 ++++++++++++++++++++++++++++++++++++++++
+ pala.py                          | 66 ++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 222 insertions(+)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 1efbbfa..6083d4b 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -28,6 +28,14 @@ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+ 
++Optional rendered-page capture:
++
++```powershell
++python -m pip install playwright
++python -m playwright install chromium
++python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
++```
++
+ Generated files appear under:
+ 
+ ```text
+@@ -77,6 +85,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Import mobile shares | `python pala.py import mobile-share "C:\path\to\shared\folder"` |
+ | Watch mobile shares once | `python pala.py watch mobile-share "C:\path\to\shared\folder" --once` |
+ | Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
++| Capture with Playwright | Optional: `python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+ 
+diff --git a/README.md b/README.md
+index 7674a56..6645757 100644
+--- a/README.md
++++ b/README.md
+@@ -22,6 +22,14 @@ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+ 
++Optional rendered-page capture:
++
++```powershell
++python -m pip install playwright
++python -m playwright install chromium
++python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
++```
++
+ ## Core Idea
+ 
+ | Layer | Purpose |
+@@ -71,6 +79,7 @@ pala-memory-core/
+ | `backup drive` | v0.7 | Creates a redacted Drive-folder backup package |
+ | `import mobile-share` | v0.8 | Imports phone/shared files and attachments |
+ | `watch mobile-share` | v0.9 | Watches a phone/sync share folder for new files |
++| `capture playwright` | v0.10 | Optional connector for browser-rendered pages and screenshots when Playwright is installed |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 974a1ce..62dc29f 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -44,6 +44,7 @@
+ | `PMC-020B` | Add Google Drive OAuth backup | Upload package through Google Drive API |
+ | `PMC-021` | Add browser URL capture | Public/local URL can become a memory record |
+ | `PMC-021B` | Add Playwright session capture | Authenticated browser context and screenshots become optional connector |
++| `PMC-021C` | Add optional Playwright command | Rendered page text and screenshots become records/attachments |
+ | `PMC-022` | Add mobile share/import command | Phone-shared folder or zip becomes records and attachments |
+ | `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares without duplicates |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
+diff --git a/docs/commands.md b/docs/commands.md
+index 0d6549a..fbfa676 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -198,6 +198,47 @@ Useful options:
+ 
+ This first browser connector fetches URLs directly. Authenticated browser-session capture and screenshots are planned as a later Playwright/Chrome connector.
+ 
++## capture playwright
++
++Captures a browser-rendered page with Playwright when the optional Playwright dependency is installed. If Playwright is not installed, the command exits with an install hint and does not affect the rest of the CLI.
++
++Install:
++
++```text
++python -m pip install playwright
++python -m playwright install chromium
++```
++
++Capture page text:
++
++```text
++python pala.py capture playwright --url http://127.0.0.1:8765
++```
++
++Capture page text and screenshot:
++
++```text
++python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot --full-page
++```
++
++Authenticated pages can use a Playwright storage state file. Pala Memory Core does not create or steal browser sessions by itself; the user supplies the state file:
++
++```text
++python pala.py capture playwright --url https://chatgpt.com --storage-state auth-state.json --screenshot
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--browser chromium` | Choose `chromium`, `firefox`, or `webkit` |
++| `--headed` | Show browser window |
++| `--screenshot` | Save screenshot as attachment |
++| `--full-page` | Full-page screenshot |
++| `--storage-state auth-state.json` | Use saved authenticated session state |
++| `--wait-until networkidle` | Page load strategy |
++| `--wait-ms 1000` | Extra wait after load |
++
+ ## dashboard serve
+ 
+ Starts a local dashboard server from the `dashboard/` folder.
+diff --git a/docs/connectors.md b/docs/connectors.md
+index c61dc4b..810a01f 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -43,6 +43,7 @@ Every connector should produce or update a memory record with:
+ | `v0.7` | ChatGPT export import |
+ | `v0.8` | Mobile share/import flow |
+ | `v0.9` | Mobile share watcher |
++| `v0.10` | Playwright capture |
+ | `v1.0` | Unified dashboard and recovery |
+ 
+ ## GitHub Backup Behavior
+@@ -77,6 +78,18 @@ The first browser connector captures public/local URLs through a direct HTTP req
+ 
+ Authenticated ChatGPT page capture is intentionally deferred until the Playwright/Chrome connector exists.
+ 
++## Playwright Capture Behavior
++
++The Playwright connector is optional. It captures browser-rendered page text and can attach screenshots.
++
++| Mode | Behavior |
++|---|---|
++| `capture playwright --url ...` | Captures rendered page text |
++| `--screenshot` | Saves screenshot as attachment |
++| `--storage-state <json>` | Uses a Playwright authenticated session state |
++
++If Playwright is missing, the CLI prints the install command instead of failing silently.
++
+ ## Drive Backup Behavior
+ 
+ The first Drive connector writes a redacted package into a local folder. If that folder is inside Google Drive's desktop sync area, Google Drive handles upload.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 912a079..8ca5a46 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -19,6 +19,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+ | `v0.10` | Mobile share/import flow | Phone/shared folder files can become records and attachments |
+ | `v0.11` | Mobile share watcher | Sync folders can be scanned continuously or once |
++| `v0.12` | Playwright capture | Rendered pages and screenshots can become records/attachments |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -45,4 +46,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add Drive folder backup | Copy redacted package to a selected Drive sync folder |
+ | Add mobile share import | Import phone-shared text, PDFs, images, and Office files |
+ | Add mobile share watcher | Import new phone-shared files without repeating old files |
++| Add Playwright capture | Capture rendered pages and screenshots with optional dependency |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index bd31deb..7b9e584 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -96,3 +96,14 @@ This is not yet a direct Google Drive API upload.
+ | `.gitignore` | Generated records and attachments stay out of Git |
+ 
+ `pala watch mobile-share` stores seen-file state under `data/inbox/`, which is ignored by Git.
++
++## Playwright Capture Defaults
++
++`pala capture playwright` uses the optional Playwright package. It does not bypass authentication; authenticated pages require a user-provided `--storage-state` file.
++
++| Control | Purpose |
++|---|---|
++| `--storage-state` | Use a saved authenticated browser state |
++| `--screenshot` | Attach a screenshot to the record |
++| `--max-chars` | Limit captured text |
++| `.gitignore` | Generated screenshots and records stay out of Git |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 26049d8..122114d 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -25,6 +25,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Import mobile share | `python pala.py import mobile-share <path>` | Shared text becomes records and files become attachments |
+ | Watch mobile share | `python pala.py watch mobile-share <path> --once` | New shared files are imported once |
+ | Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
++| Capture Playwright page | `python pala.py capture playwright --url <url>` | Rendered page content becomes record when Playwright is installed |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+ 
+@@ -69,6 +70,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Drive backup | Supports local folder target suitable for Google Drive sync |
+ | Mobile share import | Supports folder/zip/file import from phone sync/share flows |
+ | Mobile share watch | Tracks seen files and avoids repeat imports |
++| Playwright capture | Optional dependency guard and command path exist |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.10-playwright-capture.md b/docs/v0.10-playwright-capture.md
+new file mode 100644
+index 0000000..78627fc
+--- /dev/null
++++ b/docs/v0.10-playwright-capture.md
+@@ -0,0 +1,68 @@
++# v0.10 Playwright Capture
++
++Date: 2026-06-09
++Phase: Playwright capture preview
++Status: PARTIAL overall, PASS for optional dependency guard
++
++## Goal
++
++Capture browser-rendered page text and optional screenshots into Pala Memory Core records when the optional Playwright dependency is installed.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py capture playwright --url <url>` |
++| Optional dependency | Uses Playwright only when installed |
++| Text capture | Captures rendered `body` text |
++| Screenshot | `--screenshot` stores PNG as attachment |
++| Auth state | `--storage-state` supports authenticated sessions |
++| Browsers | Supports `chromium`, `firefox`, `webkit` |
++
++## Install
++
++```powershell
++python -m pip install playwright
++python -m playwright install chromium
++```
++
++## Command
++
++```powershell
++python .\pala.py capture playwright --url http://127.0.0.1:8765 --screenshot --full-page
++```
++
++## Expected Result
++
++```text
++saved <record-id>
++data\records\<date>\<record-id>.md
++captured playwright url <url> screenshots=<n>
++```
++
++## Smoke Test
++
++The current environment did not have Playwright installed. The command was expected to fail with a clear install message instead of failing silently:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py capture --help
++python .\pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
++python .\pala.py brief today
++python .\pala.py dashboard export
++```
++
++Observed output:
++
++```text
++py_compile passed
++capture help listed {browser,playwright}
++exit=1
++Playwright is not installed. Install with: python -m pip install playwright && python -m playwright install chromium
++brief saved data\reports\2026-06-09-brief.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is an optional connector preview. The CLI has a dependency guard when Playwright is not installed. Authenticated ChatGPT capture requires user-provided session state and is not automatic.
+diff --git a/pala.py b/pala.py
+index 266479c..7361423 100644
+--- a/pala.py
++++ b/pala.py
+@@ -713,6 +713,56 @@ def capture_browser(args: argparse.Namespace) -> None:
+     print(f"captured browser url {args.url}")
+ 
+ 
++def capture_playwright(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    try:
++        from playwright.sync_api import sync_playwright
++    except ImportError as error:
++        raise SystemExit(
++            "Playwright is not installed. Install with: "
++            "python -m pip install playwright && python -m playwright install chromium"
++        ) from error
++
++    screenshot_paths: list[str] = []
++    with sync_playwright() as playwright:
++        browser_launcher = getattr(playwright, args.browser)
++        browser = browser_launcher.launch(headless=not args.headed)
++        context_kwargs: dict[str, Any] = {}
++        if args.storage_state:
++            context_kwargs["storage_state"] = args.storage_state
++        context = browser.new_context(**context_kwargs)
++        page = context.new_page()
++        page.goto(args.url, wait_until=args.wait_until, timeout=args.timeout * 1000)
++        if args.wait_ms:
++            page.wait_for_timeout(args.wait_ms)
++        text = page.inner_text("body")
++        if args.screenshot:
++            screenshot_dir = DATA / "inbox" / "playwright-captures"
++            screenshot_dir.mkdir(parents=True, exist_ok=True)
++            screenshot_path = unique_path(screenshot_dir / f"{stamp()}-{slug(args.title or args.url)}.png")
++            page.screenshot(path=str(screenshot_path), full_page=args.full_page)
++            screenshot_paths.append(str(screenshot_path))
++        context.close()
++        browser.close()
++
++    write_record(
++        argparse.Namespace(
++            title=args.title or f"Playwright capture: {args.url}",
++            text=text[: args.max_chars],
++            text_file=None,
++            summary=args.summary,
++            source="playwright",
++            project=args.project,
++            tag=["playwright-capture", *(args.tag or [])],
++            decision=[],
++            task=[],
++            file=screenshot_paths,
++            evidence=[{"kind": "url", "value": args.url}],
++        )
++    )
++    print(f"captured playwright url {args.url} screenshots={len(screenshot_paths)}")
++
++
+ def collect_import_entries(source: Path, max_chars: int) -> list[tuple[str, str]]:
+     if source.is_dir():
+         entries: list[tuple[str, str]] = []
+@@ -944,6 +994,22 @@ def build_parser() -> argparse.ArgumentParser:
+     browser.add_argument("--max-bytes", type=int, default=2_000_000)
+     browser.add_argument("--max-chars", type=int, default=12000)
+     browser.set_defaults(func=capture_browser)
++    playwright = capture_sub.add_parser("playwright", help="capture a page with Playwright")
++    playwright.add_argument("--url", required=True)
++    playwright.add_argument("--title")
++    playwright.add_argument("--summary")
++    playwright.add_argument("--project")
++    playwright.add_argument("--tag", action="append")
++    playwright.add_argument("--browser", choices=["chromium", "firefox", "webkit"], default="chromium")
++    playwright.add_argument("--headed", action="store_true")
++    playwright.add_argument("--screenshot", action="store_true")
++    playwright.add_argument("--full-page", action="store_true")
++    playwright.add_argument("--storage-state", help="path to Playwright storage_state JSON for authenticated pages")
++    playwright.add_argument("--wait-until", default="networkidle", choices=["commit", "domcontentloaded", "load", "networkidle"])
++    playwright.add_argument("--wait-ms", type=int, default=0)
++    playwright.add_argument("--timeout", type=int, default=30)
++    playwright.add_argument("--max-chars", type=int, default=12000)
++    playwright.set_defaults(func=capture_playwright)
+ 
+     dashboard = sub.add_parser("dashboard", help="dashboard utilities")
+     dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
