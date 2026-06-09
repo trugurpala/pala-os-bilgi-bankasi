@@ -1,0 +1,341 @@
+﻿diff --git a/skills/registry/seed-skills.json b/skills/registry/seed-skills.json
+index 27c2336..b46e430 100644
+--- a/skills/registry/seed-skills.json
++++ b/skills/registry/seed-skills.json
+@@ -51,6 +51,28 @@
+       "decision": "ADAPT",
+       "source_ref": "pala-os/skills/meta/session-bootstrap-protocol/SKILL.md"
+     },
++    {
++      "name": "v0-dev",
++      "domain": "frontend",
++      "status": "draft",
++      "path": "skills/v0-dev/SKILL.md",
++      "tier": "core",
++      "compatibility": [
++        "codex",
++        "cursor",
++        "chatgpt"
++      ],
++      "permission_budget": {
++        "filesystem": "read-only",
++        "network": "allowlist-or-off",
++        "shell": "forbidden",
++        "secrets": "forbidden",
++        "destructive_ops": false
++      },
++      "risk": "medium",
++      "decision": "ADAPT",
++      "source_ref": "v0.dev docs + local v0-dev references"
++    },
+     {
+       "name": "world-standards-audit",
+       "domain": "security",
+diff --git a/skills/v0-dev/SKILL.md b/skills/v0-dev/SKILL.md
+new file mode 100644
+index 0000000..5a4dc56
+--- /dev/null
++++ b/skills/v0-dev/SKILL.md
+@@ -0,0 +1,192 @@
++---
++name: v0-dev
++description: Expert guidance for Vercel v0 (v0.app) using chat-driven UI generation, V0 Platform API, v0 SDK integrations, mcp tools, and codebase import/deployment workflows.
++metadata:
++  priority: 6
++  docs:
++    - "https://v0.app/docs"
++    - "https://v0.dev/docs"
++    - "https://v0.dev/docs/api"
++    - "https://v0.dev/docs/api/platform/overview"
++    - "https://v0.app/docs/terminal-commands"
++    - "https://www.v0mcp.com/"
++  sitemap: "https://v0.app/sitemap.xml"
++  pathPatterns:
++    - "v0.config.*"
++    - "next.config.*"
++    - "app/**"
++    - "src/app/**"
++    - "components/**"
++    - "src/components/**"
++  importPatterns:
++    - "v0-sdk"
++    - "v0mcp"
++    - "v0-mcp-server"
++    - "create-v0-sdk-app"
++  bashPatterns:
++    - '\b(npx|pnpm|npm|bun|yarn)\s+create-v0-sdk-app\b'
++    - '\bnpx\s+v0-mcp-server\b'
++    - '\bnpm\s+install\s+v0-sdk\b'
++    - '\bpnpm\s+add\s+v0-sdk\b'
++    - '\bv0\.chats\.(create|sendMessage|find|findMessages|findVersions)\b'
++    - '\bv0\.projects\.create\b'
++  promptSignals:
++    phrases:
++      - "v0 component"
++      - "generate with v0"
++      - "v0 SDK"
++      - "v0 Platform API"
++      - "v0 project"
++      - "create-v0-sdk-app"
++    minScore: 6
++---
++
++# Vercel v0 (v0.app)
++
++Use this skill when asked to generate or modify production-ready UI/features with `v0`, when integrating Vercel v0 workflows into local projects, or when troubleshooting v0 outputs in a Next.js + shadcn/ui stack.
++
++## Scope and Decision: UI + AI App Flow
++
++Treat v0 as an AI code generator for UI and app scaffolding, not a silent autopilot. Always:
++
++- Define the target route structure.
++- Prefer clear constraints and success criteria.
++- Pull generated output into a local codebase and review before deploy.
++
++## Recommended tool choices
++
++- **V0 Platform API** for project/chat lifecycle (`v0-sdk`).
++- **`v0-mcp-server`** for local editor integration.
++- **`create-v0-sdk-app`** for project bootstrap from templates.
++- **GitHub/Vercel flows** for PR and deployment checkpoints.
++
++## v0 Platform API (Node)
++
++Install:
++
++```bash
++npm install v0-sdk
++# or
++pnpm add v0-sdk
++```
++
++Set env:
++
++```bash
++set V0_API_KEY=your_key_here
++# PowerShell:
++$env:V0_API_KEY = "your_key_here"
++```
++
++Create a chat:
++
++```ts
++import { v0 } from 'v0-sdk'
++
++const chat = await v0.chats.create({
++  message: 'Create a dashboard with a filter bar, table, and empty-state support.',
++  modelConfiguration: {
++    modelId: 'v0-1.5-md',
++    imageGenerations: false,
++    thinking: false,
++  },
++  projectId: 'proj_123',
++});
++```
++
++Follow-up / continuation:
++
++```ts
++const message = await v0.chats.sendMessage({
++  chatId: chat.id,
++  message: 'Add loading and error states for data fetch failures.',
++});
++```
++
++Useful API reads:
++
++- `v0.chats.find` for chat list
++- `v0.chats.findMessages` for conversation history
++- `v0.chats.findVersions` and `v0.chats.getVersion` for generated outputs
++- `v0.deployments.create` to create preview-ready builds
++
++## v0 MCP Server
++
++Local MCP config example:
++
++```json
++{
++  "mcpServers": {
++    "v0": {
++      "command": "npx",
++      "args": ["-y", "v0-mcp-server"],
++      "env": {
++        "V0_API_KEY": "your-key"
++      }
++    }
++  }
++}
++```
++
++Typical MCP actions: `generate`, `list_chats`, `get_chat`, `delete_chat`, `rate_limits`, `deploy`.
++
++## Scaffold local project templates
++
++```bash
++npx create-v0-sdk-app@latest my-v0-app
++npx create-v0-sdk-app@latest my-v0-app --template classic-v0
++npm install
++npm run dev
++```
++
++Available templates include `v0-clone`, `classic-v0`, and `ai-tools-example` depending on project goals.
++
++## Export / codebase integration pattern
++
++Always trust the terminal command generated by the current v0 UI instead of hardcoded legacy snippets.
++
++- For chat-to-codebase flows, use the generated command from the UI and review before running.
++- For large migrations, use smaller incremental imports.
++
++## Prompt strategy that works well
++
++Use:
++
++- App context: “SaaS admin dashboard, desktop-first, mobile stacked”
++- Design tokens: color meaning, spacing system, typography scale
++- Behavior rules: loading, empty, and error states
++- Security and data states: read-only states, failed fetch handling
++
++Avoid:
++
++- Vague one-liners like “make it better”
++- Unbounded refactors in one pass
++- Ignoring auth and env config for multi-page apps
++
++## API model split
++
++- For AI chat coding flow, use **Platform API** endpoints from `v0.chats.*`.
++- For direct completion workflows in OpenAI-compatible clients, use model-level routes from the v0 docs and set the proper key.
++- For live deployment workflows, validate deployment state before merging.
++
++## Common integration stack
++
++- `v0` + `shadcn/ui` for frontend building blocks
++- `Next.js App Router` for route-level composition
++- `next-themes` + shadcn patterns for dark-mode consistency
++- `Vercel preview/production links` for UI validation
++
++## Reference checks (must run before handoff)
++
++- If app is Next.js: verify `app`, `route.ts`, and server/client boundaries.
++- Confirm that generated files import shadcn primitives cleanly and share token usage (`bg-background`, `text-foreground`, `border-border`).
++- Confirm env variables are injected correctly and never committed.
++- Run build/lint and smoke checks after import.
++
++## Official docs
++
++- https://v0.app/docs
++- https://v0.dev/docs/api/platform/overview
++- https://v0.dev/docs/api/platform/quickstart
++- https://v0.dev/docs/api/platform/packages/create-v0-sdk-app
++- https://www.v0mcp.com
+diff --git a/skills/v0-dev/references/patterns.md b/skills/v0-dev/references/patterns.md
+new file mode 100644
+index 0000000..6bc7d7f
+--- /dev/null
++++ b/skills/v0-dev/references/patterns.md
+@@ -0,0 +1,35 @@
++# v0 Dev Patterns
++
++## 1) Start from outcome, not component
++Always ask for final user outcomes first: route, data model, states, and acceptance criteria.
++
++- "Önce endpoint" yerine "kullanıcı akışı" hedefleyin
++- Prompt içinde ölçülebilir kriterler verin
++- "Tek seferde tamam" yerine "iteration batch" stratejisi kullanın
++
++## 2) Stable integration flow
++
++1. Generate in v0 chat
++2. Import generated files using provided command
++3. Run local validation (`npm run lint` / `npm run build` / test)
++4. Normalize shadcn tokens and font/theme usage if needed
++5. Commit in small PR-sized chunks
++
++## 3) Chat-to-codebase command pattern
++
++- UI tarafından üretilen kodu önce göstersin
++- Gerekirse `--dry-run` benzeri güvenli bir kontrol ile başlayın
++- Büyük importlarda dosya başına kontrol listesi tutun
++
++## 4) Chat continuation pattern
++
++- `v0.chats.create` ile başlangıç promptu
++- Daha sonra küçük değişiklikleri `v0.chats.sendMessage` ile devam edin
++- Farklı yönlendirme gerekiyorsa chat çatısı içinde dallandırın
++
++## 5) Next.js + shadcn UI composition
++
++- Dashboard: `Card + Table + Badge + Command` veya `Dialog/Sheet` pattern
++- CRUD: `Table + AlertDialog + Form` pattern
++- Error boundaries: görünür boş/hatalı duruma karşı `Alert`/`Skeleton`
++
+diff --git a/skills/v0-dev/references/sharp_edges.md b/skills/v0-dev/references/sharp_edges.md
+new file mode 100644
+index 0000000..30d3dfb
+--- /dev/null
++++ b/skills/v0-dev/references/sharp_edges.md
+@@ -0,0 +1,29 @@
++# v0 Edge Cases
++
++## 1) API shape drift
++v0 UI and CLI surfaces change. Prefer current commands shown in docs or chat UI outputs. Avoid relying on stale snippets.
++
++## 2) Large import shock
++Importing too many files at once can hide regressions.
++
++- Do incremental imports
++- Validate `package.json`, aliases, and path resolution after each batch
++
++## 3) Next.js module boundaries
++Generated UI might mix server/client concerns.
++
++- Ensure client-only logic is in files with `'use client'`
++- Keep API routes and server components separated
++
++## 4) Design token mismatch
++Generated style can use inconsistent tokens if the project baseline differs.
++
++- Normalize to `bg-background`, `text-foreground`, spacing scale, and radius conventions
++- Verify dark mode state with Theme provider where applicable
++
++## 5) Deploy/branch surprises
++When GitHub-connected flows are enabled, preview and production behavior should be validated manually from the generated links and deployment logs.
++
++## 6) Secret handling
++Do not paste secrets in chat prompts. Always pass via env and CI variables.
++
+diff --git a/skills/v0-dev/references/validations.md b/skills/v0-dev/references/validations.md
+new file mode 100644
+index 0000000..905e9f3
+--- /dev/null
++++ b/skills/v0-dev/references/validations.md
+@@ -0,0 +1,26 @@
++# v0 Validation Checklist
++
++## Before accepting generated output
++
++- [ ] Route intent is explicit (what page, who uses it, what state transitions exist)
++- [ ] Empty / loading / error states are implemented
++- [ ] Inputs have labels and validation handling
++- [ ] All generated paths are import-safe in `app/` or `src/app/`
++- [ ] Env keys are not hardcoded
++- [ ] Build passes (`npm run build`)
++- [ ] Lint and tests are green
++- [ ] Preview URL confirms responsive behavior
++
++## Post-import hardening
++
++- [ ] Replace ad-hoc theme usage with project token set
++- [ ] Confirm shadcn registry components compile with project config
++- [ ] Move custom utility or package config to deterministic files
++- [ ] Log any follow-up fixes as local tasks in small chunks
++
++## AI workflow health checks
++
++- [ ] Confirm whether chat context is still complete for continuation
++- [ ] Reconcile version history before destructive changes
++- [ ] Verify deployment IDs and branch links in Vercel dashboard
++
+
+
