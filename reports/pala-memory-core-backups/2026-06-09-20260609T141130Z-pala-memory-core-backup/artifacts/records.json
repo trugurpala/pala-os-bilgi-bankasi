@@ -1,0 +1,296 @@
+{
+  "generated_at": "2026-06-09T14:03:08.064746+00:00",
+  "date": "all",
+  "scope": "all",
+  "stats": {
+    "records": 8,
+    "projects": 1,
+    "files": 2,
+    "open_tasks": 1
+  },
+  "records": [
+    {
+      "id": "20260609T131509Z-published-repo-smoke-test",
+      "created_at": "2026-06-09T13:15:09.497352+00:00",
+      "source": "codex",
+      "title": "Published repo smoke test",
+      "summary": "Pala Memory Core public repo smoke test after publish.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T131509Z-published-repo-smoke-test.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "published-smoke"
+      ],
+      "decisions": [
+        "Generated memory data must stay out of Git"
+      ],
+      "tasks": [
+        {
+          "text": "Plan GitHub backup connector",
+          "status": "open"
+        }
+      ],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:15:09.497352+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T131509Z-published-repo-smoke-test.json"
+    },
+    {
+      "id": "20260609T132428Z-conversations",
+      "created_at": "2026-06-09T13:24:28.845180+00:00",
+      "source": "chatgpt",
+      "title": "conversations",
+      "summary": "\ufeff[   {     \"title\": \"Sample ChatGPT Export Conversation\",     \"mapping\": {       \"1\": {         \"message\": {           \"author\": { \"role\": \"user\" },           \"create_time\": 1,           \"content\": { \"parts\": [\"Bunu kasaya al: ChatGPT export import test.\"] }         }       },   ",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132428Z-conversations.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "chatgpt-export",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:24:28.845180+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T132428Z-conversations.json"
+    },
+    {
+      "id": "20260609T132447Z-sample-chatgpt-export-conversation",
+      "created_at": "2026-06-09T13:24:47.846771+00:00",
+      "source": "chatgpt",
+      "title": "Sample ChatGPT Export Conversation",
+      "summary": "## user  Bunu kasaya al: ChatGPT export import test.  ## assistant  Pala Memory Core bu export'u local memory record'a cevirmeli.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132447Z-sample-chatgpt-export-conversation.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "chatgpt-export",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:24:47.846771+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T132447Z-sample-chatgpt-export-conversation.json"
+    },
+    {
+      "id": "20260609T132902Z-local-dashboard-browser-capture",
+      "created_at": "2026-06-09T13:29:02.043761+00:00",
+      "source": "browser",
+      "title": "Local dashboard browser capture",
+      "summary": "Pala Memory Core :root {       --paper: #f7f4ed;       --surface: #fffdf8;       --ink: #24211d;       --muted: #6d665d;       --line: #dad2c2;       --green: #1f7a5a;       --blue: #295d8f;       --amber: #aa6b16;       --charcoal: #2f3437;     }      * { box-sizing: border-box;",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132902Z-local-dashboard-browser-capture.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "browser-capture",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "url",
+          "value": "http://127.0.0.1:8765"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:29:02.043761+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T132902Z-local-dashboard-browser-capture.json"
+    },
+    {
+      "id": "20260609T133804Z-mobile-share-attachments",
+      "created_at": "2026-06-09T13:38:04.032192+00:00",
+      "source": "mobile",
+      "title": "Mobile share attachments",
+      "summary": "Imported 1 attachment(s) from C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-share-smoke",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T133804Z-mobile-share-attachments.md",
+      "attachments": [
+        {
+          "path": "data\\attachments\\20260609T133804Z-mobile-share-attachments\\shared-document.pdf",
+          "kind": "pdf",
+          "sha256": "fd4c397952564e50f06f8fc05ea07372e0832ec919ba979b9e6ec5ba71243c12"
+        }
+      ],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "mobile-share",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "file",
+          "value": "C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-share-smoke"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:38:04.032192+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T133804Z-mobile-share-attachments.json"
+    },
+    {
+      "id": "20260609T133804Z-mobile-share-chatgpt-mobile-note",
+      "created_at": "2026-06-09T13:38:04.012641+00:00",
+      "source": "mobile",
+      "title": "Mobile share: chatgpt-mobile-note",
+      "summary": "# Mobile ChatGPT Note`n`nTelefondan paylasilan ornek ChatGPT notu. Bunu Pala Memory Core kasaya almali.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T133804Z-mobile-share-chatgpt-mobile-note.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "mobile-share",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "file",
+          "value": "C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-share-smoke"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:38:04.012641+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T133804Z-mobile-share-chatgpt-mobile-note.json"
+    },
+    {
+      "id": "20260609T134215Z-mobile-share-attachments",
+      "created_at": "2026-06-09T13:42:15.274238+00:00",
+      "source": "mobile",
+      "title": "Mobile share attachments",
+      "summary": "Imported 1 attachment(s) from C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-watch-smoke\\watched-image.png",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T134215Z-mobile-share-attachments.md",
+      "attachments": [
+        {
+          "path": "data\\attachments\\20260609T134215Z-mobile-share-attachments\\watched-image.png",
+          "kind": "image",
+          "sha256": "67f699657908da2c276c2a3cd1f8adc944654b7d1a99e96ead624a21032827c2"
+        }
+      ],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "mobile-share",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "file",
+          "value": "C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-watch-smoke\\watched-image.png"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:42:15.274238+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T134215Z-mobile-share-attachments.json"
+    },
+    {
+      "id": "20260609T134215Z-mobile-share-watched-mobile-note",
+      "created_at": "2026-06-09T13:42:15.280230+00:00",
+      "source": "mobile",
+      "title": "Mobile share: watched-mobile-note",
+      "summary": "Telefon sync klasorunden gelen watcher smoke notu.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T134215Z-mobile-share-watched-mobile-note.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "mobile-share",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "file",
+          "value": "C:\\Users\\Pala-Home-1\\Desktop\\Codex\\pala-memory-core\\data\\inbox\\mobile-watch-smoke\\watched-mobile-note.txt"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:42:15.280230+00:00",
+        "receipt": ""
+      },
+      "_json_path": "data\\records\\2026-06-09\\20260609T134215Z-mobile-share-watched-mobile-note.json"
+    }
+  ]
+}
