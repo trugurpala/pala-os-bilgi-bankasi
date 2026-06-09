@@ -1,0 +1,12 @@
+{
+  "created_at": "2026-06-09T13:50:21.887888+00:00",
+  "package": "reports\\pala-memory-core-backups\\2026-06-09-20260609T135021Z-pala-memory-core-backup",
+  "records": 8,
+  "artifacts": [
+    "reports\\pala-memory-core-backups\\2026-06-09-20260609T135021Z-pala-memory-core-backup\\artifacts\\2026-06-09-brief.md",
+    "reports\\pala-memory-core-backups\\2026-06-09-20260609T135021Z-pala-memory-core-backup\\artifacts\\2026-06-09-backup-receipt.md",
+    "reports\\pala-memory-core-backups\\2026-06-09-20260609T135021Z-pala-memory-core-backup\\artifacts\\records.json"
+  ],
+  "committed": true,
+  "pushed": true
+}
