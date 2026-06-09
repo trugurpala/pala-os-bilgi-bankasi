@@ -1,0 +1,63 @@
+[
+  {
+    "id": "20260609T131509Z-published-repo-smoke-test",
+    "created_at": "2026-06-09T13:15:09.497352+00:00",
+    "source": "codex",
+    "title": "Published repo smoke test",
+    "summary": "Pala Memory Core public repo smoke test after publish.",
+    "project_refs": [
+      {
+        "name": "trugurpala/pala-memory-core",
+        "kind": "github_repo"
+      }
+    ],
+    "tags": [
+      "published-smoke"
+    ],
+    "tasks": [
+      {
+        "text": "Plan GitHub backup connector",
+        "status": "open"
+      }
+    ],
+    "attachments": []
+  },
+  {
+    "id": "20260609T132428Z-conversations",
+    "created_at": "2026-06-09T13:24:28.845180+00:00",
+    "source": "chatgpt",
+    "title": "conversations",
+    "summary": "\ufeff[   {     \"title\": \"Sample ChatGPT Export Conversation\",     \"mapping\": {       \"1\": {         \"message\": {           \"author\": { \"role\": \"user\" },           \"create_time\": 1,           \"content\": { \"parts\": [\"Bunu kasaya al: ChatGPT export import test.\"] }         }       },   ",
+    "project_refs": [
+      {
+        "name": "trugurpala/pala-memory-core",
+        "kind": "github_repo"
+      }
+    ],
+    "tags": [
+      "chatgpt-export",
+      "smoke-test"
+    ],
+    "tasks": [],
+    "attachments": []
+  },
+  {
+    "id": "20260609T132447Z-sample-chatgpt-export-conversation",
+    "created_at": "2026-06-09T13:24:47.846771+00:00",
+    "source": "chatgpt",
+    "title": "Sample ChatGPT Export Conversation",
+    "summary": "## user  Bunu kasaya al: ChatGPT export import test.  ## assistant  Pala Memory Core bu export'u local memory record'a cevirmeli.",
+    "project_refs": [
+      {
+        "name": "trugurpala/pala-memory-core",
+        "kind": "github_repo"
+      }
+    ],
+    "tags": [
+      "chatgpt-export",
+      "smoke-test"
+    ],
+    "tasks": [],
+    "attachments": []
+  }
+]
