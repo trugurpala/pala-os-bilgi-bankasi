@@ -1,0 +1,438 @@
+﻿commit 37a32e6e523bfd39556786fc038dd2f680b1cc8b
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 17:10:58 2026 +0300
+
+    Add system doctor health report
+---
+ INSTALL.md                  |   2 +
+ README.md                   |   3 +
+ docs/backlog.md             |   1 +
+ docs/commands.md            |  22 +++++
+ docs/roadmap.md             |   2 +
+ docs/v0.1-acceptance.md     |   2 +
+ docs/v0.12-system-doctor.md |  60 ++++++++++++++
+ pala.py                     | 193 ++++++++++++++++++++++++++++++++++++++++++++
+ 8 files changed, 285 insertions(+)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index fdc803e..80c64bf 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -16,6 +16,7 @@ From the repository root:
+ 
+ ```powershell
+ python pala.py remember --title "First memory" --text "Pala Memory Core is installed." --source manual --tag setup
++python pala.py doctor
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
+@@ -75,6 +76,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | User Intent | Command |
+ |---|---|
+ | Save a useful ChatGPT/Codex answer | `python pala.py remember --title "..." --text "..." --source codex` |
++| Check local system health | `python pala.py doctor` |
+ | Save text from a file | `python pala.py remember --title "..." --text-file note.txt` |
+ | Attach a PDF or screenshot | `python pala.py remember --title "..." --file doc.pdf --file screen.png` |
+ | Connect to a repo | `python pala.py remember --title "..." --project trugurpala/pala-os-v4` |
+diff --git a/README.md b/README.md
+index c8a6305..e7f1c87 100644
+--- a/README.md
++++ b/README.md
+@@ -10,6 +10,7 @@ The MVP starts with reliable manual capture:
+ 
+ ```text
+ python pala.py remember --title "Pala Memory Core idea" --text "Capture this work."
++python pala.py doctor
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
+@@ -40,6 +41,7 @@ python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
+ | Capture | Save chat notes, Codex outputs, files, PDFs, screenshots, and links |
+ | Memory | Store records as Markdown + JSON |
+ | Project Link | Connect records to GitHub repos or local folders |
++| Doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
+ | Report | Produce daily briefs and evidence reports |
+ | Backup | Prepare local/GitHub/Drive backup receipts |
+ | Dashboard | Show and search exported records, sources, projects, files, and backup state |
+@@ -84,6 +86,7 @@ pala-memory-core/
+ | `watch mobile-share` | v0.9 | Watches a phone/sync share folder for new files |
+ | `capture playwright` | v0.10 | Optional connector for browser-rendered pages and screenshots when Playwright is installed |
+ | `list` / `search` / `show` | v0.11 | Finds saved records across the local memory vault |
++| `doctor` | v0.12 | Checks 10+ local systems and reports ready/missing pieces |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 712609a..d09fc9e 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -9,6 +9,7 @@
+ | `PMC-003` | Add attachment copy and hash | PDFs/images/files are copied safely |
+ | `PMC-004` | Add `brief today` command | Daily summary file is generated |
+ | `PMC-005` | Add `backup receipt` command | Local backup receipt is generated |
++| `PMC-005B` | Add `doctor` command | User can see which local systems are ready or missing |
+ | `PMC-006` | Add `list` command | User can see recent records |
+ | `PMC-007` | Add `show` command | User can inspect one record |
+ | `PMC-007B` | Add `search` command | User can recover records by phrase, source, project, or tag |
+diff --git a/docs/commands.md b/docs/commands.md
+index 49ae303..beeecd9 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -19,6 +19,28 @@ Useful options:
+ | `--task "..."` | Add an open task |
+ | `--tag memory` | Add a tag |
+ 
++## doctor
++
++Checks local Pala Memory Core systems and prints what is ready, missing, or optional.
++
++```text
++python pala.py doctor
++```
++
++Machine-readable output:
++
++```text
++python pala.py doctor --json
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--knowledge-bank C:\path\to\repo` | Check a custom knowledge-bank repo path |
++| `--drive-target C:\path\to\Drive` | Check a custom Drive-folder backup target |
++| `--strict` | Exit non-zero if a required check fails |
++
+ ## list
+ 
+ Lists saved records from the local vault.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 475a5fa..705248e 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -19,6 +19,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.9` | Mobile share watcher | Sync folders can be scanned continuously or once |
+ | `v0.10` | Playwright capture | Rendered pages and screenshots can become records/attachments |
+ | `v0.11` | Recovery search | CLI and dashboard can find saved records across the local vault |
++| `v0.12` | System doctor | Local install can report 10+ ready/missing systems |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -47,4 +48,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add mobile share watcher | Import new phone-shared files without repeating old files |
+ | Add Playwright capture | Capture rendered pages and screenshots with optional dependency |
+ | Add recovery search | List, show, and search records across the local vault |
++| Add system doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 36cde4a..5be88e0 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -15,6 +15,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Flow | Command | Completion Evidence |
+ |---|---|---|
+ | Save a text memory | `python pala.py remember --title "..." --text "..."` | Markdown and JSON record created under `data/records/` |
++| Check system health | `python pala.py doctor` | 10+ local systems are checked with pass/warn/fail status |
+ | Save with project link | `python pala.py remember --title "..." --text "..." --project trugurpala/repo` | JSON contains `project_refs` |
+ | Save with attachment | `python pala.py remember --title "..." --file file.pdf` | File copied under `data/attachments/` and hash stored |
+ | Create daily brief | `python pala.py brief today` | Markdown brief created under `data/reports/` |
+@@ -77,6 +78,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Playwright capture | Optional dependency guard and command path exist |
+ | Recovery search | CLI can list, search, and show saved records |
+ | Dashboard search | Dashboard can filter exported records in the browser |
++| System doctor | CLI reports active systems and optional missing dependencies |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.12-system-doctor.md b/docs/v0.12-system-doctor.md
+new file mode 100644
+index 0000000..1152ca9
+--- /dev/null
++++ b/docs/v0.12-system-doctor.md
+@@ -0,0 +1,60 @@
++# v0.12 System Doctor
++
++Date: 2026-06-09
++Phase: system doctor preview
++Status: PASS for local system health report
++
++## Goal
++
++Give users one command that explains which Pala Memory Core systems are ready, optional, or missing on the current machine.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py doctor` |
++| JSON | Added `python pala.py doctor --json` |
++| Paths | Supports custom `--knowledge-bank` and `--drive-target` |
++| Strict mode | Supports `--strict` for required failures |
++| Coverage | Checks 10+ systems across local storage, records, files, dashboard, recovery, ChatGPT import, mobile, browser, GitHub, knowledge bank, Drive, and optional Playwright |
++
++## Command
++
++```powershell
++python .\pala.py doctor
++python .\pala.py doctor --json
++```
++
++## Smoke Test
++
++Executed in `C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core`:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py doctor
++python .\pala.py doctor --json
++```
++
++Observed key output:
++
++```text
++Pala Memory Core Doctor
++active_systems=12 pass=16 warn=2 fail=0
++PASS | runtime          | Python runtime | 3.12.10
++PASS | local-storage    | Local data folders | ready
++PASS | memory-records   | Record vault | records=8
++PASS | files            | Attachment files | attachments=2 missing=0
++PASS | dashboard        | Dashboard shell | dashboard\index.html
++PASS | recovery         | Recovery CLI | list/search/show commands are registered
++PASS | chatgpt          | ChatGPT export importer | zip/folder/json/html/md/txt import path is registered
++PASS | mobile           | Mobile share watcher | watch mobile-share command is registered
++PASS | browser          | Browser URL capture | stdlib urllib capture path is registered
++WARN | browser          | Playwright capture | optional dependency missing; install with python -m pip install playwright
++PASS | github           | GitHub CLI auth | gh auth status ok
++PASS | knowledge-bank   | Knowledge-bank repo | C:\Users\Pala-Home-1\Desktop\Codex\pala-os-bilgi-bankasi
++WARN | drive            | Drive folder target | not created yet: C:\Users\Pala-Home-1\Documents\Pala Memory Core Drive Backup
++```
++
++## Release Posture
++
++This is a setup/readiness preview. It does not install missing optional dependencies or create cloud integrations automatically. It makes the local system state visible so users and agents can decide the next action quickly.
+diff --git a/pala.py b/pala.py
+index c9b857f..1133b68 100644
+--- a/pala.py
++++ b/pala.py
+@@ -11,6 +11,7 @@ import argparse
+ import datetime as dt
+ import hashlib
+ import html.parser
++import importlib.util
+ import http.server
+ import json
+ import os
+@@ -18,6 +19,7 @@ import re
+ import shutil
+ import socketserver
+ import subprocess
++import sys
+ import time
+ import urllib.request
+ import zipfile
+@@ -410,6 +412,190 @@ def search_records(args: argparse.Namespace) -> None:
+             print(f"  snippet: {item['snippet']}")
+ 
+ 
++def command_available(name: str) -> bool:
++    return shutil.which(name) is not None
++
++
++def run_probe(command: list[str], cwd: Path | None = None, timeout: int = 8) -> subprocess.CompletedProcess[str] | None:
++    try:
++        return subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout, check=False)
++    except (OSError, subprocess.SubprocessError):
++        return None
++
++
++def add_check(checks: list[dict[str, Any]], name: str, status: str, detail: str, system: str) -> None:
++    checks.append({"name": name, "status": status, "detail": detail, "system": system})
++
++
++def path_exists_in_root(value: str) -> bool:
++    if not value:
++        return False
++    path = (ROOT / value).resolve()
++    return (path == ROOT or ROOT in path.parents) and path.exists()
++
++
++def doctor_report(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = load_records()
++    checks: list[dict[str, Any]] = []
++
++    add_check(
++        checks,
++        "Python runtime",
++        "PASS" if sys.version_info >= (3, 10) else "FAIL",
++        f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
++        "runtime",
++    )
++
++    required_dirs = [DATA, RECORDS, REPORTS, ATTACHMENTS, BACKUPS, DATA / "inbox"]
++    missing_dirs = [str(path.relative_to(ROOT)) for path in required_dirs if not path.exists()]
++    add_check(
++        checks,
++        "Local data folders",
++        "PASS" if not missing_dirs else "FAIL",
++        "ready" if not missing_dirs else f"missing: {', '.join(missing_dirs)}",
++        "local-storage",
++    )
++
++    add_check(
++        checks,
++        "Record vault",
++        "PASS" if records else "WARN",
++        f"records={len(records)}",
++        "memory-records",
++    )
++
++    missing_raw = [record.get("id", "unknown") for record in records if not path_exists_in_root(str(record.get("raw_text_path", "")))]
++    add_check(
++        checks,
++        "Markdown record links",
++        "PASS" if not missing_raw else "FAIL",
++        "all raw_text_path files exist" if not missing_raw else f"missing={len(missing_raw)}",
++        "memory-records",
++    )
++
++    attachments = [
++        attachment
++        for record in records
++        for attachment in record.get("attachments", [])
++    ]
++    missing_attachments = [
++        attachment.get("path", "")
++        for attachment in attachments
++        if not path_exists_in_root(str(attachment.get("path", "")))
++    ]
++    add_check(
++        checks,
++        "Attachment files",
++        "PASS" if not missing_attachments else "FAIL",
++        f"attachments={len(attachments)} missing={len(missing_attachments)}",
++        "files",
++    )
++
++    add_check(
++        checks,
++        "Secret redaction rules",
++        "PASS" if SECRET_PATTERNS else "FAIL",
++        f"patterns={len(SECRET_PATTERNS)}",
++        "backup-safety",
++    )
++
++    dashboard_index = DASHBOARD / "index.html"
++    dashboard_data = DASHBOARD / "records.json"
++    add_check(
++        checks,
++        "Dashboard shell",
++        "PASS" if dashboard_index.exists() else "FAIL",
++        str(dashboard_index.relative_to(ROOT)) if dashboard_index.exists() else "missing dashboard/index.html",
++        "dashboard",
++    )
++    add_check(
++        checks,
++        "Dashboard export data",
++        "PASS" if dashboard_data.exists() else "WARN",
++        str(dashboard_data.relative_to(ROOT)) if dashboard_data.exists() else "run: python pala.py dashboard export --all",
++        "dashboard",
++    )
++
++    add_check(checks, "Recovery CLI", "PASS", "list/search/show commands are registered", "recovery")
++    add_check(checks, "ChatGPT export importer", "PASS", "zip/folder/json/html/md/txt import path is registered", "chatgpt")
++    add_check(checks, "Mobile share importer", "PASS", "file/folder/zip import path is registered", "mobile")
++    add_check(checks, "Mobile share watcher", "PASS", "watch mobile-share command is registered", "mobile")
++    add_check(checks, "Browser URL capture", "PASS", "stdlib urllib capture path is registered", "browser")
++
++    playwright_ready = importlib.util.find_spec("playwright") is not None
++    add_check(
++        checks,
++        "Playwright capture",
++        "PASS" if playwright_ready else "WARN",
++        "playwright package installed" if playwright_ready else "optional dependency missing; install with python -m pip install playwright",
++        "browser",
++    )
++
++    git_ready = command_available("git")
++    add_check(
++        checks,
++        "Git command",
++        "PASS" if git_ready else "WARN",
++        "git available" if git_ready else "git command not found",
++        "github",
++    )
++
++    gh_ready = command_available("gh")
++    gh_status = run_probe(["gh", "auth", "status"]) if gh_ready else None
++    gh_ok = bool(gh_status and gh_status.returncode == 0)
++    add_check(
++        checks,
++        "GitHub CLI auth",
++        "PASS" if gh_ok else "WARN",
++        "gh auth status ok" if gh_ok else "gh not authenticated or unavailable",
++        "github",
++    )
++
++    kb_root = knowledge_bank_path(args.knowledge_bank)
++    kb_git = kb_root / ".git"
++    add_check(
++        checks,
++        "Knowledge-bank repo",
++        "PASS" if kb_git.exists() else "WARN",
++        str(kb_root) if kb_git.exists() else f"not a git repo or missing: {kb_root}",
++        "knowledge-bank",
++    )
++
++    drive_root = drive_backup_path(args.drive_target)
++    add_check(
++        checks,
++        "Drive folder target",
++        "PASS" if drive_root.exists() else "WARN",
++        str(drive_root) if drive_root.exists() else f"not created yet: {drive_root}",
++        "drive",
++    )
++
++    status_counts = {
++        "PASS": sum(1 for check in checks if check["status"] == "PASS"),
++        "WARN": sum(1 for check in checks if check["status"] == "WARN"),
++        "FAIL": sum(1 for check in checks if check["status"] == "FAIL"),
++    }
++    active_systems = len({check["system"] for check in checks if check["status"] == "PASS"})
++    payload = {
++        "generated_at": now_utc().isoformat(),
++        "active_systems": active_systems,
++        "status_counts": status_counts,
++        "checks": checks,
++    }
++
++    if args.json:
++        print(json.dumps(payload, indent=2, ensure_ascii=True))
++    else:
++        print("Pala Memory Core Doctor")
++        print(f"active_systems={active_systems} pass={status_counts['PASS']} warn={status_counts['WARN']} fail={status_counts['FAIL']}")
++        for check in checks:
++            print(f"{check['status']:4} | {check['system']:16} | {check['name']} | {check['detail']}")
++
++    if args.strict and status_counts["FAIL"]:
++        raise SystemExit(1)
++
++
+ def brief_today(_args: argparse.Namespace) -> None:
+     ensure_dirs()
+     records = load_today_records()
+@@ -1120,6 +1306,13 @@ def build_parser() -> argparse.ArgumentParser:
+     remember.add_argument("--file", action="append")
+     remember.set_defaults(func=write_record)
+ 
++    doctor = sub.add_parser("doctor", help="check local memory-core systems")
++    doctor.add_argument("--knowledge-bank", help="path to local knowledge-bank repository")
++    doctor.add_argument("--drive-target", help="Drive-folder backup target to check")
++    doctor.add_argument("--json", action="store_true")
++    doctor.add_argument("--strict", action="store_true", help="exit non-zero when a required check fails")
++    doctor.set_defaults(func=doctor_report)
++
+     list_cmd = sub.add_parser("list", help="list saved records")
+     list_cmd.add_argument("--all", action="store_true", help="search every record instead of a date folder")
+     list_cmd.add_argument("--date", default=None, help="date folder to list, for example 2026-06-09")
