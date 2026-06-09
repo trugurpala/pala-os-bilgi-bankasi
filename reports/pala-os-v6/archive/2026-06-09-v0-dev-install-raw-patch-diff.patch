@@ -1,4 +1,4 @@
-﻿diff --git a/skills/registry/seed-skills.json b/skills/registry/seed-skills.json
+diff --git a/skills/registry/seed-skills.json b/skills/registry/seed-skills.json
 index 27c2336..b46e430 100644
 --- a/skills/registry/seed-skills.json
 +++ b/skills/registry/seed-skills.json
@@ -337,5 +337,3 @@ index 0000000..905e9f3
 +- [ ] Reconcile version history before destructive changes
 +- [ ] Verify deployment IDs and branch links in Vercel dashboard
 +
-
-
