@@ -1,0 +1,402 @@
+﻿commit befc0dfd8c3c0d0dfb1cc4338aff878976ac220d
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:33:25 2026 +0300
+
+    Add Drive folder backup preview
+---
+ INSTALL.md                       |   2 +
+ README.md                        |   3 +-
+ docs/backlog.md                  |   3 +-
+ docs/commands.md                 |  21 +++++++-
+ docs/connectors.md               |  14 +++++-
+ docs/roadmap.md                  |   3 +-
+ docs/security.md                 |  12 +++++
+ docs/v0.1-acceptance.md          |   2 +
+ docs/v0.7-drive-folder-backup.md |  56 ++++++++++++++++++++++
+ pala.py                          | 100 +++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 210 insertions(+), 6 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 13a3993..5798d88 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -19,6 +19,7 @@ python pala.py remember --title "First memory" --text "Pala Memory Core is insta
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
++python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+@@ -69,6 +70,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Create local backup receipt | `python pala.py backup receipt` |
+ | Prepare knowledge-bank backup | `python pala.py backup github` |
+ | Commit and push knowledge-bank backup | `python pala.py backup github --push` |
++| Prepare Drive-folder backup | `python pala.py backup drive --target "C:\path\to\Google Drive\Pala Memory Core"` |
+ | Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
+ | Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
+ | Update dashboard data | `python pala.py dashboard export` |
+diff --git a/README.md b/README.md
+index e27a128..b7cc79e 100644
+--- a/README.md
++++ b/README.md
+@@ -13,6 +13,7 @@ python pala.py remember --title "Pala Memory Core idea" --text "Capture this wor
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
++python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+@@ -65,8 +66,8 @@ pala-memory-core/
+ | `backup github` | v0.4 | Creates a redacted knowledge-bank backup package |
+ | `import chatgpt-export` | v0.5 | Imports ChatGPT export files as memory records |
+ | `capture browser` | v0.6 | Captures a public/local URL into a memory record |
++| `backup drive` | v0.7 | Creates a redacted Drive-folder backup package |
+ | `link project` | planned | Adds repo/folder references to a record |
+-| `backup drive` | planned | Uploads selected artifacts to Google Drive |
+ 
+ ## Data Principles
+ 
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 6d2ebe9..29db77a 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -40,7 +40,8 @@
+ |---|---|---|
+ | `PMC-019` | Add GitHub backup connector | Reports can be published to configured repo |
+ | `PMC-019A` | Add redacted knowledge-bank package | GitHub backup starts with explicit local package creation |
+-| `PMC-020` | Add Google Drive backup design | OAuth and upload flow is specified |
++| `PMC-020` | Add Drive folder backup | Redacted package can be copied to a selected Drive sync folder |
++| `PMC-020B` | Add Google Drive OAuth backup | Upload package through Google Drive API |
+ | `PMC-021` | Add browser URL capture | Public/local URL can become a memory record |
+ | `PMC-021B` | Add Playwright session capture | Authenticated browser context and screenshots become optional connector |
+ | `PMC-022` | Add mobile share/import design | Phone capture uses share/export first |
+diff --git a/docs/commands.md b/docs/commands.md
+index 8e9f5a4..4409927 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -69,6 +69,26 @@ Default path:
+ %USERPROFILE%\Desktop\Codex\pala-os-bilgi-bankasi
+ ```
+ 
++## backup drive
++
++Creates a redacted backup package in a local folder. Point `--target` at a Google Drive sync folder to let Google Drive upload it.
++
++```text
++python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
++```
++
++If no target is given, the default folder is:
++
++```text
++%USERPROFILE%\Documents\Pala Memory Core Drive Backup
++```
++
++Environment variable:
++
++```text
++PALA_DRIVE_BACKUP_PATH=C:\path\to\Google Drive\Pala Memory Core
++```
++
+ ## dashboard export
+ 
+ Writes today's local records to `dashboard/records.json` so the static dashboard can show real captured data.
+@@ -149,4 +169,3 @@ python pala.py dashboard serve --host 127.0.0.1 --port 8787
+ | Command | Purpose |
+ |---|---|
+ | `pala link project` | Attach an existing record to a repo or folder |
+-| `pala backup drive` | Upload selected artifacts to Google Drive |
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 4bb61f5..619b87c 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -11,7 +11,7 @@ Pala Memory Core uses a staged connector model. The core stays local-first; conn
+ | ChatGPT Export | Import official export archive | Parse zip/folder/json/html/md/txt into records | Export format can change |
+ | Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
+ | GitHub | Publish reports and read repo context | Redacted knowledge-bank backup package | Secrets must be filtered |
+-| Google Drive | Backup files and reports | Upload selected artifacts | OAuth setup required |
++| Google Drive | Backup files and reports | Drive sync folder package first | OAuth setup required later |
+ | Browser/Playwright | Capture visible web context/screenshots | URL capture first, Playwright later | UI changes can break capture |
+ | PDF/Documents | Import and summarize PDFs/docs | Attach file + metadata first | OCR/text extraction later |
+ | Local Files | Attach screenshots, patches, markdown, notes | Copy into `data/attachments` | Large files need retention rules |
+@@ -39,7 +39,7 @@ Every connector should produce or update a memory record with:
+ | `v0.3` | Knowledge-bank report publish |
+ | `v0.4` | PDF/Documents import |
+ | `v0.5` | Browser URL capture |
+-| `v0.6` | Google Drive backup |
++| `v0.6` | Drive folder backup |
+ | `v0.7` | ChatGPT export import |
+ | `v0.8` | Mobile share/import flow |
+ | `v1.0` | Unified dashboard and recovery |
+@@ -76,6 +76,16 @@ The first browser connector captures public/local URLs through a direct HTTP req
+ 
+ Authenticated ChatGPT page capture is intentionally deferred until the Playwright/Chrome connector exists.
+ 
++## Drive Backup Behavior
++
++The first Drive connector writes a redacted package into a local folder. If that folder is inside Google Drive's desktop sync area, Google Drive handles upload.
++
++| Mode | Behavior |
++|---|---|
++| `backup drive --target <folder>` | Writes redacted package to chosen folder |
++| `PALA_DRIVE_BACKUP_PATH` | Sets default Drive backup folder |
++| future OAuth connector | Uploads directly through Google Drive API |
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 29d42ee..5da50d8 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -14,7 +14,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.4` | Attachment imports | PDFs, screenshots, markdown, text files are copied and hashed |
+ | `v0.5` | Live local dashboard | Dashboard reads exported local records from local server |
+ | `v0.6` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
+-| `v0.7` | Google Drive backup | Selected artifacts can be uploaded to Drive |
++| `v0.7` | Drive folder backup | Selected artifacts can be copied into a Drive sync folder |
+ | `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+ | `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+@@ -40,4 +40,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add GitHub backup package | Write redacted package to local knowledge bank |
+ | Add ChatGPT export import | Convert export files into local memory records |
+ | Add browser URL capture | Convert a public/local URL into a local memory record |
++| Add Drive folder backup | Copy redacted package to a selected Drive sync folder |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index b50412c..488c319 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -71,3 +71,15 @@ Raw conversation text is not copied by default. Full-fidelity backups should use
+ | `--max-chars` | Limit stored text |
+ | `--timeout` | Avoid hanging on slow pages |
+ | `--project` | Link capture to a project |
++
++## Drive Backup Defaults
++
++`pala backup drive` writes a redacted package to a local folder. Use a Google Drive sync folder as the target when cloud upload is desired.
++
++| Control | Purpose |
++|---|---|
++| `--target` | Choose backup folder |
++| `PALA_DRIVE_BACKUP_PATH` | Set default Drive backup folder |
++| redaction | Avoid copying common secrets into the backup package |
++
++This is not yet a direct Google Drive API upload.
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 4c4e3cb..f1a7f81 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -20,6 +20,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create daily brief | `python pala.py brief today` | Markdown brief created under `data/reports/` |
+ | Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
+ | Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
++| Create Drive-folder backup | `python pala.py backup drive --target <folder>` | Redacted package created under selected folder |
+ | Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
+ | Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+@@ -63,6 +64,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | GitHub backup package | Writes redacted report/manifest/receipt without pushing by default |
+ | ChatGPT export import | Supports zip/folder/json/html/md/txt inputs |
+ | Browser capture | Supports public/local URL capture |
++| Drive backup | Supports local folder target suitable for Google Drive sync |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.7-drive-folder-backup.md b/docs/v0.7-drive-folder-backup.md
+new file mode 100644
+index 0000000..4d54ef0
+--- /dev/null
++++ b/docs/v0.7-drive-folder-backup.md
+@@ -0,0 +1,56 @@
++# v0.7 Drive Folder Backup
++
++Date: 2026-06-09
++Phase: Drive folder backup preview
++Status: PASS for local Drive-folder backup preview
++
++## Goal
++
++Create a Google Drive-compatible backup path without requiring OAuth by writing a redacted package into a chosen local folder.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py backup drive` |
++| Target | `--target <folder>` or `PALA_DRIVE_BACKUP_PATH` |
++| Default | `%USERPROFILE%\Documents\Pala Memory Core Drive Backup` |
++| Output | Dated package folder |
++| Safety | Uses the same redaction policy as GitHub backup |
++| Upload model | Google Drive desktop sync can upload the folder |
++
++## Command
++
++```powershell
++python .\pala.py backup drive --target .\data\backups\drive-smoke
++```
++
++## Expected Package
++
++| File | Purpose |
++|---|---|
++| `drive-backup-report.md` | Human-readable summary |
++| `records-manifest.json` | Redacted record manifest |
++| `drive-backup-receipt.json` | Backup receipt |
++| `artifacts/` | Redacted brief/receipt/dashboard exports when present |
++
++## Smoke Test
++
++```powershell
++python .\pala.py backup drive --target .\data\backups\drive-smoke
++python .\pala.py backup receipt
++python .\pala.py dashboard export
++```
++
++Observed output:
++
++```text
++drive backup package saved C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core\data\backups\drive-smoke\2026-06-09-20260609T133301Z-pala-memory-core-drive-backup
++records=4 artifacts=3
++receipt saved data\backups\2026-06-09-backup-receipt.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is a local Drive-folder preview, not direct Google Drive API upload. Use a Google Drive sync folder as the target for cloud sync.
+diff --git a/pala.py b/pala.py
+index 108a15d..51edb30 100644
+--- a/pala.py
++++ b/pala.py
+@@ -32,6 +32,7 @@ ATTACHMENTS = DATA / "attachments"
+ BACKUPS = DATA / "backups"
+ DASHBOARD = ROOT / "dashboard"
+ DEFAULT_KNOWLEDGE_BANK = Path.home() / "Desktop" / "Codex" / "pala-os-bilgi-bankasi"
++DEFAULT_DRIVE_BACKUP = Path.home() / "Documents" / "Pala Memory Core Drive Backup"
+ SECRET_PATTERNS = [
+     (re.compile(r"(gh[pousr]_[A-Za-z0-9_]{20,})"), "[REDACTED_GITHUB_TOKEN]"),
+     (re.compile(r"(sk-[A-Za-z0-9_-]{20,})"), "[REDACTED_API_KEY]"),
+@@ -284,6 +285,11 @@ def knowledge_bank_path(value: str | None) -> Path:
+     return Path(configured).expanduser().resolve() if configured else DEFAULT_KNOWLEDGE_BANK
+ 
+ 
++def drive_backup_path(value: str | None) -> Path:
++    configured = value or os.environ.get("PALA_DRIVE_BACKUP_PATH")
++    return Path(configured).expanduser().resolve() if configured else DEFAULT_DRIVE_BACKUP
++
++
+ def backup_github(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     records = load_today_records()
+@@ -382,6 +388,97 @@ def backup_github(args: argparse.Namespace) -> None:
+     print(f"records={len(records)} artifacts={len(copied)} committed={receipt['committed']} pushed={receipt['pushed']}")
+ 
+ 
++def backup_drive(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = load_today_records()
++    drive_root = drive_backup_path(args.target)
++    drive_root.mkdir(parents=True, exist_ok=True)
++
++    package_id = f"{today()}-{stamp()}-pala-memory-core-drive-backup"
++    target = drive_root / package_id
++    target.mkdir(parents=True, exist_ok=False)
++
++    manifest_records = []
++    for record in records:
++        manifest_records.append(
++            {
++                "id": record.get("id"),
++                "created_at": record.get("created_at"),
++                "source": record.get("source"),
++                "title": redact_text(str(record.get("title", ""))),
++                "summary": redact_text(str(record.get("summary", ""))),
++                "project_refs": record.get("project_refs", []),
++                "tags": [redact_text(str(tag)) for tag in record.get("tags", [])],
++                "tasks": [
++                    {"text": redact_text(str(task.get("text", ""))), "status": task.get("status", "open")}
++                    for task in record.get("tasks", [])
++                ],
++                "attachments": record.get("attachments", []),
++            }
++        )
++
++    report_lines = [
++        f"# Pala Memory Core Drive Backup - {today()}",
++        "",
++        f"Created: {now_utc().isoformat()}",
++        f"Source repo: {ROOT}",
++        f"Records included: {len(records)}",
++        "",
++        "## Records",
++        "",
++    ]
++    for record in manifest_records:
++        report_lines.extend(
++            [
++                f"### {record['title'] or record['id']}",
++                "",
++                f"- ID: {record['id']}",
++                f"- Source: {record['source']}",
++                f"- Summary: {record['summary']}",
++                f"- Projects: {', '.join(project.get('name', '') for project in record['project_refs']) or 'none'}",
++                "",
++            ]
++        )
++    report_lines.extend(
++        [
++            "## Backup Policy",
++            "",
++            "- Raw conversation text is not copied by default.",
++            "- Common token/API key/private key patterns are redacted.",
++            "- Point --target at a Google Drive sync folder for cloud sync.",
++        ]
++    )
++
++    write_redacted_text(target / "drive-backup-report.md", "\n".join(report_lines))
++    write_redacted_text(target / "records-manifest.json", json.dumps(manifest_records, indent=2, ensure_ascii=True))
++
++    optional_artifacts = [
++        REPORTS / f"{today()}-brief.md",
++        BACKUPS / f"{today()}-backup-receipt.md",
++        DASHBOARD / "records.json",
++    ]
++    artifact_dir = target / "artifacts"
++    copied = []
++    for artifact in optional_artifacts:
++        if artifact.exists():
++            destination = artifact_dir / artifact.name
++            write_redacted_text(destination, artifact.read_text(encoding="utf-8"))
++            copied.append(str(destination.relative_to(target)))
++
++    receipt = {
++        "created_at": now_utc().isoformat(),
++        "package": str(target),
++        "records": len(records),
++        "artifacts": copied,
++        "target": str(drive_root),
++        "sync_mode": "folder",
++    }
++    write_redacted_text(target / "drive-backup-receipt.json", json.dumps(receipt, indent=2, ensure_ascii=True))
++
++    print(f"drive backup package saved {target}")
++    print(f"records={len(records)} artifacts={len(copied)}")
++
++
+ def import_chatgpt_export(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     source = Path(args.path).expanduser().resolve()
+@@ -626,6 +723,9 @@ def build_parser() -> argparse.ArgumentParser:
+     github.add_argument("--commit", action="store_true", help="commit the generated backup package")
+     github.add_argument("--push", action="store_true", help="commit and push the generated backup package")
+     github.set_defaults(func=backup_github)
++    drive = backup_sub.add_parser("drive", help="create a Drive-folder backup package")
++    drive.add_argument("--target", help="target folder, ideally a Google Drive sync folder")
++    drive.set_defaults(func=backup_drive)
+ 
+     import_cmd = sub.add_parser("import", help="import external data")
+     import_sub = import_cmd.add_subparsers(dest="kind", required=True)
