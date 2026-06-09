@@ -1,0 +1,1731 @@
+﻿commit 9a475720a1f4f6c277baa491cd1a45d90ff54876
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:11:38 2026 +0300
+
+    Initial Pala Memory Core scaffold
+---
+ AGENTS.md                     |  70 +++++++++
+ INSTALL.md                    |  92 ++++++++++++
+ README.md                     |  80 ++++++++++
+ dashboard/index.html          | 300 ++++++++++++++++++++++++++++++++++++
+ data/attachments/.gitkeep     |   1 +
+ data/backups/.gitkeep         |   1 +
+ data/inbox/.gitkeep           |   1 +
+ data/records/.gitkeep         |   1 +
+ data/reports/.gitkeep         |   1 +
+ docs/backlog.md               |  55 +++++++
+ docs/commands.md              |  73 +++++++++
+ docs/connectors.md            |  50 ++++++
+ docs/github-launch.md         |  79 ++++++++++
+ docs/roadmap.md               |  40 +++++
+ docs/security.md              |  40 +++++
+ docs/v0.1-acceptance.md       |  64 ++++++++
+ docs/v0.1-smoke-test.md       |  45 ++++++
+ docs/v0.2-dashboard-export.md |  44 ++++++
+ docs/v0.3-dashboard-serve.md  |  52 +++++++
+ examples/sample-record.json   |  39 +++++
+ pala.py                       | 342 ++++++++++++++++++++++++++++++++++++++++++
+ schema/record.schema.json     |  99 ++++++++++++
+ 22 files changed, 1569 insertions(+)
+
+diff --git a/AGENTS.md b/AGENTS.md
+new file mode 100644
+index 0000000..f93a88a
+--- /dev/null
++++ b/AGENTS.md
+@@ -0,0 +1,70 @@
++# AGENTS.md
++
++## Project Identity
++
++This repository implements Pala Memory Core, a local-first AI work memory system for capturing, summarizing, linking, reporting, and backing up ChatGPT/Codex work.
++
++## Working Rules
++
++- Preserve the local-first design.
++- Prefer Markdown + JSON + SQLite over opaque storage.
++- Keep records human-readable.
++- Never publish secrets, API keys, local tokens, private credentials, or sensitive user data.
++- Treat backup as evidence storage, not release approval.
++- Keep changes small, reversible, and tied to the requested workflow.
++- Prefer reliable manual commands before browser/mobile automation.
++
++## Core Commands
++
++| Command | Meaning |
++|---|---|
++| `pala remember` | Save active work into a memory record |
++| `pala brief today` | Summarize today's records |
++| `pala link project` | Attach a record to a repo/folder |
++| `pala report` | Produce a Markdown report |
++| `pala backup github` | Publish report package to knowledge bank |
++
++## Required Record Fields
++
++Every saved memory record should include:
++
++- `id`
++- `created_at`
++- `source`
++- `title`
++- `summary`
++- `raw_text_path`
++- `attachments`
++- `project_refs`
++- `tags`
++- `decisions`
++- `tasks`
++- `evidence`
++- `backup_status`
++
++## Knowledge Bank Integration
++
++For meaningful Pala OS reports or implementation mutations, prepare a report package for:
++
++```text
++trugurpala/pala-os-bilgi-bankasi
++```
++
++Required package:
++
++- Implementation Report
++- Changed Files Manifest
++- Repo Change Review
++- Raw Patch/Diff, when practical
++
++## Completion Output
++
++At the end of a task, report:
++
++- What changed
++- Which files were added or changed
++- Which commands were used as evidence
++- Backup status
++- Remaining risk
++- Next best step
++
+diff --git a/INSTALL.md b/INSTALL.md
+new file mode 100644
+index 0000000..8ce718a
+--- /dev/null
++++ b/INSTALL.md
+@@ -0,0 +1,92 @@
++# Install
++
++Pala Memory Core MVP is a local-first Python starter. It does not require a database, cloud account, or paid service for the first version.
++
++## Requirements
++
++| Requirement | Version |
++|---|---|
++| Python | 3.10+ |
++| OS | Windows, macOS, Linux |
++| Optional | Git |
++
++## Quick Start
++
++From the repository root:
++
++```powershell
++python pala.py remember --title "First memory" --text "Pala Memory Core is installed." --source manual --tag setup
++python pala.py brief today
++python pala.py backup receipt
++python pala.py dashboard export
++python pala.py dashboard serve
++```
++
++Generated files appear under:
++
++```text
++data/
++  records/
++  reports/
++  attachments/
++  backups/
++```
++
++## Open The Dashboard
++
++The MVP dashboard can be served locally:
++
++```powershell
++python pala.py dashboard serve
++```
++
++Then open:
++
++```text
++http://127.0.0.1:8765
++```
++
++The dashboard can also be opened as static HTML:
++
++```text
++dashboard/index.html
++```
++
++Open it in a browser. Later versions can read live records from the local data folder.
++
++## Daily Use
++
++| User Intent | Command |
++|---|---|
++| Save a useful ChatGPT/Codex answer | `python pala.py remember --title "..." --text "..." --source codex` |
++| Save text from a file | `python pala.py remember --title "..." --text-file note.txt` |
++| Attach a PDF or screenshot | `python pala.py remember --title "..." --file doc.pdf --file screen.png` |
++| Connect to a repo | `python pala.py remember --title "..." --project trugurpala/pala-os-v4` |
++| Make today's summary | `python pala.py brief today` |
++| Create local backup receipt | `python pala.py backup receipt` |
++| Update dashboard data | `python pala.py dashboard export` |
++| Open local dashboard | `python pala.py dashboard serve` |
++
++## First Public Repo Setup
++
++Recommended repository name:
++
++```text
++trugurpala/pala-memory-core
++```
++
++Recommended first files:
++
++```text
++README.md
++AGENTS.md
++INSTALL.md
++pala.py
++schema/record.schema.json
++docs/commands.md
++docs/connectors.md
++docs/roadmap.md
++docs/security.md
++dashboard/index.html
++examples/sample-record.json
++```
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..6c804e1
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,80 @@
++# Pala Memory Core
++
++Local-first AI work memory for ChatGPT, Codex, files, reports, and backups.
++
++## What It Does
++
++Pala Memory Core captures important AI work during the day, stores it as durable local records, links it to projects, creates daily briefings, and prepares backup/report receipts.
++
++The MVP starts with reliable manual capture:
++
++```text
++python pala.py remember --title "Pala Memory Core idea" --text "Capture this work."
++python pala.py brief today
++python pala.py backup receipt
++python pala.py dashboard export
++python pala.py dashboard serve
++```
++
++## Core Idea
++
++| Layer | Purpose |
++|---|---|
++| Capture | Save chat notes, Codex outputs, files, PDFs, screenshots, and links |
++| Memory | Store records as Markdown + JSON |
++| Project Link | Connect records to GitHub repos or local folders |
++| Report | Produce daily briefs and evidence reports |
++| Backup | Prepare local/GitHub/Drive backup receipts |
++| Dashboard | Show today's records, sources, projects, and backup state |
++
++## Repository Layout
++
++```text
++pala-memory-core/
++  README.md
++  AGENTS.md
++  pala.py
++  schema/
++    record.schema.json
++  dashboard/
++    index.html
++  docs/
++    commands.md
++  examples/
++    sample-record.json
++  data/
++    inbox/
++    records/
++    reports/
++    attachments/
++    backups/
++```
++
++## MVP Commands
++
++| Command | Status | Result |
++|---|---|---|
++| `remember` | v0.1 | Creates a Markdown + JSON memory record |
++| `brief today` | v0.1 | Creates a daily Markdown briefing |
++| `backup receipt` | v0.1 | Creates a local backup receipt |
++| `dashboard export` | v0.2 | Writes `dashboard/records.json` for the local panel |
++| `link project` | planned | Adds repo/folder references to a record |
++| `backup github` | planned | Publishes report package to knowledge bank |
++| `dashboard serve` | v0.3 | Starts local dashboard server |
++
++## Data Principles
++
++- Local-first by default
++- Human-readable Markdown records
++- JSON metadata for automation
++- SQLite or full-text search later
++- No secrets in published reports
++- Backup is evidence storage, not release approval
++
++## Related Repositories
++
++| Repo | Role |
++|---|---|
++| `trugurpala/hafizalar` | Work discipline and agent protocol |
++| `trugurpala/pala-os-bilgi-bankasi` | Reports, evidence, decisions |
++| `trugurpala/pala-memory-core` | Product implementation |
+diff --git a/dashboard/index.html b/dashboard/index.html
+new file mode 100644
+index 0000000..ee7b8d1
+--- /dev/null
++++ b/dashboard/index.html
+@@ -0,0 +1,300 @@
++<!doctype html>
++<html lang="tr">
++<head>
++  <meta charset="utf-8" />
++  <meta name="viewport" content="width=device-width, initial-scale=1" />
++  <title>Pala Memory Core</title>
++  <style>
++    :root {
++      --paper: #f7f4ed;
++      --surface: #fffdf8;
++      --ink: #24211d;
++      --muted: #6d665d;
++      --line: #dad2c2;
++      --green: #1f7a5a;
++      --blue: #295d8f;
++      --amber: #aa6b16;
++      --charcoal: #2f3437;
++    }
++
++    * { box-sizing: border-box; }
++
++    body {
++      margin: 0;
++      min-height: 100vh;
++      background:
++        linear-gradient(135deg, rgba(31, 122, 90, 0.12), transparent 36%),
++        linear-gradient(315deg, rgba(170, 107, 22, 0.16), transparent 42%),
++        var(--paper);
++      color: var(--ink);
++      font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
++      letter-spacing: 0;
++    }
++
++    .shell {
++      display: grid;
++      grid-template-columns: 260px minmax(0, 1fr);
++      min-height: 100vh;
++    }
++
++    aside {
++      border-right: 1px solid var(--line);
++      background: rgba(255, 253, 248, 0.74);
++      padding: 24px 18px;
++    }
++
++    main { padding: 28px clamp(18px, 4vw, 42px); }
++
++    h1 {
++      margin: 0 0 4px;
++      font-size: 20px;
++    }
++
++    h2 {
++      margin: 0;
++      font-family: Georgia, serif;
++      font-size: clamp(34px, 5vw, 58px);
++      line-height: 0.95;
++      letter-spacing: 0;
++    }
++
++    p { color: var(--muted); line-height: 1.55; }
++
++    .nav, .commands, .grid, .timeline, .rail { display: grid; gap: 12px; }
++
++    .nav { margin-top: 28px; }
++
++    button, .card, .record {
++      border: 1px solid var(--line);
++      border-radius: 8px;
++      background: var(--surface);
++    }
++
++    button {
++      min-height: 40px;
++      padding: 9px 11px;
++      text-align: left;
++      cursor: pointer;
++      font: inherit;
++    }
++
++    button.primary {
++      color: var(--surface);
++      border-color: var(--charcoal);
++      background: var(--charcoal);
++    }
++
++    .top {
++      display: grid;
++      grid-template-columns: minmax(0, 1fr) auto;
++      gap: 20px;
++      align-items: start;
++      margin-bottom: 18px;
++    }
++
++    .actions {
++      display: flex;
++      flex-wrap: wrap;
++      gap: 8px;
++      justify-content: flex-end;
++    }
++
++    .grid {
++      grid-template-columns: repeat(4, minmax(130px, 1fr));
++      margin-bottom: 14px;
++    }
++
++    .card {
++      min-height: 110px;
++      padding: 16px;
++      display: grid;
++      align-content: space-between;
++    }
++
++    .card span {
++      color: var(--muted);
++      font-size: 12px;
++      font-weight: 800;
++      text-transform: uppercase;
++    }
++
++    .card strong {
++      font-size: 34px;
++    }
++
++    .content {
++      display: grid;
++      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
++      gap: 14px;
++    }
++
++    .record {
++      display: grid;
++      grid-template-columns: 74px minmax(0, 1fr) auto;
++      gap: 14px;
++      padding: 16px;
++    }
++
++    .time, .chip {
++      color: var(--muted);
++      font-size: 12px;
++      font-weight: 800;
++    }
++
++    .record h3 { margin: 0 0 6px; font-size: 15px; }
++
++    .record p { margin: 0; font-size: 13px; }
++
++    .chip {
++      border-radius: 999px;
++      padding: 5px 8px;
++      background: #eee5d8;
++      white-space: nowrap;
++    }
++
++    .rail .card { min-height: auto; }
++
++    @media (max-width: 900px) {
++      .shell, .content, .top { grid-template-columns: 1fr; }
++      aside { border-right: 0; border-bottom: 1px solid var(--line); }
++      .actions { justify-content: flex-start; }
++      .grid { grid-template-columns: repeat(2, 1fr); }
++    }
++
++    @media (max-width: 560px) {
++      main { padding: 20px 14px; }
++      .grid, .record { grid-template-columns: 1fr; }
++    }
++  </style>
++</head>
++<body>
++  <div class="shell">
++    <aside>
++      <h1>Pala Memory Core</h1>
++      <p>Local AI work memory</p>
++      <div class="nav">
++        <button>Today <strong>12</strong></button>
++        <button>Projects <strong>6</strong></button>
++        <button>Backups <strong>3</strong></button>
++        <button>Review <strong>2</strong></button>
++      </div>
++      <div class="commands" style="margin-top: 26px;">
++        <button class="primary">+ Bunu kasaya al</button>
++        <button>Bugunu toparla</button>
++        <button>Projeye bagla</button>
++        <button>Yedekle</button>
++      </div>
++    </aside>
++    <main>
++      <section class="top">
++        <div>
++          <h2>Bugunun AI calisma kasasi</h2>
++          <p>ChatGPT, Codex, PDF, GitHub raporlari ve kararlar tek yerde; projeye bagli, aranabilir ve yedeklenebilir.</p>
++        </div>
++        <div class="actions">
++          <button>Import</button>
++          <button>Export</button>
++          <button class="primary">Backup</button>
++        </div>
++      </section>
++
++      <section class="grid">
++        <div class="card"><span>Records</span><strong id="stat-records">12</strong></div>
++        <div class="card"><span>Projects</span><strong id="stat-projects">6</strong></div>
++        <div class="card"><span>Files</span><strong id="stat-files">18</strong></div>
++        <div class="card"><span>Tasks</span><strong id="stat-tasks">2</strong></div>
++      </section>
++
++      <section class="content">
++        <div class="timeline" id="timeline">
++          <article class="record">
++            <div class="time">14:20</div>
++            <div>
++              <h3>Pala Memory Core MVP</h3>
++              <p>Local-first AI work memory cekirdegi tanimlandi ve ilk CLI iskeleti hazirlandi.</p>
++            </div>
++            <span class="chip">Linked</span>
++          </article>
++          <article class="record">
++            <div class="time">13:45</div>
++            <div>
++              <h3>Hafizalar + bilgi bankasi</h3>
++              <p>Calisma disiplini ile rapor/kanit arsivi ayrimi netlesti.</p>
++            </div>
++            <span class="chip">Saved</span>
++          </article>
++        </div>
++        <div class="rail">
++          <div class="card">
++            <span>Daily Brief</span>
++            <p>Ilk hedef: manuel capture, local kayit, gunluk ozet ve bilgi bankasi yedegi.</p>
++          </div>
++          <div class="card">
++            <span>Connectors</span>
++            <p>Codex, GitHub, Drive, PDF, Browser, ChatGPT Export, Markdown, SQLite, Dashboard, Rules Core.</p>
++          </div>
++        </div>
++      </section>
++    </main>
++  </div>
++  <script>
++    async function loadDashboardData() {
++      try {
++        const response = await fetch("./records.json", { cache: "no-store" });
++        if (!response.ok) return;
++        const data = await response.json();
++        const stats = data.stats || {};
++        setText("stat-records", stats.records);
++        setText("stat-projects", stats.projects);
++        setText("stat-files", stats.files);
++        setText("stat-tasks", stats.open_tasks);
++        renderTimeline(data.records || []);
++      } catch (_error) {
++        // The static demo remains visible when no exported data exists.
++      }
++    }
++
++    function setText(id, value) {
++      if (value === undefined || value === null) return;
++      const element = document.getElementById(id);
++      if (element) element.textContent = String(value);
++    }
++
++    function renderTimeline(records) {
++      const timeline = document.getElementById("timeline");
++      if (!timeline || records.length === 0) return;
++      timeline.replaceChildren();
++      for (const record of records.slice().reverse()) {
++        const article = document.createElement("article");
++        article.className = "record";
++
++        const time = document.createElement("div");
++        time.className = "time";
++        time.textContent = formatTime(record.created_at);
++
++        const body = document.createElement("div");
++        const title = document.createElement("h3");
++        title.textContent = record.title || "Untitled memory";
++        const summary = document.createElement("p");
++        summary.textContent = record.summary || "";
++        body.append(title, summary);
++
++        const chip = document.createElement("span");
++        chip.className = "chip";
++        chip.textContent = record.source || "memory";
++
++        article.append(time, body, chip);
++        timeline.append(article);
++      }
++    }
++
++    function formatTime(value) {
++      const date = new Date(value);
++      if (Number.isNaN(date.getTime())) return "--:--";
++      return date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
++    }
++
++    loadDashboardData();
++  </script>
++</body>
++</html>
+diff --git a/data/attachments/.gitkeep b/data/attachments/.gitkeep
+new file mode 100644
+index 0000000..2fa992c
+--- /dev/null
++++ b/data/attachments/.gitkeep
+@@ -0,0 +1 @@
++keep
+diff --git a/data/backups/.gitkeep b/data/backups/.gitkeep
+new file mode 100644
+index 0000000..2fa992c
+--- /dev/null
++++ b/data/backups/.gitkeep
+@@ -0,0 +1 @@
++keep
+diff --git a/data/inbox/.gitkeep b/data/inbox/.gitkeep
+new file mode 100644
+index 0000000..2fa992c
+--- /dev/null
++++ b/data/inbox/.gitkeep
+@@ -0,0 +1 @@
++keep
+diff --git a/data/records/.gitkeep b/data/records/.gitkeep
+new file mode 100644
+index 0000000..2fa992c
+--- /dev/null
++++ b/data/records/.gitkeep
+@@ -0,0 +1 @@
++keep
+diff --git a/data/reports/.gitkeep b/data/reports/.gitkeep
+new file mode 100644
+index 0000000..2fa992c
+--- /dev/null
++++ b/data/reports/.gitkeep
+@@ -0,0 +1 @@
++keep
+diff --git a/docs/backlog.md b/docs/backlog.md
+new file mode 100644
+index 0000000..b0cbd45
+--- /dev/null
++++ b/docs/backlog.md
+@@ -0,0 +1,55 @@
++# Backlog
++
++## Sprint 1: Local Core
++
++| Issue | Title | Outcome |
++|---|---|---|
++| `PMC-001` | Create local config file | User can set data path and knowledge-bank repo |
++| `PMC-002` | Add `remember` command | User can save Markdown + JSON memory records |
++| `PMC-003` | Add attachment copy and hash | PDFs/images/files are copied safely |
++| `PMC-004` | Add `brief today` command | Daily summary file is generated |
++| `PMC-005` | Add `backup receipt` command | Local backup receipt is generated |
++| `PMC-006` | Add `list` command | User can see recent records |
++| `PMC-007` | Add `show` command | User can inspect one record |
++| `PMC-008` | Add static dashboard data export | Dashboard can load `records.json` |
++| `PMC-008B` | Add local dashboard server | Dashboard can be opened from localhost |
++
++## Sprint 2: Project And Knowledge Bank
++
++| Issue | Title | Outcome |
++|---|---|---|
++| `PMC-009` | Add `link project` command | Existing records can be linked after capture |
++| `PMC-010` | Add report package generator | Implementation report package is prepared |
++| `PMC-011` | Add knowledge-bank folder convention | Reports land in predictable dated folders |
++| `PMC-012` | Add GitHub-ready manifest | Changed files and new files are listed |
++| `PMC-013` | Add raw patch attachment support | Patch/diff files can be included as evidence |
++
++## Sprint 3: Import And Dashboard
++
++| Issue | Title | Outcome |
++|---|---|---|
++| `PMC-014` | Add PDF/text import metadata | Imported files become searchable records |
++| `PMC-015` | Add ChatGPT export import plan | Official export path is documented and parsed |
++| `PMC-016` | Make dashboard read local JSON | Static preview becomes live local panel |
++| `PMC-017` | Add filters by source/project/tag | User can find records quickly |
++| `PMC-018` | Add daily briefing view | Dashboard shows today's summary |
++
++## Sprint 4: Backup And Connectors
++
++| Issue | Title | Outcome |
++|---|---|---|
++| `PMC-019` | Add GitHub backup connector | Reports can be published to configured repo |
++| `PMC-020` | Add Google Drive backup design | OAuth and upload flow is specified |
++| `PMC-021` | Add browser capture design | Playwright/Chrome capture is optional |
++| `PMC-022` | Add mobile share/import design | Phone capture uses share/export first |
++| `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
++
++## Risk Register
++
++| Risk | Mitigation |
++|---|---|
++| ChatGPT live history access is limited | Start with manual capture and official export import |
++| Browser capture breaks when UI changes | Keep Playwright connector optional |
++| Mobile OS blocks background capture | Use share sheet/export flow |
++| Public GitHub leaks private data | Add explicit backup command and redaction checks |
++| Data grows too large | Add retention and archive policy |
+diff --git a/docs/commands.md b/docs/commands.md
+new file mode 100644
+index 0000000..f20e361
+--- /dev/null
++++ b/docs/commands.md
+@@ -0,0 +1,73 @@
++# Commands
++
++## remember
++
++Creates a local memory record as Markdown + JSON.
++
++```text
++python pala.py remember --title "Idea" --text "Important note"
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--source codex` | Mark source as Codex |
++| `--project trugurpala/pala-os-v4` | Link to a GitHub repo |
++| `--file path.pdf` | Attach a file |
++| `--decision "..."` | Add a decision |
++| `--task "..."` | Add an open task |
++| `--tag memory` | Add a tag |
++
++## brief today
++
++Creates a daily Markdown brief from today's records.
++
++```text
++python pala.py brief today
++```
++
++## backup receipt
++
++Creates a local backup receipt. This is the MVP placeholder before GitHub/Drive upload.
++
++```text
++python pala.py backup receipt
++```
++
++## dashboard export
++
++Writes today's local records to `dashboard/records.json` so the static dashboard can show real captured data.
++
++```text
++python pala.py dashboard export
++```
++
++## dashboard serve
++
++Starts a local dashboard server from the `dashboard/` folder.
++
++```text
++python pala.py dashboard serve
++```
++
++Default URL:
++
++```text
++http://127.0.0.1:8765
++```
++
++Custom host/port:
++
++```text
++python pala.py dashboard serve --host 127.0.0.1 --port 8787
++```
++
++## Planned
++
++| Command | Purpose |
++|---|---|
++| `pala link project` | Attach an existing record to a repo or folder |
++| `pala backup github` | Publish report package to `pala-os-bilgi-bankasi` |
++| `pala backup drive` | Upload selected artifacts to Google Drive |
++| `pala import chatgpt-export` | Import official ChatGPT data export |
+diff --git a/docs/connectors.md b/docs/connectors.md
+new file mode 100644
+index 0000000..47cf15e
+--- /dev/null
++++ b/docs/connectors.md
+@@ -0,0 +1,50 @@
++# Connectors
++
++Pala Memory Core uses a staged connector model. The core stays local-first; connectors add capture, import, export, backup, or browsing capabilities.
++
++## Connector Table
++
++| Connector | Purpose | MVP Path | Risk |
++|---|---|---|---|
++| ChatGPT Desktop | Save important desktop conversations | Manual copy/import first | No guaranteed full live API |
++| ChatGPT Mobile | Save phone conversations | Share/export into inbox | Mobile OS restrictions |
++| ChatGPT Export | Import official export archive | Parse exported files | Export format can change |
++| Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
++| GitHub | Publish reports and read repo context | Knowledge-bank report output | Secrets must be filtered |
++| Google Drive | Backup files and reports | Upload selected artifacts | OAuth setup required |
++| Browser/Playwright | Capture visible web context/screenshots | Optional screen/page capture | UI changes can break capture |
++| PDF/Documents | Import and summarize PDFs/docs | Attach file + metadata first | OCR/text extraction later |
++| Local Files | Attach screenshots, patches, markdown, notes | Copy into `data/attachments` | Large files need retention rules |
++| Obsidian/Logseq | Human-readable knowledge viewer | Markdown-compatible records | Optional user preference |
++
++## Connector Contract
++
++Every connector should produce or update a memory record with:
++
++| Field | Meaning |
++|---|---|
++| `source` | Where the memory came from |
++| `summary` | Human-readable short summary |
++| `attachments` | Files copied into local storage |
++| `project_refs` | Related repo/folder/project |
++| `evidence` | URL, file, screenshot, command, or note |
++| `backup_status` | Local/GitHub/Drive state |
++
++## Staging
++
++| Stage | Connectors |
++|---|---|
++| `v0.1` | Manual, Codex, Local Files |
++| `v0.2` | GitHub project links |
++| `v0.3` | Knowledge-bank report publish |
++| `v0.4` | PDF/Documents import |
++| `v0.5` | Browser/Playwright capture |
++| `v0.6` | Google Drive backup |
++| `v0.7` | ChatGPT export import |
++| `v0.8` | Mobile share/import flow |
++| `v1.0` | Unified dashboard and recovery |
++
++## Design Rule
++
++If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
++
+diff --git a/docs/github-launch.md b/docs/github-launch.md
+new file mode 100644
+index 0000000..3b783b3
+--- /dev/null
++++ b/docs/github-launch.md
+@@ -0,0 +1,79 @@
++# GitHub Launch Notes
++
++## Repository
++
++Recommended name:
++
++```text
++trugurpala/pala-memory-core
++```
++
++## Short Description
++
++```text
++Local-first AI work memory for ChatGPT, Codex, files, reports, and backups.
++```
++
++## Topics
++
++```text
++ai-memory
++local-first
++codex
++chatgpt
++knowledge-base
++markdown
++personal-ai
++agent-tools
++backup
++github-reports
++```
++
++## First Commit Message
++
++```text
++Initial Pala Memory Core scaffold
++```
++
++## First Release Name
++
++```text
++v0.1.0-local-core-preview
++```
++
++## First Release Notes
++
++```markdown
++# Pala Memory Core v0.1.0 Local Core Preview
++
++This preview introduces the first local-first capture loop:
++
++- Save memory records as Markdown + JSON
++- Attach files with hashes
++- Link records to projects
++- Generate daily briefings
++- Generate local backup receipts
++- Preview the dashboard as static HTML
++
++This release is intended for personal experiments. GitHub/Drive backup, ChatGPT export import, browser capture, and mobile capture are planned next.
++```
++
++## README Badge Ideas
++
++```text
++Local-first
++Markdown records
++Zero-dependency MVP
++Personal AI memory
++```
++
++## Court Decision
++
++| Field | Value |
++|---|---|
++| Phase | INIT |
++| Status | PARTIAL |
++| Reason | Scaffold exists, but repo is not yet published and v0.1 commands are not verified in a real repository |
++| Release posture | Local prototype only |
++| Rollback | Delete generated scaffold or revert initial commit |
++
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+new file mode 100644
+index 0000000..563f4f2
+--- /dev/null
++++ b/docs/roadmap.md
+@@ -0,0 +1,40 @@
++# Roadmap
++
++## Product Direction
++
++Pala Memory Core should become a local-first dashboard and CLI for saving, summarizing, linking, reporting, and backing up daily AI work.
++
++## Milestones
++
++| Milestone | Goal | Done When |
++|---|---|---|
++| `v0.1` | Manual memory capture | `remember`, `brief today`, `backup receipt` work locally |
++| `v0.2` | Project linking | Records can point to GitHub repos and local folders |
++| `v0.3` | Knowledge bank reports | Report package can be prepared for `pala-os-bilgi-bankasi` |
++| `v0.4` | Attachment imports | PDFs, screenshots, markdown, text files are copied and hashed |
++| `v0.5` | Live local dashboard | Dashboard reads exported local records from local server |
++| `v0.6` | GitHub backup | Reports can be published to a configured GitHub repo |
++| `v0.7` | Google Drive backup | Selected artifacts can be uploaded to Drive |
++| `v0.8` | ChatGPT export import | Official exports can be imported and indexed |
++| `v0.9` | Browser capture | Playwright/Chrome can capture visible pages/screenshots |
++| `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
++
++## MVP Non-Goals
++
++- Fully automatic capture of every ChatGPT conversation
++- Mobile background monitoring
++- Secret scanning with perfect accuracy
++- Cloud-only storage
++- Replacing ChatGPT, Codex, GitHub, Drive, Obsidian, or Logseq
++
++## First Coding Tasks
++
++| Task | Description |
++|---|---|
++| Add config file | Store knowledge-bank repo, data path, and backup targets |
++| Add list command | Show recent records |
++| Add show command | Print one record |
++| Add project link command | Update `project_refs` after capture |
++| Add static dashboard data export | Generate `dashboard/records.json` |
++| Add local dashboard server | Serve `dashboard/` at `127.0.0.1` |
++| Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+new file mode 100644
+index 0000000..3bb568c
+--- /dev/null
++++ b/docs/security.md
+@@ -0,0 +1,40 @@
++# Security And Privacy
++
++Pala Memory Core is designed to store personal AI work. That can include private chats, code, PDFs, screenshots, business notes, and credentials accidentally pasted into a conversation.
++
++## Default Policy
++
++| Rule | Meaning |
++|---|---|
++| Local-first | Keep records on the user's machine unless backup is requested |
++| Explicit backup | Do not upload automatically in MVP |
++| Human-readable | Store Markdown so the owner can inspect records |
++| No secrets | Redact API keys, tokens, passwords, cookies, and private credentials |
++| Backup receipt | Record where files were backed up |
++| Recovery by evidence | Store enough metadata to find work later |
++
++## Sensitive Data To Filter
++
++- API keys
++- OAuth tokens
++- Session cookies
++- SSH keys
++- `.env` files
++- Database dumps
++- Customer data
++- Private documents
++- Local runtime secrets
++
++## Backup Targets
++
++| Target | Use | Caution |
++|---|---|---|
++| Local folder | Primary storage | Needs disk backup strategy |
++| GitHub | Public report/evidence links | Do not publish secrets or private data |
++| Google Drive | Private file backup | OAuth and sharing permissions matter |
++| Obsidian/Logseq vault | Personal reading/search | Sync settings may upload files |
++
++## Release Rule
++
++Backup is not release approval. A record can be backed up and still be marked as partial, blocked, or needs review.
++
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+new file mode 100644
+index 0000000..88001e8
+--- /dev/null
++++ b/docs/v0.1-acceptance.md
+@@ -0,0 +1,64 @@
++# v0.1 Acceptance Criteria
++
++## Goal
++
++Pala Memory Core v0.1 proves the core loop:
++
++```text
++capture -> local record -> daily brief -> local backup receipt
++```
++
++The version is complete when a user can save useful ChatGPT/Codex work locally, generate a daily summary, and produce a backup receipt without needing cloud services.
++
++## Required User Flows
++
++| Flow | Command | Completion Evidence |
++|---|---|---|
++| Save a text memory | `python pala.py remember --title "..." --text "..."` | Markdown and JSON record created under `data/records/` |
++| Save with project link | `python pala.py remember --title "..." --text "..." --project trugurpala/repo` | JSON contains `project_refs` |
++| Save with attachment | `python pala.py remember --title "..." --file file.pdf` | File copied under `data/attachments/` and hash stored |
++| Create daily brief | `python pala.py brief today` | Markdown brief created under `data/reports/` |
++| Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
++| Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
++| Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
++
++## Required Files
++
++| File | Purpose |
++|---|---|
++| `README.md` | Explain the product and MVP |
++| `INSTALL.md` | Explain local install and first commands |
++| `AGENTS.md` | Explain agent working rules |
++| `pala.py` | MVP CLI |
++| `schema/record.schema.json` | Record contract |
++| `docs/commands.md` | Command reference |
++| `docs/connectors.md` | Connector model |
++| `docs/security.md` | Privacy and backup rules |
++| `dashboard/index.html` | Static dashboard preview |
++| `examples/sample-record.json` | Example record |
++
++## Non-Goals
++
++- No automatic ChatGPT history scraping
++- No mobile background capture
++- No Google Drive upload yet
++- No GitHub write API yet
++- No vector search yet
++- No secret scanner guarantee yet
++
++## Definition Of Done
++
++| Check | Expected Result |
++|---|---|
++| CLI capture | Creates valid record files |
++| Attachment copy | Does not mutate original file |
++| Brief generation | Includes today's records and open tasks |
++| Backup receipt | Shows local complete, GitHub/Drive pending |
++| Dashboard preview | Opens as static HTML |
++| Dashboard data export | Static dashboard can read `records.json` |
++| Dashboard local server | Dashboard can be served at `http://127.0.0.1:8765` |
++| Docs | New user can understand first three commands |
++
++## Release Posture
++
++`v0.1` is a local prototype. It is usable for personal capture experiments, but not ready for automatic private data backup or public multi-user use.
+diff --git a/docs/v0.1-smoke-test.md b/docs/v0.1-smoke-test.md
+new file mode 100644
+index 0000000..ae6358c
+--- /dev/null
++++ b/docs/v0.1-smoke-test.md
+@@ -0,0 +1,45 @@
++# v0.1 Smoke Test
++
++Date: 2026-06-09
++Phase: local core preview
++Status: PASS for local MVP loop
++
++## Tested Flow
++
++```text
++remember -> brief today -> backup receipt
++```
++
++## Command
++
++```powershell
++python .\pala.py remember --title "Pala Memory Core v0.1 smoke test" --text "Bu kayit, Pala Memory Core cekirdeginin manuel capture, daily brief ve backup receipt akisini dogrulamak icin olusturuldu." --source codex --project trugurpala/pala-memory-core --tag smoke-test --decision "v0.1 once manual capture ile baslamali" --task "GitHub repo scaffold publish adimini planla"
++python .\pala.py brief today
++python .\pala.py backup receipt
++```
++
++## Result
++
++```text
++saved 20260609T130017Z-pala-memory-core-v01-smoke-test
++data\records\2026-06-09\20260609T130017Z-pala-memory-core-v01-smoke-test.md
++brief saved data\reports\2026-06-09-brief.md
++receipt saved data\backups\2026-06-09-backup-receipt.md
++```
++
++## Evidence Files
++
++| File | Purpose |
++|---|---|
++| `data/records/2026-06-09/20260609T130017Z-pala-memory-core-v01-smoke-test.md` | Human-readable memory record |
++| `data/records/2026-06-09/20260609T130017Z-pala-memory-core-v01-smoke-test.json` | Machine-readable memory metadata |
++| `data/reports/2026-06-09-brief.md` | Daily brief |
++| `data/backups/2026-06-09-backup-receipt.md` | Local backup receipt |
++
++## Release Posture
++
++The local v0.1 loop is proven in the scaffold folder. The project is still `PARTIAL` overall because GitHub publishing, Drive backup, live dashboard data loading, ChatGPT export import, browser capture, and mobile capture are not implemented yet.
++
++## Follow-Up
++
++Dashboard data export was added after this smoke test. See `docs/v0.2-dashboard-export.md`.
+diff --git a/docs/v0.2-dashboard-export.md b/docs/v0.2-dashboard-export.md
+new file mode 100644
+index 0000000..fca1cac
+--- /dev/null
++++ b/docs/v0.2-dashboard-export.md
+@@ -0,0 +1,44 @@
++# v0.2 Dashboard Export
++
++Date: 2026-06-09
++Phase: local dashboard data preview
++Status: PASS for exported local dashboard data
++
++## Goal
++
++Connect the static dashboard preview to real local records without requiring a server, database, or cloud account.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py dashboard export` |
++| Data output | Writes `dashboard/records.json` |
++| Dashboard | Reads `records.json` when available |
++| Fallback | Keeps static demo visible if no data export exists |
++
++## Command
++
++```powershell
++python .\pala.py dashboard export
++```
++
++## Result
++
++```text
++dashboard data saved dashboard\records.json
++```
++
++## Evidence File
++
++| File | Purpose |
++|---|---|
++| `dashboard/records.json` | Exported local records and stats for dashboard rendering |
++
++## Release Posture
++
++This is still a local preview. The dashboard can now read exported local data, but it is not yet a live server and does not auto-refresh.
++
++## Follow-Up
++
++Dashboard local serving was added after this export step. See `docs/v0.3-dashboard-serve.md`.
+diff --git a/docs/v0.3-dashboard-serve.md b/docs/v0.3-dashboard-serve.md
+new file mode 100644
+index 0000000..a85faa2
+--- /dev/null
++++ b/docs/v0.3-dashboard-serve.md
+@@ -0,0 +1,52 @@
++# v0.3 Dashboard Serve
++
++Date: 2026-06-09
++Phase: local dashboard serving preview
++Status: PASS for local dashboard serving
++
++## Goal
++
++Serve the local dashboard from the CLI so the browser can load `index.html` and `records.json` from the same local origin.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py dashboard serve` |
++| Default URL | `http://127.0.0.1:8765` |
++| Dashboard root | `dashboard/` |
++| Customization | `--host` and `--port` options |
++
++## Command
++
++```powershell
++python .\pala.py dashboard serve
++```
++
++## Expected Result
++
++```text
++serving dashboard at http://127.0.0.1:8765
++press Ctrl+C to stop
++```
++
++## Smoke Test
++
++```powershell
++python .\pala.py dashboard export
++$proc = Start-Process python -ArgumentList '.\pala.py dashboard serve --host 127.0.0.1 --port 8765' -PassThru -WindowStyle Hidden
++Start-Sleep -Seconds 1
++Invoke-WebRequest -UseBasicParsing 'http://127.0.0.1:8765/records.json'
++Stop-Process -Id $proc.Id -Force
++```
++
++Observed output:
++
++```text
++dashboard data saved dashboard\records.json
++status=200 bytes=1347
++```
++
++## Release Posture
++
++This is still a local prototype. The server is intentionally simple and uses Python standard library HTTP serving for local preview only.
+diff --git a/examples/sample-record.json b/examples/sample-record.json
+new file mode 100644
+index 0000000..baad5bb
+--- /dev/null
++++ b/examples/sample-record.json
+@@ -0,0 +1,39 @@
++{
++  "id": "20260609T120000Z-pala-memory-core-idea",
++  "created_at": "2026-06-09T12:00:00+00:00",
++  "source": "codex",
++  "title": "Pala Memory Core idea",
++  "summary": "Local-first AI work memory for ChatGPT, Codex, files, reports, and backups.",
++  "raw_text_path": "data/records/2026-06-09/20260609T120000Z-pala-memory-core-idea.md",
++  "attachments": [],
++  "project_refs": [
++    {
++      "name": "trugurpala/pala-memory-core",
++      "kind": "github_repo"
++    }
++  ],
++  "tags": ["memory", "pala-os", "mvp"],
++  "decisions": [
++    "Start with reliable manual capture before browser/mobile automation."
++  ],
++  "tasks": [
++    {
++      "text": "Create initial CLI and dashboard skeleton.",
++      "status": "open"
++    }
++  ],
++  "evidence": [
++    {
++      "kind": "note",
++      "value": "Initial concept captured from Codex planning conversation."
++    }
++  ],
++  "backup_status": {
++    "local": "complete",
++    "github": "pending",
++    "google_drive": "pending",
++    "last_backup_at": "2026-06-09T12:00:00+00:00",
++    "receipt": ""
++  }
++}
++
+diff --git a/pala.py b/pala.py
+new file mode 100644
+index 0000000..5df89b1
+--- /dev/null
++++ b/pala.py
+@@ -0,0 +1,342 @@
++#!/usr/bin/env python3
++"""Pala Memory Core MVP CLI.
++
++This is a zero-dependency starter CLI for local-first memory capture.
++It writes human-readable Markdown records plus JSON metadata.
++"""
++
++from __future__ import annotations
++
++import argparse
++import datetime as dt
++import hashlib
++import http.server
++import json
++import shutil
++import socketserver
++from pathlib import Path
++from typing import Any
++
++
++ROOT = Path(__file__).resolve().parent
++DATA = ROOT / "data"
++RECORDS = DATA / "records"
++REPORTS = DATA / "reports"
++ATTACHMENTS = DATA / "attachments"
++BACKUPS = DATA / "backups"
++DASHBOARD = ROOT / "dashboard"
++
++
++def ensure_dirs() -> None:
++    for path in [DATA, RECORDS, REPORTS, ATTACHMENTS, BACKUPS, DATA / "inbox"]:
++        path.mkdir(parents=True, exist_ok=True)
++
++
++def now_utc() -> dt.datetime:
++    return dt.datetime.now(dt.timezone.utc)
++
++
++def stamp() -> str:
++    return now_utc().strftime("%Y%m%dT%H%M%SZ")
++
++
++def today() -> str:
++    return dt.datetime.now().strftime("%Y-%m-%d")
++
++
++def slug(value: str) -> str:
++    clean = []
++    for char in value.lower():
++        if char.isalnum():
++            clean.append(char)
++        elif char in [" ", "-", "_"]:
++            clean.append("-")
++    collapsed = "-".join(part for part in "".join(clean).split("-") if part)
++    return collapsed[:60] or "memory"
++
++
++def sha256(path: Path) -> str:
++    digest = hashlib.sha256()
++    with path.open("rb") as handle:
++        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
++            digest.update(chunk)
++    return digest.hexdigest()
++
++
++def copy_attachment(path: Path, record_id: str) -> dict[str, str]:
++    target_dir = ATTACHMENTS / record_id
++    target_dir.mkdir(parents=True, exist_ok=True)
++    target = target_dir / path.name
++    shutil.copy2(path, target)
++    suffix = path.suffix.lower().lstrip(".")
++    kind = {
++        "pdf": "pdf",
++        "png": "image",
++        "jpg": "image",
++        "jpeg": "image",
++        "md": "markdown",
++        "txt": "text",
++        "patch": "patch",
++        "zip": "archive",
++    }.get(suffix, "other")
++    return {
++        "path": str(target.relative_to(ROOT)),
++        "kind": kind,
++        "sha256": sha256(target),
++    }
++
++
++def write_record(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    record_id = f"{stamp()}-{slug(args.title)}"
++    record_dir = RECORDS / today()
++    record_dir.mkdir(parents=True, exist_ok=True)
++
++    text = args.text or ""
++    if args.text_file:
++        text_file = Path(args.text_file).expanduser().resolve()
++        text = text_file.read_text(encoding="utf-8")
++
++    attachments = []
++    for item in args.file or []:
++        path = Path(item).expanduser().resolve()
++        attachments.append(copy_attachment(path, record_id))
++
++    summary = args.summary or (text.strip().replace("\n", " ")[:280] if text.strip() else args.title)
++    created_at = now_utc().isoformat()
++    md_path = record_dir / f"{record_id}.md"
++    json_path = record_dir / f"{record_id}.json"
++
++    markdown = f"""# {args.title}
++
++Created: {created_at}
++Source: {args.source}
++Project: {args.project or "unlinked"}
++
++## Summary
++
++{summary}
++
++## Raw Text
++
++```text
++{text.strip()}
++```
++
++## Attachments
++
++{format_list([item["path"] for item in attachments])}
++
++## Decisions
++
++{format_list(args.decision or [])}
++
++## Tasks
++
++{format_list(args.task or [])}
++"""
++    md_path.write_text(markdown, encoding="utf-8")
++
++    record: dict[str, Any] = {
++        "id": record_id,
++        "created_at": created_at,
++        "source": args.source,
++        "title": args.title,
++        "summary": summary,
++        "raw_text_path": str(md_path.relative_to(ROOT)),
++        "attachments": attachments,
++        "project_refs": project_refs(args.project),
++        "tags": args.tag or [],
++        "decisions": args.decision or [],
++        "tasks": [{"text": item, "status": "open"} for item in (args.task or [])],
++        "evidence": [],
++        "backup_status": {
++            "local": "complete",
++            "github": "pending",
++            "google_drive": "pending",
++            "last_backup_at": created_at,
++            "receipt": "",
++        },
++    }
++    json_path.write_text(json.dumps(record, indent=2, ensure_ascii=True), encoding="utf-8")
++    print(f"saved {record_id}")
++    print(str(md_path.relative_to(ROOT)))
++
++
++def project_refs(project: str | None) -> list[dict[str, str]]:
++    if not project:
++        return []
++    kind = "github_repo" if "/" in project and not project.startswith((".", "/", "\\")) else "local_folder"
++    return [{"name": project, "kind": kind}]
++
++
++def format_list(items: list[str]) -> str:
++    if not items:
++        return "- none"
++    return "\n".join(f"- {item}" for item in items)
++
++
++def load_today_records() -> list[dict[str, Any]]:
++    record_dir = RECORDS / today()
++    if not record_dir.exists():
++        return []
++    records = []
++    for path in sorted(record_dir.glob("*.json")):
++        records.append(json.loads(path.read_text(encoding="utf-8")))
++    return records
++
++
++def brief_today(_args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = load_today_records()
++    report_path = REPORTS / f"{today()}-brief.md"
++    lines = [
++        f"# Daily Brief - {today()}",
++        "",
++        f"Records: {len(records)}",
++        "",
++        "## Timeline",
++        "",
++    ]
++    for record in records:
++        lines.extend(
++            [
++                f"### {record['title']}",
++                "",
++                f"- Source: {record['source']}",
++                f"- Summary: {record['summary']}",
++                f"- Record: {record['raw_text_path']}",
++                "",
++            ]
++        )
++    lines.extend(["## Open Tasks", ""])
++    open_tasks = [
++        task["text"]
++        for record in records
++        for task in record.get("tasks", [])
++        if task.get("status") != "done"
++    ]
++    lines.append(format_list(open_tasks))
++    report_path.write_text("\n".join(lines), encoding="utf-8")
++    print(f"brief saved {report_path.relative_to(ROOT)}")
++
++
++def backup_receipt(_args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = load_today_records()
++    receipt_path = BACKUPS / f"{today()}-backup-receipt.md"
++    lines = [
++        f"# Backup Receipt - {today()}",
++        "",
++        f"Created: {now_utc().isoformat()}",
++        f"Records included: {len(records)}",
++        "",
++        "## Status",
++        "",
++        "- Local: complete",
++        "- GitHub: pending",
++        "- Google Drive: pending",
++        "",
++        "## Records",
++        "",
++    ]
++    lines.append(format_list([record["raw_text_path"] for record in records]))
++    receipt_path.write_text("\n".join(lines), encoding="utf-8")
++    print(f"receipt saved {receipt_path.relative_to(ROOT)}")
++
++
++def dashboard_export(_args: argparse.Namespace) -> None:
++    ensure_dirs()
++    DASHBOARD.mkdir(parents=True, exist_ok=True)
++    records = load_today_records()
++    open_tasks = [
++        task
++        for record in records
++        for task in record.get("tasks", [])
++        if task.get("status") != "done"
++    ]
++    linked_projects = {
++        project.get("name")
++        for record in records
++        for project in record.get("project_refs", [])
++        if project.get("name")
++    }
++    attachment_count = sum(len(record.get("attachments", [])) for record in records)
++    payload = {
++        "generated_at": now_utc().isoformat(),
++        "date": today(),
++        "stats": {
++            "records": len(records),
++            "projects": len(linked_projects),
++            "files": attachment_count,
++            "open_tasks": len(open_tasks),
++        },
++        "records": records,
++    }
++    target = DASHBOARD / "records.json"
++    target.write_text(json.dumps(payload, indent=2, ensure_ascii=True), encoding="utf-8")
++    print(f"dashboard data saved {target.relative_to(ROOT)}")
++
++
++def dashboard_serve(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    DASHBOARD.mkdir(parents=True, exist_ok=True)
++    handler = lambda *handler_args, **handler_kwargs: http.server.SimpleHTTPRequestHandler(
++        *handler_args,
++        directory=str(DASHBOARD),
++        **handler_kwargs,
++    )
++    with socketserver.TCPServer((args.host, args.port), handler) as server:
++        url = f"http://{args.host}:{args.port}"
++        print(f"serving dashboard at {url}")
++        print("press Ctrl+C to stop")
++        server.serve_forever()
++
++
++def build_parser() -> argparse.ArgumentParser:
++    parser = argparse.ArgumentParser(prog="pala", description="Pala Memory Core MVP CLI")
++    sub = parser.add_subparsers(dest="command", required=True)
++
++    remember = sub.add_parser("remember", help="save a memory record")
++    remember.add_argument("--title", required=True)
++    remember.add_argument("--text", default="")
++    remember.add_argument("--text-file")
++    remember.add_argument("--summary")
++    remember.add_argument("--source", default="manual")
++    remember.add_argument("--project")
++    remember.add_argument("--tag", action="append")
++    remember.add_argument("--decision", action="append")
++    remember.add_argument("--task", action="append")
++    remember.add_argument("--file", action="append")
++    remember.set_defaults(func=write_record)
++
++    brief = sub.add_parser("brief", help="create a brief")
++    brief_sub = brief.add_subparsers(dest="period", required=True)
++    today_cmd = brief_sub.add_parser("today", help="brief today's records")
++    today_cmd.set_defaults(func=brief_today)
++
++    backup = sub.add_parser("backup", help="create backup artifacts")
++    backup_sub = backup.add_subparsers(dest="target", required=True)
++    receipt = backup_sub.add_parser("receipt", help="create a local backup receipt")
++    receipt.set_defaults(func=backup_receipt)
++
++    dashboard = sub.add_parser("dashboard", help="dashboard utilities")
++    dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
++    export = dashboard_sub.add_parser("export", help="export dashboard data")
++    export.set_defaults(func=dashboard_export)
++    serve = dashboard_sub.add_parser("serve", help="serve local dashboard")
++    serve.add_argument("--host", default="127.0.0.1")
++    serve.add_argument("--port", type=int, default=8765)
++    serve.set_defaults(func=dashboard_serve)
++
++    return parser
++
++
++def main() -> None:
++    parser = build_parser()
++    args = parser.parse_args()
++    args.func(args)
++
++
++if __name__ == "__main__":
++    main()
+diff --git a/schema/record.schema.json b/schema/record.schema.json
+new file mode 100644
+index 0000000..c4898c1
+--- /dev/null
++++ b/schema/record.schema.json
+@@ -0,0 +1,99 @@
++{
++  "$schema": "https://json-schema.org/draft/2020-12/schema",
++  "title": "Pala Memory Core Record",
++  "type": "object",
++  "required": [
++    "id",
++    "created_at",
++    "source",
++    "title",
++    "summary",
++    "raw_text_path",
++    "attachments",
++    "project_refs",
++    "tags",
++    "decisions",
++    "tasks",
++    "evidence",
++    "backup_status"
++  ],
++  "properties": {
++    "id": { "type": "string" },
++    "created_at": { "type": "string", "format": "date-time" },
++    "source": {
++      "type": "string",
++      "enum": ["chatgpt", "codex", "github", "google_drive", "pdf", "browser", "manual", "other"]
++    },
++    "title": { "type": "string" },
++    "summary": { "type": "string" },
++    "raw_text_path": { "type": "string" },
++    "attachments": {
++      "type": "array",
++      "items": {
++        "type": "object",
++        "required": ["path", "kind"],
++        "properties": {
++          "path": { "type": "string" },
++          "kind": {
++            "type": "string",
++            "enum": ["pdf", "image", "markdown", "text", "patch", "archive", "other"]
++          },
++          "sha256": { "type": "string" },
++          "source_url": { "type": "string" }
++        }
++      }
++    },
++    "project_refs": {
++      "type": "array",
++      "items": {
++        "type": "object",
++        "required": ["name", "kind"],
++        "properties": {
++          "name": { "type": "string" },
++          "kind": {
++            "type": "string",
++            "enum": ["github_repo", "local_folder", "knowledge_bank", "unknown"]
++          },
++          "url": { "type": "string" },
++          "local_path": { "type": "string" }
++        }
++      }
++    },
++    "tags": { "type": "array", "items": { "type": "string" } },
++    "decisions": { "type": "array", "items": { "type": "string" } },
++    "tasks": {
++      "type": "array",
++      "items": {
++        "type": "object",
++        "required": ["text", "status"],
++        "properties": {
++          "text": { "type": "string" },
++          "status": { "type": "string", "enum": ["open", "in_progress", "done", "blocked"] }
++        }
++      }
++    },
++    "evidence": {
++      "type": "array",
++      "items": {
++        "type": "object",
++        "required": ["kind", "value"],
++        "properties": {
++          "kind": { "type": "string", "enum": ["command", "file", "url", "screenshot", "note", "diff"] },
++          "value": { "type": "string" }
++        }
++      }
++    },
++    "backup_status": {
++      "type": "object",
++      "required": ["local", "github", "google_drive"],
++      "properties": {
++        "local": { "type": "string", "enum": ["pending", "complete", "failed", "skipped"] },
++        "github": { "type": "string", "enum": ["pending", "complete", "failed", "skipped"] },
++        "google_drive": { "type": "string", "enum": ["pending", "complete", "failed", "skipped"] },
++        "last_backup_at": { "type": "string", "format": "date-time" },
++        "receipt": { "type": "string" }
++      }
++    }
++  }
++}
++
