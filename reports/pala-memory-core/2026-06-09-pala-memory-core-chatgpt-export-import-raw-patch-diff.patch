@@ -1,0 +1,470 @@
+﻿commit e61f3c8e5d2e5a5f60c2fd4a3a1116398025d55e
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:25:13 2026 +0300
+
+    Add ChatGPT export import preview
+---
+ INSTALL.md                         |   2 +
+ README.md                          |   2 +
+ docs/backlog.md                    |   2 +-
+ docs/commands.md                   |  28 ++++++-
+ docs/connectors.md                 |  13 +++-
+ docs/roadmap.md                    |   3 +-
+ docs/security.md                   |  11 +++
+ docs/v0.1-acceptance.md            |   2 +
+ docs/v0.5-chatgpt-export-import.md |  58 ++++++++++++++
+ pala.py                            | 155 ++++++++++++++++++++++++++++++++++++-
+ 10 files changed, 271 insertions(+), 5 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index b639c51..5dbbfcf 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -19,6 +19,7 @@ python pala.py remember --title "First memory" --text "Pala Memory Core is insta
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
++python pala.py import chatgpt-export export.zip
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -67,6 +68,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Create local backup receipt | `python pala.py backup receipt` |
+ | Prepare knowledge-bank backup | `python pala.py backup github` |
+ | Commit and push knowledge-bank backup | `python pala.py backup github --push` |
++| Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+ 
+diff --git a/README.md b/README.md
+index ee8a742..0340215 100644
+--- a/README.md
++++ b/README.md
+@@ -13,6 +13,7 @@ python pala.py remember --title "Pala Memory Core idea" --text "Capture this wor
+ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
++python pala.py import chatgpt-export export.zip
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -61,6 +62,7 @@ pala-memory-core/
+ | `dashboard export` | v0.2 | Writes `dashboard/records.json` for the local panel |
+ | `dashboard serve` | v0.3 | Starts local dashboard server |
+ | `backup github` | v0.4 | Creates a redacted knowledge-bank backup package |
++| `import chatgpt-export` | v0.5 | Imports ChatGPT export files as memory records |
+ | `link project` | planned | Adds repo/folder references to a record |
+ | `backup drive` | planned | Uploads selected artifacts to Google Drive |
+ 
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 1123550..1fe0bce 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -29,7 +29,7 @@
+ | Issue | Title | Outcome |
+ |---|---|---|
+ | `PMC-014` | Add PDF/text import metadata | Imported files become searchable records |
+-| `PMC-015` | Add ChatGPT export import plan | Official export path is documented and parsed |
++| `PMC-015` | Add ChatGPT export import | Export zip/folder/json/html/md/txt can become records |
+ | `PMC-016` | Make dashboard read local JSON | Static preview becomes live local panel |
+ | `PMC-017` | Add filters by source/project/tag | User can find records quickly |
+ | `PMC-018` | Add daily briefing view | Dashboard shows today's summary |
+diff --git a/docs/commands.md b/docs/commands.md
+index 9bbc6df..c5380ff 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -77,6 +77,33 @@ Writes today's local records to `dashboard/records.json` so the static dashboard
+ python pala.py dashboard export
+ ```
+ 
++## import chatgpt-export
++
++Imports ChatGPT export files into local memory records.
++
++Supported inputs:
++
++| Input | Behavior |
++|---|---|
++| `.zip` | Reads supported text files inside the archive |
++| folder | Recursively imports supported files |
++| `.json` | Parses ChatGPT conversation mappings when present |
++| `.html` / `.htm` | Extracts visible text |
++| `.md` / `.txt` | Imports raw text |
++
++```text
++python pala.py import chatgpt-export export.zip
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--project trugurpala/pala-memory-core` | Link imported records to a project |
++| `--tag archive` | Add an extra tag |
++| `--max-records 25` | Limit created records |
++| `--max-chars 12000` | Limit text stored per record |
++
+ ## dashboard serve
+ 
+ Starts a local dashboard server from the `dashboard/` folder.
+@@ -103,4 +130,3 @@ python pala.py dashboard serve --host 127.0.0.1 --port 8787
+ |---|---|
+ | `pala link project` | Attach an existing record to a repo or folder |
+ | `pala backup drive` | Upload selected artifacts to Google Drive |
+-| `pala import chatgpt-export` | Import official ChatGPT data export |
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 31981e8..018ac16 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -8,7 +8,7 @@ Pala Memory Core uses a staged connector model. The core stays local-first; conn
+ |---|---|---|---|
+ | ChatGPT Desktop | Save important desktop conversations | Manual copy/import first | No guaranteed full live API |
+ | ChatGPT Mobile | Save phone conversations | Share/export into inbox | Mobile OS restrictions |
+-| ChatGPT Export | Import official export archive | Parse exported files | Export format can change |
++| ChatGPT Export | Import official export archive | Parse zip/folder/json/html/md/txt into records | Export format can change |
+ | Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
+ | GitHub | Publish reports and read repo context | Redacted knowledge-bank backup package | Secrets must be filtered |
+ | Google Drive | Backup files and reports | Upload selected artifacts | OAuth setup required |
+@@ -54,6 +54,17 @@ The first GitHub connector writes a redacted package into a local knowledge-bank
+ | `--commit` | Commit package in knowledge-bank repo |
+ | `--push` | Commit and push package |
+ 
++## ChatGPT Export Import Behavior
++
++The first ChatGPT export connector reads local files only. It supports `.zip`, folders, `.json`, `.html`, `.md`, and `.txt`.
++
++| Input | Behavior |
++|---|---|
++| ChatGPT-style `mapping` JSON | Splits conversations into memory records |
++| Other JSON | Stores formatted JSON as one record |
++| HTML | Extracts visible text |
++| Markdown/Text | Stores text directly |
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 79f480e..d1cca1d 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -15,7 +15,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.5` | Live local dashboard | Dashboard reads exported local records from local server |
+ | `v0.6` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
+ | `v0.7` | Google Drive backup | Selected artifacts can be uploaded to Drive |
+-| `v0.8` | ChatGPT export import | Official exports can be imported and indexed |
++| `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+ | `v0.9` | Browser capture | Playwright/Chrome can capture visible pages/screenshots |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+@@ -38,4 +38,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add static dashboard data export | Generate `dashboard/records.json` |
+ | Add local dashboard server | Serve `dashboard/` at `127.0.0.1` |
+ | Add GitHub backup package | Write redacted package to local knowledge bank |
++| Add ChatGPT export import | Convert export files into local memory records |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index 3ff774a..1d5327a 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -49,3 +49,14 @@ Backup is not release approval. A record can be backed up and still be marked as
+ | `--push` | Commit and push package |
+ 
+ Raw conversation text is not copied by default. Full-fidelity backups should use private storage.
++
++## ChatGPT Export Import Defaults
++
++`pala import chatgpt-export` writes local memory records only. Generated records are ignored by Git through `.gitignore`.
++
++| Control | Purpose |
++|---|---|
++| `--max-records` | Avoid importing too much at once |
++| `--max-chars` | Limit text stored per record |
++| `--project` | Link imports to a repo/folder |
++| `--tag` | Mark imported records for later review |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 66546a9..397b06b 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -20,6 +20,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create daily brief | `python pala.py brief today` | Markdown brief created under `data/reports/` |
+ | Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
+ | Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
++| Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+ 
+@@ -59,6 +60,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Dashboard data export | Static dashboard can read `records.json` |
+ | Dashboard local server | Dashboard can be served at `http://127.0.0.1:8765` |
+ | GitHub backup package | Writes redacted report/manifest/receipt without pushing by default |
++| ChatGPT export import | Supports zip/folder/json/html/md/txt inputs |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.5-chatgpt-export-import.md b/docs/v0.5-chatgpt-export-import.md
+new file mode 100644
+index 0000000..2e57032
+--- /dev/null
++++ b/docs/v0.5-chatgpt-export-import.md
+@@ -0,0 +1,58 @@
++# v0.5 ChatGPT Export Import
++
++Date: 2026-06-09
++Phase: ChatGPT export import preview
++Status: PASS for local ChatGPT export import preview
++
++## Goal
++
++Convert ChatGPT export files into local Pala Memory Core records so useful conversations can survive outside the original chat thread.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py import chatgpt-export <path>` |
++| Inputs | `.zip`, folder, `.json`, `.html`, `.md`, `.txt` |
++| ChatGPT JSON | Splits `mapping` conversations into records |
++| Safety | Supports `--max-records` and `--max-chars` |
++| Project link | Supports `--project` |
++| Tags | Adds `chatgpt-export` plus optional user tags |
++
++## Command
++
++```powershell
++python .\pala.py import chatgpt-export export.zip --project trugurpala/pala-memory-core --tag archive
++```
++
++## Expected Result
++
++```text
++saved <record-id>
++data\records\<date>\<record-id>.md
++imported <n> record(s) from <path>
++```
++
++## Smoke Test
++
++Created a sample ChatGPT-style `conversations.json`, zipped it, then imported it:
++
++```powershell
++python .\pala.py import chatgpt-export .\data\inbox\chatgpt-export-sample.zip --project trugurpala/pala-memory-core --tag smoke-test --max-records 3 --max-chars 2000
++python .\pala.py brief today
++python .\pala.py dashboard export
++```
++
++Observed output after BOM-safe JSON decoding fix:
++
++```text
++saved 20260609T132447Z-sample-chatgpt-export-conversation
++data\records\2026-06-09\20260609T132447Z-sample-chatgpt-export-conversation.md
++imported 1 record(s) from C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core\data\inbox\chatgpt-export-sample.zip
++brief saved data\reports\2026-06-09-brief.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is a local import preview. It does not call the ChatGPT service; it reads files the user already has locally.
+diff --git a/pala.py b/pala.py
+index 584774c..c7db791 100644
+--- a/pala.py
++++ b/pala.py
+@@ -10,6 +10,7 @@ from __future__ import annotations
+ import argparse
+ import datetime as dt
+ import hashlib
++import html.parser
+ import http.server
+ import json
+ import os
+@@ -17,6 +18,7 @@ import re
+ import shutil
+ import socketserver
+ import subprocess
++import zipfile
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -98,9 +100,9 @@ def copy_attachment(path: Path, record_id: str) -> dict[str, str]:
+ 
+ def write_record(args: argparse.Namespace) -> None:
+     ensure_dirs()
+-    record_id = f"{stamp()}-{slug(args.title)}"
+     record_dir = RECORDS / today()
+     record_dir.mkdir(parents=True, exist_ok=True)
++    record_id = unique_record_id(record_dir, f"{stamp()}-{slug(args.title)}")
+ 
+     text = args.text or ""
+     if args.text_file:
+@@ -173,6 +175,15 @@ Project: {args.project or "unlinked"}
+     print(str(md_path.relative_to(ROOT)))
+ 
+ 
++def unique_record_id(record_dir: Path, base_id: str) -> str:
++    record_id = base_id
++    counter = 2
++    while (record_dir / f"{record_id}.md").exists() or (record_dir / f"{record_id}.json").exists():
++        record_id = f"{base_id}-{counter}"
++        counter += 1
++    return record_id
++
++
+ def project_refs(project: str | None) -> list[dict[str, str]]:
+     if not project:
+         return []
+@@ -370,6 +381,137 @@ def backup_github(args: argparse.Namespace) -> None:
+     print(f"records={len(records)} artifacts={len(copied)} committed={receipt['committed']} pushed={receipt['pushed']}")
+ 
+ 
++def import_chatgpt_export(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    source = Path(args.path).expanduser().resolve()
++    if not source.exists():
++        raise SystemExit(f"import path not found: {source}")
++
++    entries = collect_import_entries(source, args.max_chars)
++    imported = 0
++    tags = ["chatgpt-export", *(args.tag or [])]
++    for title, text in entries:
++        if imported >= args.max_records:
++            break
++        clean = text.strip()
++        if not clean:
++            continue
++        write_record(
++            argparse.Namespace(
++                title=title[:120] or "ChatGPT export",
++                text=clean[: args.max_chars],
++                text_file=None,
++                summary=args.summary,
++                source="chatgpt",
++                project=args.project,
++                tag=tags,
++                decision=[],
++                task=[],
++                file=[],
++            )
++        )
++        imported += 1
++    print(f"imported {imported} record(s) from {source}")
++
++
++def collect_import_entries(source: Path, max_chars: int) -> list[tuple[str, str]]:
++    if source.is_dir():
++        entries: list[tuple[str, str]] = []
++        for path in sorted(source.rglob("*")):
++            if path.is_file() and path.suffix.lower() in [".json", ".html", ".htm", ".md", ".txt"]:
++                entries.extend(parse_import_file(path.name, path.read_bytes(), max_chars))
++        return entries
++    if source.suffix.lower() == ".zip":
++        entries = []
++        with zipfile.ZipFile(source) as archive:
++            for member in sorted(archive.namelist()):
++                if member.endswith("/"):
++                    continue
++                suffix = Path(member).suffix.lower()
++                if suffix in [".json", ".html", ".htm", ".md", ".txt"]:
++                    entries.extend(parse_import_file(Path(member).name, archive.read(member), max_chars))
++        return entries
++    return parse_import_file(source.name, source.read_bytes(), max_chars)
++
++
++def parse_import_file(name: str, raw: bytes, max_chars: int) -> list[tuple[str, str]]:
++    suffix = Path(name).suffix.lower()
++    text = raw.decode("utf-8-sig", errors="replace")
++    if suffix == ".json":
++        try:
++            return parse_json_import(name, json.loads(text), max_chars)
++        except json.JSONDecodeError:
++            return [(Path(name).stem, text[:max_chars])]
++    if suffix in [".html", ".htm"]:
++        return [(Path(name).stem, html_to_text(text)[:max_chars])]
++    return [(Path(name).stem, text[:max_chars])]
++
++
++def parse_json_import(name: str, data: Any, max_chars: int) -> list[tuple[str, str]]:
++    conversations: list[tuple[str, str]] = []
++    if isinstance(data, list):
++        for index, item in enumerate(data, start=1):
++            if isinstance(item, dict) and "mapping" in item:
++                title = str(item.get("title") or f"{Path(name).stem} {index}")
++                conversations.append((title, conversation_mapping_to_text(item.get("mapping", {}))[:max_chars]))
++        if conversations:
++            return conversations
++    if isinstance(data, dict) and "mapping" in data:
++        title = str(data.get("title") or Path(name).stem)
++        return [(title, conversation_mapping_to_text(data.get("mapping", {}))[:max_chars])]
++    return [(Path(name).stem, json.dumps(data, indent=2, ensure_ascii=True)[:max_chars])]
++
++
++def conversation_mapping_to_text(mapping: Any) -> str:
++    if not isinstance(mapping, dict):
++        return ""
++    messages = []
++    for node in mapping.values():
++        if not isinstance(node, dict):
++            continue
++        message = node.get("message")
++        if not isinstance(message, dict):
++            continue
++        content = message.get("content") or {}
++        text = message_content_to_text(content)
++        if not text.strip():
++            continue
++        author = message.get("author") or {}
++        role = author.get("role", "unknown") if isinstance(author, dict) else "unknown"
++        created = message.get("create_time") or 0
++        messages.append((created or 0, f"## {role}\n\n{text.strip()}"))
++    messages.sort(key=lambda item: item[0])
++    return "\n\n".join(item[1] for item in messages)
++
++
++def message_content_to_text(content: Any) -> str:
++    if not isinstance(content, dict):
++        return str(content)
++    parts = content.get("parts")
++    if isinstance(parts, list):
++        return "\n".join(json.dumps(part, ensure_ascii=True) if isinstance(part, dict) else str(part) for part in parts)
++    if isinstance(content.get("text"), str):
++        return content["text"]
++    return json.dumps(content, ensure_ascii=True)
++
++
++class TextExtractor(html.parser.HTMLParser):
++    def __init__(self) -> None:
++        super().__init__()
++        self.parts: list[str] = []
++
++    def handle_data(self, data: str) -> None:
++        clean = data.strip()
++        if clean:
++            self.parts.append(clean)
++
++
++def html_to_text(value: str) -> str:
++    parser = TextExtractor()
++    parser.feed(value)
++    return "\n".join(parser.parts)
++
++
+ def run_git(cwd: Path, args: list[str]) -> None:
+     subprocess.run(["git", *args], cwd=cwd, check=True)
+ 
+@@ -454,6 +596,17 @@ def build_parser() -> argparse.ArgumentParser:
+     github.add_argument("--push", action="store_true", help="commit and push the generated backup package")
+     github.set_defaults(func=backup_github)
+ 
++    import_cmd = sub.add_parser("import", help="import external data")
++    import_sub = import_cmd.add_subparsers(dest="kind", required=True)
++    chatgpt = import_sub.add_parser("chatgpt-export", help="import ChatGPT export files")
++    chatgpt.add_argument("path", help="path to a zip, folder, json, html, markdown, or text file")
++    chatgpt.add_argument("--project")
++    chatgpt.add_argument("--tag", action="append")
++    chatgpt.add_argument("--summary")
++    chatgpt.add_argument("--max-records", type=int, default=50)
++    chatgpt.add_argument("--max-chars", type=int, default=12000)
++    chatgpt.set_defaults(func=import_chatgpt_export)
++
+     dashboard = sub.add_parser("dashboard", help="dashboard utilities")
+     dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
+     export = dashboard_sub.add_parser("export", help="export dashboard data")
