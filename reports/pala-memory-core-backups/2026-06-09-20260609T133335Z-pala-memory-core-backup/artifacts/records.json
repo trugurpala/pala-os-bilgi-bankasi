@@ -1,0 +1,139 @@
+{
+  "generated_at": "2026-06-09T13:33:01.486938+00:00",
+  "date": "2026-06-09",
+  "stats": {
+    "records": 4,
+    "projects": 1,
+    "files": 0,
+    "open_tasks": 1
+  },
+  "records": [
+    {
+      "id": "20260609T131509Z-published-repo-smoke-test",
+      "created_at": "2026-06-09T13:15:09.497352+00:00",
+      "source": "codex",
+      "title": "Published repo smoke test",
+      "summary": "Pala Memory Core public repo smoke test after publish.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T131509Z-published-repo-smoke-test.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "published-smoke"
+      ],
+      "decisions": [
+        "Generated memory data must stay out of Git"
+      ],
+      "tasks": [
+        {
+          "text": "Plan GitHub backup connector",
+          "status": "open"
+        }
+      ],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:15:09.497352+00:00",
+        "receipt": ""
+      }
+    },
+    {
+      "id": "20260609T132428Z-conversations",
+      "created_at": "2026-06-09T13:24:28.845180+00:00",
+      "source": "chatgpt",
+      "title": "conversations",
+      "summary": "\ufeff[   {     \"title\": \"Sample ChatGPT Export Conversation\",     \"mapping\": {       \"1\": {         \"message\": {           \"author\": { \"role\": \"user\" },           \"create_time\": 1,           \"content\": { \"parts\": [\"Bunu kasaya al: ChatGPT export import test.\"] }         }       },   ",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132428Z-conversations.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "chatgpt-export",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:24:28.845180+00:00",
+        "receipt": ""
+      }
+    },
+    {
+      "id": "20260609T132447Z-sample-chatgpt-export-conversation",
+      "created_at": "2026-06-09T13:24:47.846771+00:00",
+      "source": "chatgpt",
+      "title": "Sample ChatGPT Export Conversation",
+      "summary": "## user  Bunu kasaya al: ChatGPT export import test.  ## assistant  Pala Memory Core bu export'u local memory record'a cevirmeli.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132447Z-sample-chatgpt-export-conversation.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "chatgpt-export",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:24:47.846771+00:00",
+        "receipt": ""
+      }
+    },
+    {
+      "id": "20260609T132902Z-local-dashboard-browser-capture",
+      "created_at": "2026-06-09T13:29:02.043761+00:00",
+      "source": "browser",
+      "title": "Local dashboard browser capture",
+      "summary": "Pala Memory Core :root {       --paper: #f7f4ed;       --surface: #fffdf8;       --ink: #24211d;       --muted: #6d665d;       --line: #dad2c2;       --green: #1f7a5a;       --blue: #295d8f;       --amber: #aa6b16;       --charcoal: #2f3437;     }      * { box-sizing: border-box;",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T132902Z-local-dashboard-browser-capture.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "browser-capture",
+        "smoke-test"
+      ],
+      "decisions": [],
+      "tasks": [],
+      "evidence": [
+        {
+          "kind": "url",
+          "value": "http://127.0.0.1:8765"
+        }
+      ],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:29:02.043761+00:00",
+        "receipt": ""
+      }
+    }
+  ]
+}
