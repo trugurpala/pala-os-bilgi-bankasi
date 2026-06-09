@@ -1,0 +1,346 @@
+﻿commit f3e9be17502425bc0701fb82c5f2d64ec065ce9e
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:29:30 2026 +0300
+
+    Add browser URL capture preview
+---
+ INSTALL.md                   |  2 ++
+ README.md                    |  2 ++
+ docs/backlog.md              |  3 ++-
+ docs/commands.md             | 20 +++++++++++++++
+ docs/connectors.md           | 15 +++++++++--
+ docs/roadmap.md              |  3 ++-
+ docs/security.md             | 11 ++++++++
+ docs/v0.1-acceptance.md      |  2 ++
+ docs/v0.6-browser-capture.md | 61 ++++++++++++++++++++++++++++++++++++++++++++
+ pala.py                      | 46 ++++++++++++++++++++++++++++++++-
+ 10 files changed, 160 insertions(+), 5 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 5dbbfcf..13a3993 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -20,6 +20,7 @@ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
+ python pala.py import chatgpt-export export.zip
++python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -69,6 +70,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Prepare knowledge-bank backup | `python pala.py backup github` |
+ | Commit and push knowledge-bank backup | `python pala.py backup github --push` |
+ | Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
++| Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+ 
+diff --git a/README.md b/README.md
+index 0340215..e27a128 100644
+--- a/README.md
++++ b/README.md
+@@ -14,6 +14,7 @@ python pala.py brief today
+ python pala.py backup receipt
+ python pala.py backup github
+ python pala.py import chatgpt-export export.zip
++python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -63,6 +64,7 @@ pala-memory-core/
+ | `dashboard serve` | v0.3 | Starts local dashboard server |
+ | `backup github` | v0.4 | Creates a redacted knowledge-bank backup package |
+ | `import chatgpt-export` | v0.5 | Imports ChatGPT export files as memory records |
++| `capture browser` | v0.6 | Captures a public/local URL into a memory record |
+ | `link project` | planned | Adds repo/folder references to a record |
+ | `backup drive` | planned | Uploads selected artifacts to Google Drive |
+ 
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 1fe0bce..6d2ebe9 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -41,7 +41,8 @@
+ | `PMC-019` | Add GitHub backup connector | Reports can be published to configured repo |
+ | `PMC-019A` | Add redacted knowledge-bank package | GitHub backup starts with explicit local package creation |
+ | `PMC-020` | Add Google Drive backup design | OAuth and upload flow is specified |
+-| `PMC-021` | Add browser capture design | Playwright/Chrome capture is optional |
++| `PMC-021` | Add browser URL capture | Public/local URL can become a memory record |
++| `PMC-021B` | Add Playwright session capture | Authenticated browser context and screenshots become optional connector |
+ | `PMC-022` | Add mobile share/import design | Phone capture uses share/export first |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
+ 
+diff --git a/docs/commands.md b/docs/commands.md
+index c5380ff..8e9f5a4 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -104,6 +104,26 @@ Useful options:
+ | `--max-records 25` | Limit created records |
+ | `--max-chars 12000` | Limit text stored per record |
+ 
++## capture browser
++
++Captures a public or local URL into a memory record.
++
++```text
++python pala.py capture browser --url http://127.0.0.1:8765
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--title "..."` | Set record title |
++| `--project trugurpala/pala-memory-core` | Link captured page to a project |
++| `--tag dashboard` | Add extra tag |
++| `--max-chars 12000` | Limit text stored in the record |
++| `--timeout 20` | Set request timeout |
++
++This first browser connector fetches URLs directly. Authenticated browser-session capture and screenshots are planned as a later Playwright/Chrome connector.
++
+ ## dashboard serve
+ 
+ Starts a local dashboard server from the `dashboard/` folder.
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 018ac16..4bb61f5 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -12,7 +12,7 @@ Pala Memory Core uses a staged connector model. The core stays local-first; conn
+ | Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
+ | GitHub | Publish reports and read repo context | Redacted knowledge-bank backup package | Secrets must be filtered |
+ | Google Drive | Backup files and reports | Upload selected artifacts | OAuth setup required |
+-| Browser/Playwright | Capture visible web context/screenshots | Optional screen/page capture | UI changes can break capture |
++| Browser/Playwright | Capture visible web context/screenshots | URL capture first, Playwright later | UI changes can break capture |
+ | PDF/Documents | Import and summarize PDFs/docs | Attach file + metadata first | OCR/text extraction later |
+ | Local Files | Attach screenshots, patches, markdown, notes | Copy into `data/attachments` | Large files need retention rules |
+ | Obsidian/Logseq | Human-readable knowledge viewer | Markdown-compatible records | Optional user preference |
+@@ -38,7 +38,7 @@ Every connector should produce or update a memory record with:
+ | `v0.2` | GitHub project links |
+ | `v0.3` | Knowledge-bank report publish |
+ | `v0.4` | PDF/Documents import |
+-| `v0.5` | Browser/Playwright capture |
++| `v0.5` | Browser URL capture |
+ | `v0.6` | Google Drive backup |
+ | `v0.7` | ChatGPT export import |
+ | `v0.8` | Mobile share/import flow |
+@@ -65,6 +65,17 @@ The first ChatGPT export connector reads local files only. It supports `.zip`, f
+ | HTML | Extracts visible text |
+ | Markdown/Text | Stores text directly |
+ 
++## Browser Capture Behavior
++
++The first browser connector captures public/local URLs through a direct HTTP request.
++
++| Mode | Behavior |
++|---|---|
++| `capture browser --url ...` | Fetches the URL and stores visible text as a memory record |
++| future Playwright connector | Uses a real browser session for authenticated pages and screenshots |
++
++Authenticated ChatGPT page capture is intentionally deferred until the Playwright/Chrome connector exists.
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index d1cca1d..29d42ee 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -16,7 +16,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.6` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
+ | `v0.7` | Google Drive backup | Selected artifacts can be uploaded to Drive |
+ | `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+-| `v0.9` | Browser capture | Playwright/Chrome can capture visible pages/screenshots |
++| `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -39,4 +39,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add local dashboard server | Serve `dashboard/` at `127.0.0.1` |
+ | Add GitHub backup package | Write redacted package to local knowledge bank |
+ | Add ChatGPT export import | Convert export files into local memory records |
++| Add browser URL capture | Convert a public/local URL into a local memory record |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index 1d5327a..b50412c 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -60,3 +60,14 @@ Raw conversation text is not copied by default. Full-fidelity backups should use
+ | `--max-chars` | Limit text stored per record |
+ | `--project` | Link imports to a repo/folder |
+ | `--tag` | Mark imported records for later review |
++
++## Browser Capture Defaults
++
++`pala capture browser` fetches the requested URL directly. It does not yet use logged-in browser sessions or bypass access controls.
++
++| Control | Purpose |
++|---|---|
++| `--max-bytes` | Limit downloaded response size |
++| `--max-chars` | Limit stored text |
++| `--timeout` | Avoid hanging on slow pages |
++| `--project` | Link capture to a project |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 397b06b..4c4e3cb 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -21,6 +21,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
+ | Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
+ | Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
++| Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+ 
+@@ -61,6 +62,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Dashboard local server | Dashboard can be served at `http://127.0.0.1:8765` |
+ | GitHub backup package | Writes redacted report/manifest/receipt without pushing by default |
+ | ChatGPT export import | Supports zip/folder/json/html/md/txt inputs |
++| Browser capture | Supports public/local URL capture |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.6-browser-capture.md b/docs/v0.6-browser-capture.md
+new file mode 100644
+index 0000000..37e5fb7
+--- /dev/null
++++ b/docs/v0.6-browser-capture.md
+@@ -0,0 +1,61 @@
++# v0.6 Browser Capture
++
++Date: 2026-06-09
++Phase: browser URL capture preview
++Status: PASS for local/public URL capture preview
++
++## Goal
++
++Capture a public or local URL into a Pala Memory Core record so visible web context can be saved into the local memory system.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py capture browser --url <url>` |
++| Source | Stores record as `browser` |
++| Tags | Adds `browser-capture` |
++| Evidence | Adds URL evidence to the record metadata |
++| HTML | Extracts visible text from HTML |
++| Safety | Supports `--timeout`, `--max-bytes`, and `--max-chars` |
++
++## Command
++
++```powershell
++python .\pala.py capture browser --url http://127.0.0.1:8765 --project trugurpala/pala-memory-core --tag dashboard
++```
++
++## Expected Result
++
++```text
++saved <record-id>
++data\records\<date>\<record-id>.md
++captured browser url <url>
++```
++
++## Smoke Test
++
++Served the local dashboard, captured it by URL, then refreshed the daily brief and dashboard export:
++
++```powershell
++python .\pala.py dashboard export
++python .\pala.py dashboard serve --host 127.0.0.1 --port 8765
++python .\pala.py capture browser --url http://127.0.0.1:8765 --title "Local dashboard browser capture" --project trugurpala/pala-memory-core --tag smoke-test --max-chars 2000
++python .\pala.py brief today
++python .\pala.py dashboard export
++```
++
++Observed output:
++
++```text
++dashboard data saved dashboard\records.json
++saved 20260609T132902Z-local-dashboard-browser-capture
++data\records\2026-06-09\20260609T132902Z-local-dashboard-browser-capture.md
++captured browser url http://127.0.0.1:8765
++brief saved data\reports\2026-06-09-brief.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is a direct URL capture preview. Authenticated browser-session capture and screenshots are deferred to a future Playwright/Chrome connector.
+diff --git a/pala.py b/pala.py
+index c7db791..108a15d 100644
+--- a/pala.py
++++ b/pala.py
+@@ -18,6 +18,7 @@ import re
+ import shutil
+ import socketserver
+ import subprocess
++import urllib.request
+ import zipfile
+ from pathlib import Path
+ from typing import Any
+@@ -161,7 +162,7 @@ Project: {args.project or "unlinked"}
+         "tags": args.tag or [],
+         "decisions": args.decision or [],
+         "tasks": [{"text": item, "status": "open"} for item in (args.task or [])],
+-        "evidence": [],
++        "evidence": getattr(args, "evidence", []),
+         "backup_status": {
+             "local": "complete",
+             "github": "pending",
+@@ -414,6 +415,36 @@ def import_chatgpt_export(args: argparse.Namespace) -> None:
+     print(f"imported {imported} record(s) from {source}")
+ 
+ 
++def capture_browser(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    request = urllib.request.Request(args.url, headers={"User-Agent": "PalaMemoryCore/0.6"})
++    with urllib.request.urlopen(request, timeout=args.timeout) as response:
++        raw = response.read(args.max_bytes)
++        content_type = response.headers.get("content-type", "")
++
++    text = raw.decode("utf-8-sig", errors="replace")
++    if "html" in content_type.lower() or args.url.lower().endswith((".html", ".htm", "/")):
++        text = html_to_text(text)
++
++    title = args.title or f"Browser capture: {args.url}"
++    write_record(
++        argparse.Namespace(
++            title=title,
++            text=text[: args.max_chars],
++            text_file=None,
++            summary=args.summary,
++            source="browser",
++            project=args.project,
++            tag=["browser-capture", *(args.tag or [])],
++            decision=[],
++            task=[],
++            file=[],
++            evidence=[{"kind": "url", "value": args.url}],
++        )
++    )
++    print(f"captured browser url {args.url}")
++
++
+ def collect_import_entries(source: Path, max_chars: int) -> list[tuple[str, str]]:
+     if source.is_dir():
+         entries: list[tuple[str, str]] = []
+@@ -607,6 +638,19 @@ def build_parser() -> argparse.ArgumentParser:
+     chatgpt.add_argument("--max-chars", type=int, default=12000)
+     chatgpt.set_defaults(func=import_chatgpt_export)
+ 
++    capture = sub.add_parser("capture", help="capture live/local sources")
++    capture_sub = capture.add_subparsers(dest="kind", required=True)
++    browser = capture_sub.add_parser("browser", help="capture a web page by URL")
++    browser.add_argument("--url", required=True)
++    browser.add_argument("--title")
++    browser.add_argument("--summary")
++    browser.add_argument("--project")
++    browser.add_argument("--tag", action="append")
++    browser.add_argument("--timeout", type=int, default=20)
++    browser.add_argument("--max-bytes", type=int, default=2_000_000)
++    browser.add_argument("--max-chars", type=int, default=12000)
++    browser.set_defaults(func=capture_browser)
++
+     dashboard = sub.add_parser("dashboard", help="dashboard utilities")
+     dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
+     export = dashboard_sub.add_parser("export", help="export dashboard data")
