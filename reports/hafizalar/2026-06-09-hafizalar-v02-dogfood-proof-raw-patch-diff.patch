@@ -1,0 +1,461 @@
+﻿commit 331b149fd3fdc04686e179bd98cbb3d7926f8abe
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Tue Jun 9 14:18:52 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Tue Jun 9 14:18:52 2026 +0300
+
+    Add v0.2 dogfood proof
+
+diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+index 15e7fbe..ff1571e 100644
+--- a/.github/workflows/test.yml
++++ b/.github/workflows/test.yml
+@@ -31,3 +31,6 @@ jobs:
+ 
+       - name: Test
+         run: npm test
++
++      - name: Dogfood
++        run: npm run dogfood -- --json
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+new file mode 100644
+index 0000000..7a9d2d0
+--- /dev/null
++++ b/CHANGELOG.md
+@@ -0,0 +1,14 @@
++# Changelog
++
++## 0.2.0 - Dogfood Proof
++
++- Added `npm run dogfood`.
++- Added an isolated temporary-project proof loop.
++- Added `docs/DOGFOOD.md`.
++- Added GitHub Actions dogfood verification.
++- Kept npm publish and GitHub release tag out of this phase.
++
++## 0.1.0 - Community Starter
++
++- Added Codex and ChatGPT Hafizalar contracts.
++- Added installer, templates, CI, GitHub docs, and agentic pattern map.
+diff --git a/README.md b/README.md
+index 20577ab..81991d1 100644
+--- a/README.md
++++ b/README.md
+@@ -30,6 +30,8 @@ Instruction explains. Skill executes. MCP connects. Hook/CI/Gate blocks. Evidenc
+ | Project templates | `templates/` | Task tracking, review notes, golden path, project setup. |
+ | Installer | `scripts/install-hafizalar.mjs` | Copy Hafizalar into any project without overwriting existing files by default. |
+ 
++Current repo milestone: `0.2.0 Dogfood Proof`.
++
+ ## 60-Second Install
+ 
+ Fast install without cloning:
+@@ -105,6 +107,7 @@ Read: [`docs/OPENAI-SURFACE-LIMITS.md`](docs/OPENAI-SURFACE-LIMITS.md)
+ | --- | --- |
+ | [`docs/INSTALLATION.md`](docs/INSTALLATION.md) | Full install, update, force, verify, and troubleshooting guide. |
+ | [`docs/USAGE.md`](docs/USAGE.md) | Daily Codex + ChatGPT workflow and handoff templates. |
++| [`docs/DOGFOOD.md`](docs/DOGFOOD.md) | End-to-end temporary-project proof for the Hafizalar loop. |
+ | [`docs/AGENTIC-PATTERN-MAP.md`](docs/AGENTIC-PATTERN-MAP.md) | Agentic design patterns translated into Hafizalar operating rules. |
+ | [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) | Mermaid diagrams and FigJam visual handoff link. |
+ | [`docs/GITHUB-REPO-CHECKLIST.md`](docs/GITHUB-REPO-CHECKLIST.md) | Repo quality checklist for keeping the public project current. |
+@@ -132,6 +135,12 @@ Run:
+ npm.cmd test
+ ```
+ 
++Dogfood the full loop:
++
++```powershell
++npm.cmd run dogfood
++```
++
+ or:
+ 
+ ```powershell
+@@ -146,6 +155,8 @@ Community repo: ready.
+ 
+ GitHub Actions: active.
+ 
++Dogfood proof: active.
++
+ Release/package publish: not performed.
+ 
+ Fast GitHub npm exec install: tested.
+diff --git a/docs/DOGFOOD.md b/docs/DOGFOOD.md
+new file mode 100644
+index 0000000..ba4937a
+--- /dev/null
++++ b/docs/DOGFOOD.md
+@@ -0,0 +1,53 @@
++# Dogfood
++
++Dogfood proves Hafizalar can install into a new project and guide a small implementation loop.
++
++It tests this scenario:
++
++```text
++empty project -> Hafizalar install -> product request -> implementation -> test -> report
++```
++
++## Run
++
++```powershell
++npm.cmd run dogfood
++```
++
++JSON output:
++
++```powershell
++npm.cmd run dogfood -- --json
++```
++
++Keep the temporary project for manual inspection:
++
++```powershell
++npm.cmd run dogfood -- --keep
++```
++
++## What It Verifies
++
++- installer dry-run works,
++- installer real run works,
++- Codex and ChatGPT contracts are installed,
++- agentic pattern map is installed,
++- install report is created,
++- a tiny product module is implemented in the temporary project,
++- target project test passes through `node --test`,
++- `REVIEW.md` records the proof.
++
++## What It Does Not Claim
++
++This is a synthetic scenario. It proves the operating loop and installer behavior. It does not prove Hafizalar has been validated on every stack or real product type.
++
++## CI
++
++The GitHub Actions workflow runs:
++
++```text
++npm test
++npm run dogfood -- --json
++```
++
++Dogfood is part of the repo's required proof path.
+diff --git a/docs/GITHUB-REPO-CHECKLIST.md b/docs/GITHUB-REPO-CHECKLIST.md
+index 52f82ec..057c57d 100644
+--- a/docs/GITHUB-REPO-CHECKLIST.md
++++ b/docs/GITHUB-REPO-CHECKLIST.md
+@@ -11,6 +11,7 @@ Use this checklist to keep Hafizalar from becoming stale or incomplete.
+ | CI | Complete | GitHub Actions tests Ubuntu and Windows on Node 22 and 24. |
+ | Installer | Complete | Node installer and PowerShell wrapper exist. |
+ | Tests | Complete | Node test suite covers required files, contracts, docs links, and installer behavior. |
++| Dogfood | Complete | `npm run dogfood -- --json` validates a temporary project loop. |
+ | Issue templates | Complete | Bug, feature, and docs issue forms exist. |
+ | PR template | Complete | Pull request checklist exists. |
+ | Security | Complete | Security policy exists. |
+diff --git a/docs/MAINTENANCE.md b/docs/MAINTENANCE.md
+index 9f3a97d..bbc4955 100644
+--- a/docs/MAINTENANCE.md
++++ b/docs/MAINTENANCE.md
+@@ -7,6 +7,7 @@ Hafizalar should stay small, current, and proven.
+ - Check GitHub Actions.
+ - Review Dependabot suggestions.
+ - Run `npm.cmd test` on the main branch.
++- Run `npm.cmd run dogfood -- --json` before meaningful release notes.
+ - Confirm issue templates still match the repo workflow.
+ 
+ ## Monthly
+@@ -20,23 +21,24 @@ Hafizalar should stay small, current, and proven.
+ 
+ 1. `git status --short`
+ 2. `npm.cmd test`
+-3. Installer dry-run into a temporary project
+-4. Real installer smoke into a temporary project
+-5. GitHub Actions green on main
+-6. Changelog or release notes prepared
+-7. No credentials or local-only private data included
+-8. Tag created only after CI passes
++3. `npm.cmd run dogfood -- --json`
++4. Installer dry-run into a temporary project
++5. Real installer smoke into a temporary project
++6. GitHub Actions green on main
++7. Changelog or release notes prepared
++8. No credentials or local-only private data included
++9. Tag created only after CI passes
+ 
+ ## Versioning
+ 
+-Current package version: `0.1.0`
++Current package version: `0.2.0`
+ 
+ No npm publish has been performed.
+ 
+ Recommended future path:
+ 
+ - `0.1.x` for docs and installer hardening,
+-- `0.2.0` for cross-platform shell wrapper or package distribution,
++- `0.2.x` for dogfood proof hardening and cross-platform install polish,
+ - `1.0.0` only after several real project installs prove the contract.
+ 
+ ## Updating Installer Behavior
+diff --git a/package.json b/package.json
+index 9cbce41..2d3aafe 100644
+--- a/package.json
++++ b/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "hafizalar",
+-  "version": "0.1.0",
++  "version": "0.2.0",
+   "private": false,
+   "type": "module",
+   "description": "Reusable Codex operating memory for building software with inspection, evidence, and delivery discipline.",
+@@ -25,6 +25,7 @@
+   },
+   "scripts": {
+     "test": "node --test test/hafizalar.test.mjs",
++    "dogfood": "node scripts/dogfood-hafizalar.mjs",
+     "install:hafizalar": "node scripts/install-hafizalar.mjs",
+     "smoke": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-hafizalar.ps1"
+   },
+diff --git a/scripts/dogfood-hafizalar.mjs b/scripts/dogfood-hafizalar.mjs
+new file mode 100644
+index 0000000..c315159
+--- /dev/null
++++ b/scripts/dogfood-hafizalar.mjs
+@@ -0,0 +1,189 @@
++#!/usr/bin/env node
++import { execFileSync } from 'node:child_process';
++import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
++import { tmpdir } from 'node:os';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++
++const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
++
++function parseArgs(argv) {
++  return {
++    keep: argv.includes('--keep'),
++    json: argv.includes('--json'),
++  };
++}
++
++function writeJson(filePath, value) {
++  mkdirSync(path.dirname(filePath), { recursive: true });
++  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
++}
++
++function readJson(filePath) {
++  return JSON.parse(readFileSync(filePath, 'utf8'));
++}
++
++function runNode(args, cwd) {
++  return execFileSync(process.execPath, args, {
++    cwd,
++    encoding: 'utf8',
++    stdio: ['ignore', 'pipe', 'pipe'],
++  });
++}
++
++function assertFile(filePath, label) {
++  if (!existsSync(filePath)) {
++    throw new Error(`Missing ${label}: ${filePath}`);
++  }
++}
++
++function runDogfood(args) {
++  const target = mkdtempSync(path.join(tmpdir(), 'hafizalar-dogfood-project-'));
++  const evidence = {
++    ok: false,
++    target,
++    kept: args.keep,
++    scenario: 'empty project -> Hafizalar install -> product request -> implementation -> test -> report',
++    checks: [],
++  };
++
++  try {
++    const installer = path.join(root, 'scripts', 'install-hafizalar.mjs');
++
++    const dryRun = JSON.parse(runNode([installer, '--target', target, '--surface', 'both', '--dry-run'], root));
++    if (!dryRun.dryRun || dryRun.written.length !== 0 || dryRun.wouldWrite.length === 0) {
++      throw new Error('Dogfood dry-run did not produce expected plan');
++    }
++    evidence.checks.push({ name: 'installer dry-run', result: 'PASS', wouldWrite: dryRun.wouldWrite.length });
++
++    const install = JSON.parse(runNode([installer, '--target', target, '--surface', 'both'], root));
++    if (!install.ok || install.surface !== 'both') {
++      throw new Error('Dogfood install did not complete');
++    }
++    evidence.checks.push({ name: 'installer real run', result: 'PASS', written: install.written.length });
++
++    for (const [relativePath, label] of [
++      ['.hafizalar/HAFIZALAR-CODEX.md', 'Codex contract'],
++      ['.hafizalar/HAFIZALAR-CHATGPT.md', 'ChatGPT contract'],
++      ['.hafizalar/AGENTIC-PATTERN-MAP.md', 'agentic pattern map'],
++      ['.hafizalar/INSTALL-REPORT.json', 'install report'],
++      ['docs/PROJECT-SETUP.md', 'project setup template'],
++    ]) {
++      assertFile(path.join(target, relativePath), label);
++    }
++    evidence.checks.push({ name: 'installed project files', result: 'PASS' });
++
++    const productRequest = {
++      request: 'Build a deterministic greeting module with a local test.',
++      route: 'ChatGPT shapes the small product outcome; Codex implements and verifies locally.',
++      risk: 'Low',
++      definitionOfDone: [
++        'module exports a greeting function',
++        'unit test proves deterministic behavior',
++        'review file records changed files and evidence',
++      ],
++    };
++    writeJson(path.join(target, 'DOGFOOD-REQUEST.json'), productRequest);
++
++    mkdirSync(path.join(target, 'src'), { recursive: true });
++    mkdirSync(path.join(target, 'test'), { recursive: true });
++    writeFileSync(
++      path.join(target, 'package.json'),
++      `${JSON.stringify(
++        {
++          type: 'module',
++          scripts: {
++            test: 'node --test test/greeting.test.mjs',
++          },
++        },
++        null,
++        2,
++      )}\n`,
++    );
++    writeFileSync(
++      path.join(target, 'src', 'greeting.mjs'),
++      "export function greeting(name) {\n  const cleanName = String(name || '').trim();\n  return `Hello, ${cleanName || 'builder'}.`;\n}\n",
++    );
++    writeFileSync(
++      path.join(target, 'test', 'greeting.test.mjs'),
++      "import assert from 'node:assert/strict';\nimport { greeting } from '../src/greeting.mjs';\n\nassert.equal(greeting('Ugur'), 'Hello, Ugur.');\nassert.equal(greeting('  '), 'Hello, builder.');\nconsole.log('dogfood greeting proof pass');\n",
++    );
++
++    const testOutput = execFileSync(process.execPath, ['--test', path.join('test', 'greeting.test.mjs')], {
++      cwd: target,
++      encoding: 'utf8',
++      stdio: ['ignore', 'pipe', 'pipe'],
++    });
++    if (!testOutput.includes('dogfood greeting proof pass')) {
++      throw new Error('Dogfood target test output missing proof marker');
++    }
++    evidence.checks.push({ name: 'target project test', result: 'PASS' });
++
++    const installReport = readJson(path.join(target, '.hafizalar', 'INSTALL-REPORT.json'));
++    if (!installReport.ok || installReport.written.length === 0) {
++      throw new Error('Installed report is not valid');
++    }
++    evidence.checks.push({ name: 'install report', result: 'PASS' });
++
++    const review = [
++      '# Dogfood Review',
++      '',
++      '## Done',
++      '- Installed Hafizalar into an empty temporary project.',
++      '- Implemented deterministic greeting module.',
++      '- Ran local target test.',
++      '',
++      '## Changed Files',
++      '- package.json',
++      '- src/greeting.mjs',
++      '- test/greeting.test.mjs',
++      '- DOGFOOD-REQUEST.json',
++      '',
++      '## Verification',
++      '- command: node --test test/greeting.test.mjs',
++      '- result: PASS',
++      '',
++      '## Risks Left',
++      '- This is a synthetic dogfood scenario, not a full product app.',
++      '',
++    ].join('\n');
++    const reviewPath = path.join(target, 'REVIEW.md');
++    writeFileSync(reviewPath, review);
++    assertFile(reviewPath, 'dogfood review');
++    evidence.checks.push({ name: 'review report', result: 'PASS' });
++
++    evidence.ok = true;
++    evidence.review = {
++      verified: true,
++      path: args.keep ? reviewPath : null,
++      note: args.keep ? 'temporary project kept for inspection' : 'temporary review verified, then removed with the temp project',
++    };
++    return evidence;
++  } finally {
++    if (!args.keep) {
++      const tempPath = path.resolve(tmpdir());
++      const resolved = path.resolve(target);
++      if (resolved.toLowerCase().startsWith(tempPath.toLowerCase()) && existsSync(resolved)) {
++        rmSync(resolved, { recursive: true, force: true });
++      }
++      evidence.cleaned = true;
++    }
++  }
++}
++
++try {
++  const args = parseArgs(process.argv.slice(2));
++  const result = runDogfood(args);
++  if (args.json) {
++    console.log(JSON.stringify(result, null, 2));
++  } else {
++    console.log(`Hafizalar dogfood ${result.ok ? 'PASS' : 'FAIL'}`);
++    console.log(JSON.stringify(result.checks, null, 2));
++    if (args.keep) {
++      console.log(`Kept target: ${result.target}`);
++    }
++  }
++} catch (error) {
++  console.error(error instanceof Error ? error.message : String(error));
++  process.exit(1);
++}
+diff --git a/test/hafizalar.test.mjs b/test/hafizalar.test.mjs
+index 265519c..6b8f449 100644
+--- a/test/hafizalar.test.mjs
++++ b/test/hafizalar.test.mjs
+@@ -22,6 +22,7 @@ function isAscii(relativePath) {
+ 
+ const requiredFiles = [
+   'README.md',
++  'CHANGELOG.md',
+   '.editorconfig',
+   '.gitattributes',
+   '.npmignore',
+@@ -35,6 +36,7 @@ const requiredFiles = [
+   'assets/brand/hafizalar-repo-card.svg',
+   'docs/AGENTIC-PATTERN-MAP.md',
+   'docs/DIAGRAMS.md',
++  'docs/DOGFOOD.md',
+   'docs/FIGMA-HANDOFF.md',
+   'docs/GITHUB-REPO-CHECKLIST.md',
+   'docs/INSTALLATION.md',
+@@ -42,6 +44,7 @@ const requiredFiles = [
+   'docs/OPENAI-SURFACE-LIMITS.md',
+   'docs/USAGE.md',
+   'scripts/install-hafizalar.mjs',
++  'scripts/dogfood-hafizalar.mjs',
+   'scripts/install-hafizalar.ps1',
+   'templates/HAFIZALAR.md',
+   'templates/TASKS.md',
+@@ -165,6 +168,7 @@ test('documentation includes diagrams, install detail, and figma handoff', () =>
+   assert.equal(read('docs/AGENTIC-PATTERN-MAP.md').includes('route -> inspect -> plan -> act -> observe -> reflect -> recover or report'), true);
+   assert.equal(read('docs/USAGE.md').includes('## Compact Handoff Template'), true);
+   assert.equal(read('docs/DIAGRAMS.md').includes('```mermaid'), true);
++  assert.equal(read('docs/DOGFOOD.md').includes('empty project -> Hafizalar install -> product request -> implementation -> test -> report'), true);
+   assert.equal(read('docs/FIGMA-HANDOFF.md').includes('figma.com/board'), true);
+   assert.equal(read('docs/GITHUB-REPO-CHECKLIST.md').includes('Repo Settings To Review Manually'), true);
+   assert.equal(read('docs/MAINTENANCE.md').includes('## Release Checklist'), true);
+@@ -173,9 +177,11 @@ test('documentation includes diagrams, install detail, and figma handoff', () =>
+ 
+ test('package metadata supports public github repo usage', () => {
+   const pkg = JSON.parse(read('package.json'));
++  assert.equal(pkg.version, '0.2.0');
+   assert.equal(pkg.repository.url, 'git+https://github.com/trugurpala/hafizalar.git');
+   assert.equal(pkg.bugs.url, 'https://github.com/trugurpala/hafizalar/issues');
+   assert.equal(pkg.bin['hafizalar-install'], './scripts/install-hafizalar.mjs');
++  assert.equal(pkg.scripts.dogfood, 'node scripts/dogfood-hafizalar.mjs');
+ });
+ 
+ test('sandbox node verification works without dependencies', () => {
