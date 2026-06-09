@@ -1,0 +1,463 @@
+# Raw Patch/Diff - Pala OS V10 Project Start
+
+Date: 2026-06-09
+
+Note: `pala-os-v10` is not a Git repo yet. This patch is recorded from `git diff --no-index -- NUL <file>` style new-file diffs.
+
+```diff
+diff --git a/README.md b/README.md
+new file mode 100644
+index 0000000..fa9c4c0
+--- /dev/null
++++ b/README.md
+@@ -0,0 +1,50 @@
++# Pala OS V10
++
++Date: 2026-06-09
++
++Status: PROJECT_START
++
++This folder is the clean Pala OS V10 project room.
++
++## Current Decision
++
++Pala OS V10 must not start by blindly copying old folders.
++
++The active technical baseline is:
++
++- `../pala-os-v6`: working executable core and current source of truth.
++- `../pala-os-v5`: governance and migration-court foundation.
++- `../pala-os-v3`: community/local-first and no-fake-done doctrine.
++- `../pala-os-v4`: transition reference only.
++- `../pala-os`: large legacy source pool, quarantine/source-card only.
++- `../konusmalar`: memory and handoff room, not product proof.
++- `../pala-os-bilgi-bankasi`: public report and review package target.
++
++## Product Direction
++
++Pala OS is not another coding agent.
++
++Pala OS is the local-first command, evidence, approval, and dashboard layer above agents such as Codex, Cursor, Claude Code, ChatGPT, GitHub Copilot, Figma, GitHub, Vercel, Browser, Chrome, Slack, and Google Drive.
++
++The agent does the work. Pala OS decides whether the work has enough evidence.
++
++## First Rule
++
++No PASS without evidence.
++
++No release, push, deploy, delete, source import, MCP write, Slack write, or external product write without explicit owner approval.
++
++## Documents
++
++- [Codex folder readback](docs/CODEX-FOLDER-READBACK-2026-06-09.md)
++- [Pala OS V10 project plan](docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md)
++
++## Current Implementation Posture
++
++This folder currently contains planning and project-start documents only.
++
++No code has been imported into V10 yet.
++
++No Git repo has been initialized in this folder yet.
++
++No release approval exists.
+diff --git "a/docs\\CODEX-FOLDER-READBACK-2026-06-09.md" "b/docs\\CODEX-FOLDER-READBACK-2026-06-09.md"
+new file mode 100644
+index 0000000..a6acf0c
+--- /dev/null
++++ "b/docs\\CODEX-FOLDER-READBACK-2026-06-09.md"
+@@ -0,0 +1,104 @@
++# Codex Folder Readback - 2026-06-09
++
++Source root:
++
++```text
++C:\Users\Pala-Home-1\Desktop\Codex
++```
++
++Target folder:
++
++```text
++C:\Users\Pala-Home-1\Desktop\Codex\pala-os-v10
++```
++
++## Observed Top-Level Inventory
++
++| Path | Role | State |
++| --- | --- | --- |
++| `konusmalar` | Memory, handoff, plan room | Git repo, private memory workflow |
++| `pala-os` | Large legacy Pala OS source pool | Git repo, source-card/quarantine input |
++| `pala-os-v3` | Community/local-first Pala OS line | Git repo, doctrine and parity source |
++| `pala-os-v4` | Transition line | Git repo, behind V6, dirty tracked rule files |
++| `pala-os-v5` | Governance and migration court foundation | Git repo, earlier final-center attempt |
++| `pala-os-v6` | Active executable command center | Git repo, strongest current baseline |
++| `pala-os-v10` | Current clean project-start folder | Not a Git repo yet |
++| `pala-os-bilgi-bankasi` | Public knowledge-bank reports | Git repo, clean at readback |
++| `_backups` | Backup material | Not reviewed as active source |
++| `code-reviewer.md` | V6-M0 start order/context | Read as intent evidence |
++
++## Current Git/Repo Facts
++
++| Repo | Branch/status summary |
++| --- | --- |
++| `pala-os` | `codex/v6-world-standards-bootstrap`, clean at readback |
++| `pala-os-v3` | `main`, clean at readback |
++| `pala-os-v4` | `codex/v6-source-card-gate-radar`, behind origin by 2, dirty `.pala/rules/*` |
++| `pala-os-v5` | `codex/pala-control-evidence-gates`, clean at readback |
++| `pala-os-v6` | `codex/v6-source-card-gate-radar`, one untracked plan file |
++| `pala-os-v10` | no `.git` directory |
++| `pala-os-bilgi-bankasi` | `main`, clean at readback |
++
++## V6 Verification Evidence
++
++Command used:
++
++```powershell
++npm.cmd test -- --test-reporter=spec
++```
++
++Result:
++
++```text
++38 tests passed, 0 failed
++```
++
++Notes:
++
++- `npm.ps1` is blocked by local PowerShell execution policy.
++- `npm.cmd` works and should be used for Windows verification commands.
++- Node observed: `v24.14.1`.
++- npm observed through `npm.cmd`: `11.11.0`.
++
++## Readback Decision
++
++V10 should start from V6 as the active baseline, but V10 must not blindly copy V6.
++
++V6 proves that the core direction is executable:
++
++- CLI command center exists.
++- SQLite evidence ledger exists.
++- 60-standard policy engine exists.
++- Source-card and source-court logic exists.
++- Dashboard/API/court surfaces exist.
++- Tests pass locally.
++
++V10 should turn this into a cleaner final project shape:
++
++- simpler owner-facing structure,
++- stricter task router,
++- first-class agent host matrix,
++- better report discipline,
++- no fake green,
++- and a controlled migration path from older folders.
++
++## Source Treatment
++
++| Source | V10 treatment |
++| --- | --- |
++| V6 code | Baseline to adapt after source review |
++| V6 untracked `docs/v6-vibe-coder-agent-host-plan.md` | Intent source, not included in V6 PR |
++| V5 docs/scripts | Governance patterns to preserve |
++| V3 docs/adapters | Doctrine and compatibility ideas |
++| V4 | Deletion/reference candidate only after final checks |
++| Legacy `pala-os` | Quarantine and source-card only |
++| `konusmalar` | Memory source only, never product PASS evidence |
++| Knowledge bank | Required report/review package target |
++
++## Not Done
++
++- No code import into V10.
++- No Git initialization in V10.
++- No deletion of old folders.
++- No push, deploy, release, or external write.
++- No claim that V10 is executable yet.
+diff --git "a/docs\\PALA-OS-V10-PROJECT-PLAN-2026-06-09.md" "b/docs\\PALA-OS-V10-PROJECT-PLAN-2026-06-09.md"
+new file mode 100644
+index 0000000..fe4a2d3
+--- /dev/null
++++ "b/docs\\PALA-OS-V10-PROJECT-PLAN-2026-06-09.md"
+@@ -0,0 +1,283 @@
++# Pala OS V10 Project Plan - 2026-06-09
++
++Status: IMPLEMENTATION_PLAN_READY
++
++## 1. Goal
++
++Build Pala OS V10 as the clean final command room for local AI-assisted work.
++
++Pala OS V10 must control and verify agent work. It must not become a generic coding agent or a blind copy of old Pala OS folders.
++
++Primary user intent inferred from the local files and current conversation:
++
++- keep one final Pala OS direction,
++- use all `Codex` folder history as context,
++- preserve working V6 value,
++- avoid fake PASS,
++- make the system useful for vibe-coder workflows,
++- write evidence and reports clearly,
++- keep owner approval gates strict.
++
++## 2. Product Definition
++
++Pala OS V10 is a local-first control layer above coding/design/deploy agents.
++
++It answers these questions before and after work:
++
++- Which agent or host is allowed for this task?
++- Which standards and rules apply?
++- Which files are safe to touch?
++- Which source folders are trusted, quarantined, or reference-only?
++- Which evidence must exist before saying done?
++- Which approval gate blocks push, release, deploy, delete, import, or external writes?
++- What should the dashboard show from DB/ledger evidence only?
++
++The core law stays:
++
++```text
++Agent does the work. Pala OS verifies the work.
++```
++
++## 3. Baseline Decision
++
++Use `../pala-os-v6` as the active technical baseline.
++
++Do not use `pala-os-v10` as an empty rewrite.
++
++Do not directly merge `pala-os`, `v3`, `v4`, or `v5` into V10.
++
++Every source idea moves through this order:
++
++```text
++read -> classify -> source-card -> adapt -> test -> report -> owner gate
++```
++
++Current V6 proof:
++
++- branch: `codex/v6-source-card-gate-radar`
++- latest observed local commit: `61b5962 fix: stabilize windows test cleanup`
++- local test result: `npm.cmd test -- --test-reporter=spec` passed 38/38
++- current local dirty state: one untracked V6 plan file, `docs/v6-vibe-coder-agent-host-plan.md`
++- release posture remains `RELEASE_BLOCKED`
++
++## 4. Implementation Phases
++
++### Phase 0 - V10 Project Start
++
++Create and maintain V10 as a clean project room.
++
++Required files:
++
++- `README.md`
++- `docs/CODEX-FOLDER-READBACK-2026-06-09.md`
++- `docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md`
++
++Acceptance:
++
++- V10 has a clear source decision.
++- V10 states that it is not executable yet.
++- No source code is copied blindly.
++- Knowledge-bank report package exists for the mutation.
++
++### Phase 1 - V10 Repo Scaffold
++
++After owner confirms implementation, initialize V10 as a real repo and create the minimum executable shell.
++
++Required baseline:
++
++- `package.json` with Node `>=24.14.0`.
++- `src/cli.js` with `sak help`, `sak status`, and `sak court`.
++- `src/config.js` with root resolution.
++- `test/pala-v10.test.js` with smoke tests.
++- `.gitignore` excluding runtime DB, logs, evidence raw files, screenshots, traces, and local secrets.
++- `AGENTS.md` carrying no-fake-done and approval gates.
++
++Acceptance:
++
++- `npm.cmd test` passes.
++- `node src/cli.js status` prints V10 status.
++- `node src/cli.js court` returns `RELEASE_BLOCKED`.
++
++### Phase 2 - V6 Core Adaptation
++
++Adapt, not bulk-copy, the proven V6 core primitives.
++
++Subsystems:
++
++- SQLite local DB and ledger.
++- 60-standard policy catalog.
++- source-card/source-court gate.
++- evidence sprint logic.
++- release court.
++- sanitized dashboard state.
++
++Acceptance:
++
++- V10 tests prove the same no-fake-done behavior as V6.
++- V10 release court cannot PASS without owner approval and evidence.
++- V10 source court marks old folders as reference/quarantine until accepted.
++
++### Phase 3 - Agent Host Matrix
++
++Make agent hosts first-class control targets.
++
++Initial hosts:
++
++- Codex
++- Cursor
++- Claude Code
++- ChatGPT
++- GitHub Copilot
++- Figma
++- GitHub
++- Vercel
++- Browser/Chrome
++- Slack
++- Google Drive
++
++Required behavior:
++
++- each host has allowed uses, blocked uses, required evidence, and approval boundary,
++- task plans name the host before implementation,
++- dashboard shows the current host state from local data.
++
++Acceptance:
++
++- `sak hosts list --json` returns host records.
++- `sak task plan "site yap" --host cursor --json` returns required rule pack and evidence.
++- No host can claim release, deploy, or product PASS by text alone.
++
++### Phase 4 - Vibe Task Router
++
++Add task planning for owner-style prompts.
++
++Task classes:
++
++- site
++- app
++- dashboard
++- API
++- CLI
++- migration
++- release
++- security review
++- design/Figma
++- data visualization
++
++Acceptance:
++
++- `sak task plan "Cursor'dan site yap" --json` produces host, standards, file boundary, evidence list, and blocked claims.
++- `sak task plan "release al" --json` returns approval-required and release-blocked.
++- `sak task plan "Figma'dan tasarimi bagla" --json` returns design evidence requirements.
++
++### Phase 5 - Dashboard Truth Surface
++
++Build only DB/ledger-backed dashboard panels.
++
++Panels:
++
++- system status,
++- court/release gate,
++- standards,
++- source cards,
++- evidence ledger,
++- agent host matrix,
++- task router,
++- environment limits,
++- operator action queue,
++- knowledge-bank report status.
++
++Acceptance:
++
++- no card turns green without evidence,
++- every card shows its source,
++- dashboard exposes local-only status before public/deploy claims,
++- visual proof is required for UI-facing PASS.
++
++### Phase 6 - Knowledge Bank Discipline
++
++Every meaningful V10 mutation produces a knowledge-bank package.
++
++Required package:
++
++- implementation report,
++- changed-files manifest,
++- repo change review,
++- raw patch/diff.
++
++Acceptance:
++
++- report package separates included files from excluded dirty files,
++- report states evidence commands,
++- report states rollback,
++- report states release posture,
++- report link is given to owner when published.
++
++## 5. Source Adoption Rules
++
++| Source | Allowed V10 use | Blocked V10 use |
++| --- | --- | --- |
++| `pala-os-v6` | Active baseline and adaptation source | Blind full-folder copy |
++| `pala-os-v5` | Governance and migration-court pattern | Treating old PASS as current PASS |
++| `pala-os-v3` | Method, adapter parity, no-fake-done doctrine | Runtime import without tests |
++| `pala-os-v4` | Deletion/reference audit | Making it active source |
++| `pala-os` | Legacy candidate inventory | Direct import of skills/site/MCP/CLI |
++| `konusmalar` | Memory and handoff context | Product proof or release evidence |
++| `pala-os-bilgi-bankasi` | Public report target | Release approval |
++
++## 6. Test Plan
++
++Use Windows-safe commands:
++
++```powershell
++npm.cmd test
++node src/cli.js status
++node src/cli.js court
++node src/cli.js source audit --json
++```
++
++For V6 reference checks:
++
++```powershell
++cd C:\Users\Pala-Home-1\Desktop\Codex\pala-os-v6
++npm.cmd test -- --test-reporter=spec
++```
++
++For V10 after scaffold:
++
++```powershell
++cd C:\Users\Pala-Home-1\Desktop\Codex\pala-os-v10
++npm.cmd test
++node src/cli.js court
++```
++
++Expected release result until owner approval:
++
++```text
++RELEASE_BLOCKED
++```
++
++## 7. Risks
++
++- V10 is not a Git repo yet.
++- V6 PR #1 is blocked by GitHub self-approval rules.
++- V4 has dirty tracked rule files and is behind V6.
++- Legacy `pala-os` is large and must stay quarantine/source-card only.
++- Knowledge-bank publication requires care because reports must not include secrets or raw runtime data.
++- `npm.ps1` is blocked by local PowerShell policy; use `npm.cmd`.
++
++## 8. Immediate Next Move
++
++The next implementation move should be Phase 1:
++
++```text
++Create the V10 executable scaffold with tests, court returning RELEASE_BLOCKED, and no imported legacy source.
++```
++
++Default implementation decision:
++
++- start with a small V10 scaffold,
++- keep V6 intact,
++- do not delete old folders,
++- do not push or release,
++- publish the mutation report package to the knowledge bank when owner approval for external push is explicit.
+```
