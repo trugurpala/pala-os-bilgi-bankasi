@@ -1,0 +1,205 @@
+﻿commit d198c3a5b5470dc8c91828a644afb35001d8fc71
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Tue Jun 9 21:22:00 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Tue Jun 9 21:22:00 2026 +0300
+
+    docs: add roadmap source court
+
+diff --git a/docs/source-ingest/2026-06-09-roadmap-source-court.md b/docs/source-ingest/2026-06-09-roadmap-source-court.md
+new file mode 100644
+index 0000000..9365579
+--- /dev/null
++++ b/docs/source-ingest/2026-06-09-roadmap-source-court.md
+@@ -0,0 +1,191 @@
++# Pala OS Roadmap Source Court - 2026-06-09
++
++Source repo: `trugurpala/pala-os`
++
++Local repo: `C:\Users\Pala-Home-1\Desktop\Codex\pala-os-v1`
++
++Branch: `codex/v1-source-snapshots`
++
++Phase: ordered roadmap source scan after lineage snapshot ingest
++
++Status: `DOCUMENTATION_ONLY`
++
++Release posture: not release approval
++
++## Required Source Order
++
++The owner instruction is to keep this order as the main spine:
++
++1. `https://github.com/trugurpala/pala-os`
++2. `https://github.com/trugurpala/pala-os-v3`
++3. `https://github.com/trugurpala/pala-os-v4`
++4. `https://github.com/trugurpala/pala-os-v5`
++
++This court scan followed that order and did not jump between versions.
++
++## Scope
++
++The scan looked for source material that could satisfy the next roadmap items:
++
++1. File explorer
++2. Settings forms
++3. AI browser actions
++4. Sigma/Supabase/dashboard analytics
++
++The immediate product decision is for item 1, the file explorer.
++
++## Evidence Commands
++
++Read-only evidence commands used during this pass:
++
++```powershell
++git status --short --branch
++```
++
++```powershell
++rg -n -i "file[ -]?explorer|file[ -]?manager|FileExplorer|FileManager|dosya gezgini|dosya|explorer" source-snapshots/raw/pala-os
++rg -n -i "settings|ayar|react-hook-form|shadcn|form" source-snapshots/raw/pala-os
++rg -n -i "browser|tarayici|langchain|agent|tool" source-snapshots/raw/pala-os
++rg -n -i "sigma|supabase|iframe|analytics|dashboard" source-snapshots/raw/pala-os
++```
++
++The same four pattern groups were then applied in order to:
++
++```text
++source-snapshots/raw/pala-os-v3
++source-snapshots/raw/pala-os-v4
++source-snapshots/raw/pala-os-v5
++```
++
++Pala OS operator health note:
++
++```powershell
++& C:\Users\Pala-Home-1\.codex\plugins\cache\personal\pala-os-codex\0.1.0\skills\pala-os-operator\scripts\pala_codex_health.ps1
++```
++
++Result: blocked by Windows PowerShell execution policy. No bypass was performed in this phase.
++
++## Findings By Source Order
++
++### 1. `pala-os`
++
++Snapshot path: `source-snapshots/raw/pala-os`
++
++Snapshot ref from ingest report: `origin/main@064cd53`
++
++File explorer finding: no reusable Pala desktop file explorer component was found.
++
++Representative matches were documentation or unrelated framework/tool terms, such as:
++
++- `skills/mobile/kmp-shared-module/SKILL.md` mentioning `NSFileManager`
++- `skills/universal/cli-tool-patterns/SKILL.md` mentioning a config `explorer`
++- `site/src/data/skill-bodies.json` containing generated skill bodies
++
++Settings/forms finding: form/settings matches exist in docs, site, setup, and archive material, but not as a ready shadcn settings form for Pala OS v5.
++
++AI browser finding: browser/agent/tool matches describe agent governance, connectors, and MCP/tool policy. No browser tab action implementation was found for direct import.
++
++Sigma/Supabase finding: Sigma protocol and dashboard references exist. These are useful as operating rules, not as file explorer UI code.
++
++### 2. `pala-os-v3`
++
++Snapshot path: `source-snapshots/raw/pala-os-v3`
++
++Snapshot ref from ingest report: `origin/main@2d6ec9e`
++
++File explorer finding: no reusable file explorer app/component was found.
++
++Representative matches were public-file, evidence-file, template File Manager, and archive references:
++
++- `HANDOFF.md`
++- `README-KULLANIM.md`
++- `templates/php-static-site/README.md`
++- `src/lib/render.ts`
++
++Settings/forms finding: settings references mostly describe agent settings, gates, and examples. There is no shadcn `Form` implementation to import.
++
++AI browser finding: strong control-layer concepts exist, including tool gates, manual browser verification language, and agent runtime compatibility. No browser tab action tool implementation was found.
++
++Sigma/Supabase finding: dashboard truth and Supabase/tool classification patterns are useful for governance and evidence, not for a file explorer UI.
++
++### 3. `pala-os-v4`
++
++Snapshot path: `source-snapshots/raw/pala-os-v4`
++
++Snapshot ref from ingest report: `origin/main@4738215`
++
++File explorer finding: no reusable file explorer app/component was found.
++
++Representative matches were mostly general file references:
++
++- `V28-NE-DEGISTI.md`
++- `README-KULLANIM.md`
++- `V27-NE-DEGISTI.md`
++
++Settings/forms finding: settings references are mainly Claude/agent settings, hooks, and runtime safety notes. No shadcn settings form implementation was found.
++
++AI browser finding: v4 is valuable as a control/evidence/memory/dashboard source, but not as a browser action implementation source.
++
++Sigma/Supabase finding: v4 has strong dashboard truth and read-only panel patterns. These may inform v5 evidence gates after separate implementation court review.
++
++### 4. `pala-os-v5`
++
++Snapshot path: `source-snapshots/raw/pala-os-v5`
++
++Snapshot ref from ingest report: `origin/main@f1edb78`
++
++File explorer finding: no reusable file explorer app/component was found.
++
++Representative match:
++
++- `AGENTS.md` matched because the required handoff format contains `Degisen Dosyalar`.
++
++Settings/forms finding: no ready settings form implementation was found.
++
++AI browser finding: v5 has the clearest current architecture for agent adapters, evidence, decisions, and dashboard readers. It does not yet contain browser tab action tooling.
++
++Sigma/Supabase finding: v5 already records that source repositories can inform v5, but they are not automatic truth. Dashboard and evidence patterns remain the strongest reusable material.
++
++## Court Decision
++
++File explorer implementation status: `NOT_PRESENT_IN_SOURCES`
++
++Recommended next safe step: create a new v0.dev/shadcn UI file explorer design for `pala-os-v5`, then adapt it into v5 through the existing evidence/report gate.
++
++Allowed reuse:
++
++- Use v3/v4/v5 dashboard truth and evidence discipline as implementation constraints.
++- Use v5 source court rules before copying code from snapshots.
++- Use Figma/v0.dev output as the primary source for the new file explorer UI.
++
++Blocked reuse:
++
++- Do not claim any current source snapshot already contains a finished Pala OS file explorer.
++- Do not copy raw snapshot code into v5 without a separate court note and changed-files manifest.
++- Do not treat dashboard/Sigma references as release approval.
++
++## Changed Files In This Phase
++
++Included mutation package:
++
++- `docs/source-ingest/2026-06-09-roadmap-source-court.md`
++
++Excluded/pre-existing dirty files:
++
++- None observed before this documentation mutation.
++
++## Rollback Note
++
++Rollback is documentation-only:
++
++```powershell
++git revert <commit-containing-this-doc>
++```
++
++or remove:
++
++```text
++docs/source-ingest/2026-06-09-roadmap-source-court.md
++```
++
++The raw source snapshots are not modified by this decision note.
