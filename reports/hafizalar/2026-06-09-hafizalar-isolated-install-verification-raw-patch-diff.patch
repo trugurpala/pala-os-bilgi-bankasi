@@ -1,0 +1,130 @@
+﻿diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+index 443d035..15e7fbe 100644
+--- a/.github/workflows/test.yml
++++ b/.github/workflows/test.yml
+@@ -18,7 +18,7 @@ jobs:
+     strategy:
+       fail-fast: false
+       matrix:
+-        os: [ubuntu-latest, windows-latest]
++        os: [ubuntu-latest, windows-2025]
+         node: [22, 24]
+     steps:
+       - name: Checkout
+diff --git a/.npmignore b/.npmignore
+new file mode 100644
+index 0000000..bfacaeb
+--- /dev/null
++++ b/.npmignore
+@@ -0,0 +1,6 @@
++.git/
++.github/
++test/
++reports/
++*.log
++*.tmp
+diff --git a/README.md b/README.md
+index 16fc461..162608c 100644
+--- a/README.md
++++ b/README.md
+@@ -32,6 +32,23 @@ Instruction explains. Skill executes. MCP connects. Hook/CI/Gate blocks. Evidenc
+ 
+ ## 60-Second Install
+ 
++Fast install without cloning:
++
++```powershell
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface both --dry-run
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface both
++```
++
++ChatGPT-only fast install:
++
++```powershell
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface chatgpt
++```
++
++The first `npm.cmd exec` call downloads Hafizalar from GitHub into npm's cache and runs the installer bin. It does not require cloning the repo.
++
++Npm may print `skipping integrity check for git dependency` for GitHub packages. That warning is expected for a Git dependency and does not mean the Hafizalar install failed. For the quietest path, use the clone-and-run install until an npm package release exists.
++
+ Clone and verify Hafizalar:
+ 
+ ```powershell
+@@ -128,3 +145,5 @@ Community repo: ready.
+ GitHub Actions: active.
+ 
+ Release/package publish: not performed.
++
++Fast GitHub npm exec install: tested.
+diff --git a/docs/INSTALLATION.md b/docs/INSTALLATION.md
+index 4b60e5b..1370d13 100644
+--- a/docs/INSTALLATION.md
++++ b/docs/INSTALLATION.md
+@@ -12,6 +12,35 @@ No package install is required because Hafizalar currently has no runtime depend
+ 
+ ## Get Hafizalar
+ 
++## Fast Install Without Cloning
++
++Use this path when you want to install Hafizalar directly from GitHub into a target project:
++
++```powershell
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface both --dry-run
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface both
++```
++
++ChatGPT-only:
++
++```powershell
++npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install -- --target C:\path\to\project --surface chatgpt
++```
++
++This command downloads the GitHub repo into npm's cache and runs the `hafizalar-install` bin from `package.json`.
++
++Use dry-run first. The installer still preserves existing files unless `--force` is used.
++
++Npm may print this warning for GitHub dependencies:
++
++```text
++skipping integrity check for git dependency
++```
++
++That warning is expected for this fast GitHub install path and does not mean the installer failed. Use the clone-and-run path if you need the quietest install flow before an npm package release exists.
++
++## Clone And Verify
++
+ Fresh clone:
+ 
+ ```powershell
+diff --git a/test/hafizalar.test.mjs b/test/hafizalar.test.mjs
+index 405be02..33365e5 100644
+--- a/test/hafizalar.test.mjs
++++ b/test/hafizalar.test.mjs
+@@ -24,6 +24,7 @@ const requiredFiles = [
+   'README.md',
+   '.editorconfig',
+   '.gitattributes',
++  '.npmignore',
+   'HAFIZALAR-CODEX.md',
+   'HAFIZALAR-CODEX-SHORT.md',
+   'HAFIZALAR-CHATGPT.md',
+@@ -127,6 +128,8 @@ test('readme points users to the full and short contracts', () => {
+   assert.equal(readme.includes('HAFIZALAR-CODEX-SHORT.md'), true);
+   assert.equal(readme.includes('HAFIZALAR-CHATGPT.md'), true);
+   assert.equal(readme.includes('install:hafizalar'), true);
++  assert.equal(readme.includes('npm.cmd exec --yes --package github:trugurpala/hafizalar hafizalar-install'), true);
++  assert.equal(readme.includes('skipping integrity check for git dependency'), true);
+   assert.equal(readme.includes('docs/OPENAI-SURFACE-LIMITS.md'), true);
+   assert.equal(readme.includes('docs/INSTALLATION.md'), true);
+   assert.equal(readme.includes('assets/brand/hafizalar-repo-card.svg'), true);
+@@ -151,6 +154,9 @@ test('github community surface is present', () => {
+ 
+ test('documentation includes diagrams, install detail, and figma handoff', () => {
+   assert.equal(read('docs/INSTALLATION.md').includes('## Dry-Run First'), true);
++  assert.equal(read('docs/INSTALLATION.md').includes('## Fast Install Without Cloning'), true);
++  assert.equal(read('docs/INSTALLATION.md').includes('github:trugurpala/hafizalar'), true);
++  assert.equal(read('docs/INSTALLATION.md').includes('skipping integrity check for git dependency'), true);
+   assert.equal(read('docs/USAGE.md').includes('## Compact Handoff Template'), true);
+   assert.equal(read('docs/DIAGRAMS.md').includes('```mermaid'), true);
+   assert.equal(read('docs/FIGMA-HANDOFF.md').includes('figma.com/board'), true);
