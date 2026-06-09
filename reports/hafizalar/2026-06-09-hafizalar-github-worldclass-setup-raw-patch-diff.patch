@@ -1,0 +1,1227 @@
+﻿commit 7b32aadf8528623ca25570e831ffe4e01e390905
+Author:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Tue Jun 9 11:31:47 2026 +0300
+Commit:     Ugur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Tue Jun 9 11:31:47 2026 +0300
+
+    Polish GitHub repo and setup docs
+
+diff --git a/.editorconfig b/.editorconfig
+new file mode 100644
+index 0000000..0bad8e4
+--- /dev/null
++++ b/.editorconfig
+@@ -0,0 +1,10 @@
++root = true
++
++[*]
++charset = utf-8
++end_of_line = lf
++insert_final_newline = true
++trim_trailing_whitespace = true
++
++[*.md]
++max_line_length = off
+diff --git a/.gitattributes b/.gitattributes
+new file mode 100644
+index 0000000..2852ca2
+--- /dev/null
++++ b/.gitattributes
+@@ -0,0 +1,8 @@
++* text=auto eol=lf
++
++*.md text eol=lf
++*.mjs text eol=lf
++*.json text eol=lf
++*.yml text eol=lf
++*.ps1 text eol=lf
++*.svg text eol=lf
+diff --git a/.github/ISSUE_TEMPLATE/bug_report.yml b/.github/ISSUE_TEMPLATE/bug_report.yml
+new file mode 100644
+index 0000000..e6b2ec7
+--- /dev/null
++++ b/.github/ISSUE_TEMPLATE/bug_report.yml
+@@ -0,0 +1,43 @@
++name: Bug report
++description: Report a reproducible Hafizalar issue.
++title: "bug: "
++labels: ["bug"]
++body:
++  - type: textarea
++    id: problem
++    attributes:
++      label: Problem
++      description: What failed?
++    validations:
++      required: true
++  - type: textarea
++    id: steps
++    attributes:
++      label: Reproduction
++      description: Exact commands or steps.
++      value: |
++        1.
++        2.
++        3.
++    validations:
++      required: true
++  - type: textarea
++    id: expected
++    attributes:
++      label: Expected result
++    validations:
++      required: true
++  - type: textarea
++    id: evidence
++    attributes:
++      label: Evidence
++      description: Paste command output, CI link, or a small screenshot. Do not include credentials.
++    validations:
++      required: true
++  - type: input
++    id: environment
++    attributes:
++      label: Environment
++      placeholder: "OS, shell, Node version, Hafizalar commit"
++    validations:
++      required: true
+diff --git a/.github/ISSUE_TEMPLATE/config.yml b/.github/ISSUE_TEMPLATE/config.yml
+new file mode 100644
+index 0000000..cc635ac
+--- /dev/null
++++ b/.github/ISSUE_TEMPLATE/config.yml
+@@ -0,0 +1,8 @@
++blank_issues_enabled: false
++contact_links:
++  - name: Installation guide
++    url: https://github.com/trugurpala/hafizalar/blob/main/docs/INSTALLATION.md
++    about: Read the full install and troubleshooting guide first.
++  - name: Usage guide
++    url: https://github.com/trugurpala/hafizalar/blob/main/docs/USAGE.md
++    about: Learn the Codex and ChatGPT working model.
+diff --git a/.github/ISSUE_TEMPLATE/docs_improvement.yml b/.github/ISSUE_TEMPLATE/docs_improvement.yml
+new file mode 100644
+index 0000000..8b10719
+--- /dev/null
++++ b/.github/ISSUE_TEMPLATE/docs_improvement.yml
+@@ -0,0 +1,24 @@
++name: Docs improvement
++description: Improve README, install docs, templates, or diagrams.
++title: "docs: "
++labels: ["documentation"]
++body:
++  - type: input
++    id: file
++    attributes:
++      label: File or section
++      placeholder: "README.md, docs/INSTALLATION.md, templates/PROJECT-SETUP.md"
++    validations:
++      required: true
++  - type: textarea
++    id: issue
++    attributes:
++      label: What is unclear or outdated?
++    validations:
++      required: true
++  - type: textarea
++    id: proposed
++    attributes:
++      label: Proposed change
++    validations:
++      required: false
+diff --git a/.github/ISSUE_TEMPLATE/feature_request.yml b/.github/ISSUE_TEMPLATE/feature_request.yml
+new file mode 100644
+index 0000000..547c4d9
+--- /dev/null
++++ b/.github/ISSUE_TEMPLATE/feature_request.yml
+@@ -0,0 +1,39 @@
++name: Feature request
++description: Propose a practical Hafizalar improvement.
++title: "feat: "
++labels: ["enhancement"]
++body:
++  - type: textarea
++    id: outcome
++    attributes:
++      label: Desired outcome
++      description: What should become easier or safer?
++    validations:
++      required: true
++  - type: textarea
++    id: current
++    attributes:
++      label: Current workaround
++      description: How do users handle this today?
++    validations:
++      required: false
++  - type: textarea
++    id: proof
++    attributes:
++      label: Useful proof
++      description: Example repo, command output, docs link, or failure case.
++    validations:
++      required: false
++  - type: dropdown
++    id: surface
++    attributes:
++      label: Surface
++      options:
++        - Codex
++        - ChatGPT
++        - Installer
++        - Docs
++        - GitHub workflow
++        - Templates
++    validations:
++      required: true
+diff --git a/.github/PULL_REQUEST_TEMPLATE.md b/.github/PULL_REQUEST_TEMPLATE.md
+new file mode 100644
+index 0000000..d3b9d08
+--- /dev/null
++++ b/.github/PULL_REQUEST_TEMPLATE.md
+@@ -0,0 +1,25 @@
++# Pull Request
++
++## What Changed
++
++-
++
++## Why
++
++-
++
++## Verification
++
++- [ ] `npm.cmd test`
++- [ ] Installer dry-run checked when installer/templates changed
++- [ ] Real sandbox install checked when installer/templates changed
++- [ ] Docs links checked when docs changed
++
++## Risk
++
++-
++
++## Notes
++
++- No credentials or private data included.
++- No destructive default behavior added.
+diff --git a/.github/dependabot.yml b/.github/dependabot.yml
+new file mode 100644
+index 0000000..3deee26
+--- /dev/null
++++ b/.github/dependabot.yml
+@@ -0,0 +1,10 @@
++version: 2
++updates:
++  - package-ecosystem: "github-actions"
++    directory: "/"
++    schedule:
++      interval: "weekly"
++  - package-ecosystem: "npm"
++    directory: "/"
++    schedule:
++      interval: "weekly"
+diff --git a/.github/workflows/test.yml b/.github/workflows/test.yml
+index 35279cb..443d035 100644
+--- a/.github/workflows/test.yml
++++ b/.github/workflows/test.yml
+@@ -1,9 +1,13 @@
+ name: Hafizalar Test
+ 
+ on:
++  workflow_dispatch:
+   push:
+   pull_request:
+ 
++permissions:
++  contents: read
++
+ env:
+   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+ 
+diff --git a/CODE_OF_CONDUCT.md b/CODE_OF_CONDUCT.md
+new file mode 100644
+index 0000000..f0ddb31
+--- /dev/null
++++ b/CODE_OF_CONDUCT.md
+@@ -0,0 +1,18 @@
++# Code Of Conduct
++
++Hafizalar is intended to help people ship better software with clearer evidence.
++
++## Expected Behavior
++
++- Be direct and respectful.
++- Discuss technical risk with evidence.
++- Keep feedback focused on the work.
++- Avoid harassment, threats, personal attacks, and discriminatory conduct.
++
++## Reporting
++
++Use GitHub issues for normal project concerns.
++
++For sensitive conduct or security concerns, avoid posting private details publicly. Open a minimal issue asking for a private channel or use GitHub security reporting when available.
++
++Maintainers may remove disruptive content and limit participation when needed to keep the project useful.
+diff --git a/CONTRIBUTING.md b/CONTRIBUTING.md
+index fe3f2ca..24c3ed7 100644
+--- a/CONTRIBUTING.md
++++ b/CONTRIBUTING.md
+@@ -1,14 +1,15 @@
+ # Contributing
+ 
+-Hafizalar is a small operating contract. Keep it practical.
++Hafizalar is a small operating contract and installer. Keep changes practical, verifiable, and easy to copy into real projects.
+ 
+-## Rules
++## Contribution Rules
+ 
+ - Preserve inspect-first behavior.
+ - Preserve no-fake-done behavior.
+-- Preserve destructive/paid/secret/production/legal/security approval gates.
++- Preserve destructive, paid, credential, production, legal, and security approval gates.
+ - Keep files portable and ASCII unless there is a clear reason.
+-- Add tests for contract changes.
++- Do not add dependencies unless they remove real complexity.
++- Add or update tests when changing contracts, installer behavior, templates, or docs navigation.
+ 
+ ## Local Check
+ 
+@@ -16,11 +17,21 @@ Hafizalar is a small operating contract. Keep it practical.
+ npm.cmd test
+ ```
+ 
++Installer smoke:
++
++```powershell
++npm.cmd run install:hafizalar -- --target C:\path\to\sandbox --surface both --dry-run
++npm.cmd run install:hafizalar -- --target C:\path\to\sandbox --surface both
++```
++
+ ## Pull Requests
+ 
+ Include:
+ 
+ - what changed,
+ - why it changed,
+-- verification command,
++- changed files,
++- verification commands,
+ - remaining risk.
++
++Do not claim a change is done unless at least one local or CI proof exists.
+diff --git a/README.md b/README.md
+index 97a2af0..16fc461 100644
+--- a/README.md
++++ b/README.md
+@@ -1,59 +1,46 @@
+ # Hafizalar
+ 
+ [![Hafizalar Test](https://github.com/trugurpala/hafizalar/actions/workflows/test.yml/badge.svg)](https://github.com/trugurpala/hafizalar/actions/workflows/test.yml)
++[![License: MIT](https://img.shields.io/badge/license-MIT-0f766e.svg)](LICENSE)
++[![Node >=22](https://img.shields.io/badge/node-%3E%3D22-2563eb.svg)](package.json)
+ 
+-Hafizalar is a reusable Codex operating memory for building software.
++Hafizalar is a reusable product-builder operating memory for Codex and ChatGPT.
+ 
+-It is not the name of the product you are building.
++It is not the name of the product you are building. It is the discipline that turns a short, messy request into inspected, implemented, verified software.
+ 
+-It is the discipline you paste into Codex so a short, messy request becomes:
++![Hafizalar product builder flow](assets/brand/hafizalar-repo-card.svg)
+ 
+ ```text
+-inspect repo -> decide one path -> implement -> verify -> report
++short request -> inspect repo -> choose one path -> implement -> verify -> report
+ ```
+ 
+ Core rule:
+ 
+ ```text
+-Instruction explains.
+-Skill executes.
+-MCP connects.
+-Hook/CI/Gate blocks.
+-Evidence proves.
++Instruction explains. Skill executes. MCP connects. Hook/CI/Gate blocks. Evidence proves.
+ ```
+ 
+-## Use
++## What You Get
+ 
+-1. Open a project folder.
+-2. Open Codex in that folder.
+-3. Paste `HAFIZALAR-CODEX.md` into Codex.
+-4. Describe the product or task.
++| Surface | File | Use it for |
++| --- | --- | --- |
++| Codex full contract | `HAFIZALAR-CODEX.md` | Local repo work, edits, tests, build/debug, GitHub source work. |
++| Codex short contract | `HAFIZALAR-CODEX-SHORT.md` | Compact sessions where the full contract is too large. |
++| ChatGPT contract | `HAFIZALAR-CHATGPT.md` | Planning, review, product writing, prompt shaping, compact handoff to Codex. |
++| Project templates | `templates/` | Task tracking, review notes, golden path, project setup. |
++| Installer | `scripts/install-hafizalar.mjs` | Copy Hafizalar into any project without overwriting existing files by default. |
+ 
+-Codex should start with a repo audit, choose a path, make the smallest useful change, run verification, and report proof.
++## 60-Second Install
+ 
+-## Fast Start
++Clone and verify Hafizalar:
+ 
+-Use the short version when you need a compact prompt:
+-
+-```text
+-HAFIZALAR-CODEX-SHORT.md
+-```
+-
+-Use the full version for serious project work:
+-
+-```text
+-HAFIZALAR-CODEX.md
+-```
+-
+-Use the ChatGPT version when you are working in ChatGPT instead of Codex:
+-
+-```text
+-HAFIZALAR-CHATGPT.md
++```powershell
++git clone https://github.com/trugurpala/hafizalar.git
++cd hafizalar
++npm.cmd test
+ ```
+ 
+-## Install Into A Project
+-
+-Dry-run first:
++Dry-run install into your project:
+ 
+ ```powershell
+ npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both --dry-run
+@@ -65,7 +52,7 @@ Install:
+ npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both
+ ```
+ 
+-PowerShell wrapper:
++Windows wrapper:
+ 
+ ```powershell
+ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install-hafizalar.ps1 -Target C:\path\to\project -Surface both
+@@ -75,47 +62,48 @@ Installed files go under:
+ 
+ ```text
+ <project>/.hafizalar/
++<project>/HAFIZALAR.md
++<project>/TASKS.md
++<project>/REVIEW.md
++<project>/docs/GOLDEN-PATH.md
++<project>/docs/PROJECT-SETUP.md
+ ```
+ 
+ The installer does not overwrite existing files unless you pass `--force`.
+ 
+-## Codex vs ChatGPT Limits
++## Choose A Surface
+ 
+-Codex and ChatGPT do not have identical limits.
++Use ChatGPT when the work is product thinking, architecture, writing, review, UI direction, or a compact handoff.
+ 
+-- Codex usage depends on your ChatGPT plan and the size/complexity of coding tasks.
+-- ChatGPT model messages, uploads, Projects, GPTs, image/voice tools, and Agent mode can have separate limits.
+-- Do not assume a ChatGPT file/upload/image/voice banner applies to Codex.
+-- Do not assume Codex remaining usage means ChatGPT file uploads or Agent mode are available.
++Use Codex when the work needs local repo inspection, file edits, tests, build logs, screenshots, GitHub source changes, or proof.
+ 
+-See:
++Codex and ChatGPT have separate practical limits. Do not assume a ChatGPT upload/model/tool banner applies to Codex, and do not assume Codex remaining usage means ChatGPT uploads or Agent mode are available.
+ 
+-```text
+-docs/OPENAI-SURFACE-LIMITS.md
+-```
++Read: [`docs/OPENAI-SURFACE-LIMITS.md`](docs/OPENAI-SURFACE-LIMITS.md)
+ 
+-## What Hafizalar Enforces
++## Documentation
+ 
+-- inspect before editing,
+-- choose one practical path,
+-- ask only for destructive/paid/secret/production/legal/security-critical actions,
+-- never claim done without proof,
+-- prefer local deterministic tools,
+-- keep unrelated git changes separate,
+-- report changed files, verification, risks, and next action.
++| Doc | Purpose |
++| --- | --- |
++| [`docs/INSTALLATION.md`](docs/INSTALLATION.md) | Full install, update, force, verify, and troubleshooting guide. |
++| [`docs/USAGE.md`](docs/USAGE.md) | Daily Codex + ChatGPT workflow and handoff templates. |
++| [`docs/DIAGRAMS.md`](docs/DIAGRAMS.md) | Mermaid diagrams and FigJam visual handoff link. |
++| [`docs/GITHUB-REPO-CHECKLIST.md`](docs/GITHUB-REPO-CHECKLIST.md) | Repo quality checklist for keeping the public project current. |
++| [`docs/MAINTENANCE.md`](docs/MAINTENANCE.md) | Release, source-refresh, and evidence routine. |
++| [`docs/FIGMA-HANDOFF.md`](docs/FIGMA-HANDOFF.md) | Figma/FigJam visual system notes. |
+ 
+-## Minimal Project Files
++## GitHub Community Surface
+ 
+-When useful, copy or adapt:
++This repo includes:
+ 
+-```text
+-templates/HAFIZALAR.md
+-templates/TASKS.md
+-templates/REVIEW.md
+-templates/GOLDEN-PATH.md
+-```
+-
+-Do not create these in a project that already has better equivalents.
++- CI on Ubuntu and Windows with Node 22 and Node 24,
++- issue templates,
++- pull request template,
++- Dependabot config,
++- support and security notes,
++- MIT license,
++- tested installer,
++- repo graphics and diagrams.
+ 
+ ## Test
+ 
+@@ -131,10 +119,12 @@ or:
+ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-hafizalar.ps1
+ ```
+ 
+-The tests verify required files, required contract sections, ASCII portability, README links, template presence, and a small sandbox Node test.
++The tests verify required files, contract anchors, README links, template presence, ASCII portability, installer dry-run behavior, real sandbox install behavior, and no obvious secret-shaped text.
+ 
+ ## Status
+ 
+-Community starter: ready.
++Community repo: ready.
++
++GitHub Actions: active.
+ 
+ Release/package publish: not performed.
+diff --git a/SECURITY.md b/SECURITY.md
+new file mode 100644
+index 0000000..2015484
+--- /dev/null
++++ b/SECURITY.md
+@@ -0,0 +1,26 @@
++# Security Policy
++
++## Supported Scope
++
++This repository contains prompts, docs, templates, and installer scripts.
++
++Security-sensitive areas:
++
++- installer file-copy behavior,
++- accidental credential exposure in docs or examples,
++- unsafe destructive workflow guidance,
++- CI and GitHub configuration.
++
++## Reporting A Concern
++
++Do not post private credentials or exploit details in a public issue.
++
++Open a minimal GitHub issue that describes the affected area without sensitive data, or use GitHub private security reporting if it is enabled for this repository.
++
++## Baseline Rules
++
++- Do not commit `.env` files.
++- Do not paste credentials into examples.
++- Do not add `curl | sh` or `wget | sh` install paths.
++- Do not add destructive commands as default behavior.
++- Keep installer overwrites opt-in via `--force`.
+diff --git a/SUPPORT.md b/SUPPORT.md
+new file mode 100644
+index 0000000..a85e491
+--- /dev/null
++++ b/SUPPORT.md
+@@ -0,0 +1,10 @@
++# Support
++
++Use this order when you need help:
++
++1. Read [`docs/INSTALLATION.md`](docs/INSTALLATION.md).
++2. Run `npm.cmd test`.
++3. Run the installer with `--dry-run`.
++4. Open a GitHub issue with the command output, operating system, Node version, selected surface, and expected result.
++
++Do not include credentials, private customer data, or local `.env` contents.
+diff --git a/assets/brand/hafizalar-repo-card.svg b/assets/brand/hafizalar-repo-card.svg
+new file mode 100644
+index 0000000..60dcc30
+--- /dev/null
++++ b/assets/brand/hafizalar-repo-card.svg
+@@ -0,0 +1,31 @@
++<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
++  <title id="title">Hafizalar product builder flow</title>
++  <desc id="desc">A visual summary of Hafizalar turning a short request into inspected, verified software.</desc>
++  <rect width="1200" height="630" fill="#f8fafc"/>
++  <rect x="48" y="48" width="1104" height="534" rx="28" fill="#ffffff" stroke="#d4d4d8" stroke-width="2"/>
++  <text x="92" y="132" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="68" font-weight="800">Hafizalar</text>
++  <text x="96" y="182" fill="#334155" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="28">Reusable product-builder memory for Codex and ChatGPT</text>
++  <g font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24" font-weight="700">
++    <rect x="96" y="258" width="190" height="86" rx="18" fill="#e9f5ff" stroke="#2563eb" stroke-width="3"/>
++    <text x="132" y="310" fill="#0f172a">ChatGPT</text>
++    <rect x="376" y="258" width="190" height="86" rx="18" fill="#fff7ed" stroke="#ea580c" stroke-width="3"/>
++    <text x="432" y="310" fill="#0f172a">Codex</text>
++    <rect x="656" y="258" width="190" height="86" rx="18" fill="#ecfdf5" stroke="#16a34a" stroke-width="3"/>
++    <text x="704" y="310" fill="#0f172a">Verify</text>
++    <rect x="936" y="258" width="150" height="86" rx="18" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
++    <text x="978" y="310" fill="#0f172a">Report</text>
++  </g>
++  <g stroke="#64748b" stroke-width="5" stroke-linecap="round" fill="none">
++    <path d="M292 301 H360"/>
++    <path d="M572 301 H640"/>
++    <path d="M852 301 H920"/>
++  </g>
++  <g fill="#64748b">
++    <path d="M360 301 L344 291 V311 Z"/>
++    <path d="M640 301 L624 291 V311 Z"/>
++    <path d="M920 301 L904 291 V311 Z"/>
++  </g>
++  <text x="96" y="438" fill="#111827" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="34" font-weight="700">short request -&gt; inspect -&gt; implement -&gt; verify -&gt; evidence</text>
++  <text x="96" y="494" fill="#475569" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="24">Instruction explains. Skill executes. MCP connects. Hook/CI/Gate blocks. Evidence proves.</text>
++  <text x="96" y="542" fill="#64748b" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="22">github.com/trugurpala/hafizalar</text>
++</svg>
+diff --git a/docs/DIAGRAMS.md b/docs/DIAGRAMS.md
+new file mode 100644
+index 0000000..5e85d48
+--- /dev/null
++++ b/docs/DIAGRAMS.md
+@@ -0,0 +1,68 @@
++# Diagrams
++
++This page is the repo-native visual source for Hafizalar.
++
++FigJam diagram:
++
++https://www.figma.com/board/7dd9CaDt2kOUSjf06j36JJ?utm_source=codex&utm_content=edit_in_figjam&oai_id=&request_id=63af9a57-a475-465b-9f89-6ef40fe4150d
++
++## Product Builder Flow
++
++```mermaid
++flowchart LR
++  A["Short user request"] -->|"Shape outcome"| B["ChatGPT planning surface"]
++  B -->|"Compact handoff"| C["Codex local surface"]
++  C -->|"Inspect repo"| D["Repo audit"]
++  D -->|"Install Hafizalar"| E[".hafizalar project files"]
++  E -->|"Implement task"| F["Focused source changes"]
++  F -->|"Run checks"| G["Local verification"]
++  G -->|"Push"| H["GitHub Actions"]
++  H -->|"Evidence"| I["Report package"]
++  I -->|"Improve next project"| B
++  G -->|"Failure"| J["Fix loop"]
++  J -->|"Retest"| G
++```
++
++## Installer File Map
++
++```mermaid
++flowchart LR
++  A["Hafizalar repo"] --> B["scripts/install-hafizalar.mjs"]
++  B --> C["Target project"]
++  C --> D[".hafizalar contracts"]
++  C --> E["HAFIZALAR.md"]
++  C --> F["TASKS.md"]
++  C --> G["REVIEW.md"]
++  C --> H["docs/GOLDEN-PATH.md"]
++  C --> I["docs/PROJECT-SETUP.md"]
++  B --> J[".hafizalar/INSTALL-REPORT.json"]
++```
++
++## Evidence Loop
++
++```mermaid
++sequenceDiagram
++  participant User
++  participant ChatGPT
++  participant Codex
++  participant CI
++  participant Repo
++
++  User->>ChatGPT: Messy product request
++  ChatGPT->>Codex: Compact handoff
++  Codex->>Repo: Inspect and edit
++  Codex->>Codex: Run local checks
++  Codex->>CI: Push changes
++  CI->>Repo: Record result
++  Codex->>User: Report files, proof, risk
++```
++
++## Social Card
++
++Repo card asset:
++
++```text
++assets/brand/hafizalar-repo-card.svg
++```
++
++Use it as GitHub social preview or in docs when a visual summary is needed.
+diff --git a/docs/FIGMA-HANDOFF.md b/docs/FIGMA-HANDOFF.md
+new file mode 100644
+index 0000000..3bce1fb
+--- /dev/null
++++ b/docs/FIGMA-HANDOFF.md
+@@ -0,0 +1,21 @@
++# Figma Handoff
++
++Hafizalar keeps repo-native diagrams as the source of truth, then uses Figma/FigJam for presentation and collaboration.
++
++## FigJam Diagram
++
++Main flow:
++
++https://www.figma.com/board/7dd9CaDt2kOUSjf06j36JJ?utm_source=codex&utm_content=edit_in_figjam&oai_id=&request_id=63af9a57-a475-465b-9f89-6ef40fe4150d
++
++## Repo-Native Sources
++
++- Mermaid diagrams: [`docs/DIAGRAMS.md`](DIAGRAMS.md)
++- Social card SVG: [`assets/brand/hafizalar-repo-card.svg`](../assets/brand/hafizalar-repo-card.svg)
++
++## Visual Rules
++
++- Keep diagrams focused on product-builder flow, not decoration.
++- Use proof-oriented labels: inspect, install, verify, CI, report.
++- Avoid adding visual assets that cannot be regenerated or explained from repo files.
++- Update this file when a new FigJam or Figma artifact becomes the main visual reference.
+diff --git a/docs/GITHUB-REPO-CHECKLIST.md b/docs/GITHUB-REPO-CHECKLIST.md
+new file mode 100644
+index 0000000..52f82ec
+--- /dev/null
++++ b/docs/GITHUB-REPO-CHECKLIST.md
+@@ -0,0 +1,45 @@
++# GitHub Repo Checklist
++
++Use this checklist to keep Hafizalar from becoming stale or incomplete.
++
++## Current Status
++
++| Area | Status | Evidence |
++| --- | --- | --- |
++| README | Complete | Main page includes install, docs, surfaces, CI badge, and graphic. |
++| License | Complete | MIT license exists. |
++| CI | Complete | GitHub Actions tests Ubuntu and Windows on Node 22 and 24. |
++| Installer | Complete | Node installer and PowerShell wrapper exist. |
++| Tests | Complete | Node test suite covers required files, contracts, docs links, and installer behavior. |
++| Issue templates | Complete | Bug, feature, and docs issue forms exist. |
++| PR template | Complete | Pull request checklist exists. |
++| Security | Complete | Security policy exists. |
++| Support | Complete | Support path exists. |
++| Visual docs | Complete | Mermaid diagrams, SVG card, and FigJam link exist. |
++| Package release | Not done | No npm publish or release tag yet. |
++
++## Before Every Meaningful Change
++
++- Run `git status --short`.
++- Identify changed and new files.
++- Run `npm.cmd test`.
++- Run installer smoke when installer or templates changed.
++- Update docs if commands, files, or behavior changed.
++- Keep official-source docs dated when limits or external behavior are mentioned.
++
++## Before A Public Release
++
++- Confirm README install commands still work.
++- Confirm `docs/INSTALLATION.md` matches installer output.
++- Confirm GitHub Actions is green.
++- Confirm no credentials or private local paths are included.
++- Add a release note with changed files and verification proof.
++- Create a tag only after CI passes.
++
++## Repo Settings To Review Manually
++
++- Social preview image: `assets/brand/hafizalar-repo-card.svg`
++- About description: `Reusable Codex and ChatGPT product-builder operating memory.`
++- Website: README or future docs site URL
++- Topics: `codex`, `chatgpt`, `ai-agents`, `developer-tools`, `prompt-engineering`, `software-delivery`
++- Security advisories: enable if private vulnerability reports are desired
+diff --git a/docs/INSTALLATION.md b/docs/INSTALLATION.md
+new file mode 100644
+index 0000000..4b60e5b
+--- /dev/null
++++ b/docs/INSTALLATION.md
+@@ -0,0 +1,135 @@
++# Installation
++
++This guide installs Hafizalar into a project without treating Hafizalar as that project's product name.
++
++## Requirements
++
++- Git
++- Node.js 22 or newer
++- PowerShell on Windows, optional on other systems
++
++No package install is required because Hafizalar currently has no runtime dependencies.
++
++## Get Hafizalar
++
++Fresh clone:
++
++```powershell
++git clone https://github.com/trugurpala/hafizalar.git
++cd hafizalar
++npm.cmd test
++```
++
++Existing clone:
++
++```powershell
++cd C:\path\to\hafizalar
++git pull --ff-only
++npm.cmd test
++```
++
++## Pick The Surface
++
++| Surface | Command value | Installs |
++| --- | --- | --- |
++| Codex only | `--surface codex` | Codex contract and shared project files. |
++| ChatGPT only | `--surface chatgpt` | ChatGPT contract and shared project files. |
++| Both | `--surface both` | Codex, ChatGPT, and shared project files. |
++
++Use `both` for most projects.
++
++## Dry-Run First
++
++```powershell
++npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both --dry-run
++```
++
++The JSON output uses:
++
++- `planned` for every candidate file,
++- `wouldWrite` for files that would be written,
++- `skipped` for existing files that would be preserved,
++- `written` empty during dry-run.
++
++## Install
++
++```powershell
++npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both
++```
++
++PowerShell wrapper:
++
++```powershell
++powershell -NoProfile -ExecutionPolicy Bypass -File scripts\install-hafizalar.ps1 -Target C:\path\to\project -Surface both
++```
++
++## Installed Files
++
++```text
++.hafizalar/README.md
++.hafizalar/HAFIZALAR-CODEX-SHORT.md
++.hafizalar/HAFIZALAR-CODEX.md
++.hafizalar/HAFIZALAR-CHATGPT.md
++.hafizalar/OPENAI-SURFACE-LIMITS.md
++.hafizalar/INSTALL-REPORT.json
++HAFIZALAR.md
++TASKS.md
++REVIEW.md
++docs/GOLDEN-PATH.md
++docs/PROJECT-SETUP.md
++```
++
++Surface-specific installs omit the other surface contract.
++
++## Verify The Install
++
++```powershell
++Test-Path C:\path\to\project\.hafizalar\INSTALL-REPORT.json
++Get-Content C:\path\to\project\.hafizalar\INSTALL-REPORT.json
++```
++
++For Codex usage, paste:
++
++```text
++.hafizalar/HAFIZALAR-CODEX.md
++```
++
++For ChatGPT usage, paste:
++
++```text
++.hafizalar/HAFIZALAR-CHATGPT.md
++```
++
++## Updating A Project
++
++Run dry-run again first:
++
++```powershell
++npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both --dry-run
++```
++
++If the project already has adapted files, do not overwrite them blindly.
++
++Only use force when you intentionally want Hafizalar source files to replace target files:
++
++```powershell
++npm.cmd run install:hafizalar -- --target C:\path\to\project --surface both --force
++```
++
++## Troubleshooting
++
++`node is not recognized`
++
++Install Node.js 22 or newer, then reopen the terminal.
++
++`npm.ps1 cannot be loaded`
++
++Use `npm.cmd` on Windows.
++
++Existing files are skipped
++
++This is expected. Use `--force` only when you have reviewed the target files.
++
++Wrong surface installed
++
++Run the installer again with the intended `--surface` value. Existing shared files will be skipped unless `--force` is used.
+diff --git a/docs/MAINTENANCE.md b/docs/MAINTENANCE.md
+new file mode 100644
+index 0000000..9f3a97d
+--- /dev/null
++++ b/docs/MAINTENANCE.md
+@@ -0,0 +1,50 @@
++# Maintenance
++
++Hafizalar should stay small, current, and proven.
++
++## Weekly
++
++- Check GitHub Actions.
++- Review Dependabot suggestions.
++- Run `npm.cmd test` on the main branch.
++- Confirm issue templates still match the repo workflow.
++
++## Monthly
++
++- Re-check official OpenAI help pages linked from `docs/OPENAI-SURFACE-LIMITS.md`.
++- Refresh the dated source snapshot if limits or wording changed.
++- Run a real installer smoke into a temporary project.
++- Review README for stale status notes.
++
++## Release Checklist
++
++1. `git status --short`
++2. `npm.cmd test`
++3. Installer dry-run into a temporary project
++4. Real installer smoke into a temporary project
++5. GitHub Actions green on main
++6. Changelog or release notes prepared
++7. No credentials or local-only private data included
++8. Tag created only after CI passes
++
++## Versioning
++
++Current package version: `0.1.0`
++
++No npm publish has been performed.
++
++Recommended future path:
++
++- `0.1.x` for docs and installer hardening,
++- `0.2.0` for cross-platform shell wrapper or package distribution,
++- `1.0.0` only after several real project installs prove the contract.
++
++## Updating Installer Behavior
++
++When installer behavior changes:
++
++- update `docs/INSTALLATION.md`,
++- update `README.md` if user-facing commands changed,
++- update `test/hafizalar.test.mjs`,
++- run a dry-run and real install into a temporary project,
++- include `INSTALL-REPORT.json` behavior in the review.
+diff --git a/docs/USAGE.md b/docs/USAGE.md
+new file mode 100644
+index 0000000..bc5fc96
+--- /dev/null
++++ b/docs/USAGE.md
+@@ -0,0 +1,78 @@
++# Usage
++
++Hafizalar is a working discipline, not a product name.
++
++Use it to keep ChatGPT and Codex focused on the right jobs.
++
++## Daily Flow
++
++1. Use ChatGPT to shape the product outcome when the request is vague.
++2. Use Codex to inspect the local repo and make changes.
++3. Run local verification.
++4. Push and let CI prove the repo still works.
++5. Report changed files, evidence, remaining risk, and next action.
++
++## ChatGPT Surface
++
++Use ChatGPT for:
++
++- product framing,
++- architecture review,
++- writing docs and prompts,
++- UI/UX direction,
++- compact Codex handoffs,
++- reviewing pasted code or command output.
++
++Do not let ChatGPT claim local implementation is done unless it has real proof from command output, CI, screenshots, uploaded files, or connectors.
++
++## Codex Surface
++
++Use Codex for:
++
++- repo inspection,
++- file edits,
++- tests,
++- build/debug,
++- browser or Playwright proof,
++- Git and GitHub source work.
++
++Codex should inspect before editing and report proof before claiming done.
++
++## Compact Handoff Template
++
++Use this when moving from ChatGPT to Codex:
++
++```text
++Goal:
++Repo:
++Files likely involved:
++Constraints:
++Commands to run:
++Expected proof:
++Risks:
++```
++
++## Evidence Template
++
++Use this when reporting back:
++
++```text
++Done:
++Changed files:
++Verification:
++CI:
++Risks left:
++Next best action:
++```
++
++## Budget Discipline
++
++Codex and ChatGPT have separate practical limits.
++
++Keep both efficient:
++
++- pass only the smallest useful context,
++- avoid pasting the whole repo,
++- prefer file paths and command output,
++- use CI links instead of long logs when CI is green,
++- keep screenshots and diagrams tied to a specific decision.
+diff --git a/package.json b/package.json
+index 33c8af6..9cbce41 100644
+--- a/package.json
++++ b/package.json
+@@ -4,6 +4,25 @@
+   "private": false,
+   "type": "module",
+   "description": "Reusable Codex operating memory for building software with inspection, evidence, and delivery discipline.",
++  "keywords": [
++    "codex",
++    "chatgpt",
++    "ai-agents",
++    "developer-tools",
++    "prompt-engineering",
++    "software-delivery"
++  ],
++  "repository": {
++    "type": "git",
++    "url": "git+https://github.com/trugurpala/hafizalar.git"
++  },
++  "bugs": {
++    "url": "https://github.com/trugurpala/hafizalar/issues"
++  },
++  "homepage": "https://github.com/trugurpala/hafizalar#readme",
++  "bin": {
++    "hafizalar-install": "./scripts/install-hafizalar.mjs"
++  },
+   "scripts": {
+     "test": "node --test test/hafizalar.test.mjs",
+     "install:hafizalar": "node scripts/install-hafizalar.mjs",
+diff --git a/scripts/install-hafizalar.mjs b/scripts/install-hafizalar.mjs
+index 6f21615..5c4e64a 100644
+--- a/scripts/install-hafizalar.mjs
++++ b/scripts/install-hafizalar.mjs
+@@ -58,6 +58,7 @@ function selectedFiles(surface) {
+     ['templates/TASKS.md', 'TASKS.md'],
+     ['templates/REVIEW.md', 'REVIEW.md'],
+     ['templates/GOLDEN-PATH.md', 'docs/GOLDEN-PATH.md'],
++    ['templates/PROJECT-SETUP.md', 'docs/PROJECT-SETUP.md'],
+   ];
+ 
+   const codex = [['HAFIZALAR-CODEX.md', '.hafizalar/HAFIZALAR-CODEX.md']];
+diff --git a/templates/PROJECT-SETUP.md b/templates/PROJECT-SETUP.md
+new file mode 100644
+index 0000000..b1611ed
+--- /dev/null
++++ b/templates/PROJECT-SETUP.md
+@@ -0,0 +1,70 @@
++# Project Setup
++
++Use this file after installing Hafizalar into a project.
++
++## Product
++
++Name:
++
++Goal:
++
++Primary users:
++
++## AI Surface
++
++Codex contract:
++
++```text
++.hafizalar/HAFIZALAR-CODEX.md
++```
++
++ChatGPT contract:
++
++```text
++.hafizalar/HAFIZALAR-CHATGPT.md
++```
++
++## Local Commands
++
++Install:
++
++```text
++<project install command>
++```
++
++Run:
++
++```text
++<project run command>
++```
++
++Test:
++
++```text
++<project test command>
++```
++
++Build:
++
++```text
++<project build command>
++```
++
++## Definition Of Done
++
++- Repo inspected before editing.
++- Changed files listed.
++- Tests, build, lint, screenshot, or CI proof attached.
++- Risks left documented.
++- Next best action named.
++
++## Handoff
++
++```text
++Goal:
++Files likely involved:
++Constraints:
++Commands to run:
++Expected proof:
++Risks:
++```
+diff --git a/test/hafizalar.test.mjs b/test/hafizalar.test.mjs
+index d09536b..405be02 100644
+--- a/test/hafizalar.test.mjs
++++ b/test/hafizalar.test.mjs
+@@ -22,17 +22,37 @@ function isAscii(relativePath) {
+ 
+ const requiredFiles = [
+   'README.md',
++  '.editorconfig',
++  '.gitattributes',
+   'HAFIZALAR-CODEX.md',
+   'HAFIZALAR-CODEX-SHORT.md',
+   'HAFIZALAR-CHATGPT.md',
++  'CODE_OF_CONDUCT.md',
++  'CONTRIBUTING.md',
++  'SECURITY.md',
++  'SUPPORT.md',
++  'assets/brand/hafizalar-repo-card.svg',
++  'docs/DIAGRAMS.md',
++  'docs/FIGMA-HANDOFF.md',
++  'docs/GITHUB-REPO-CHECKLIST.md',
++  'docs/INSTALLATION.md',
++  'docs/MAINTENANCE.md',
+   'docs/OPENAI-SURFACE-LIMITS.md',
++  'docs/USAGE.md',
+   'scripts/install-hafizalar.mjs',
+   'scripts/install-hafizalar.ps1',
+   'templates/HAFIZALAR.md',
+   'templates/TASKS.md',
+   'templates/REVIEW.md',
+   'templates/GOLDEN-PATH.md',
++  'templates/PROJECT-SETUP.md',
+   'scripts/test-hafizalar.ps1',
++  '.github/ISSUE_TEMPLATE/bug_report.yml',
++  '.github/ISSUE_TEMPLATE/config.yml',
++  '.github/ISSUE_TEMPLATE/docs_improvement.yml',
++  '.github/ISSUE_TEMPLATE/feature_request.yml',
++  '.github/PULL_REQUEST_TEMPLATE.md',
++  '.github/dependabot.yml',
+   '.github/workflows/test.yml',
+   'LICENSE',
+   'package.json',
+@@ -108,6 +128,8 @@ test('readme points users to the full and short contracts', () => {
+   assert.equal(readme.includes('HAFIZALAR-CHATGPT.md'), true);
+   assert.equal(readme.includes('install:hafizalar'), true);
+   assert.equal(readme.includes('docs/OPENAI-SURFACE-LIMITS.md'), true);
++  assert.equal(readme.includes('docs/INSTALLATION.md'), true);
++  assert.equal(readme.includes('assets/brand/hafizalar-repo-card.svg'), true);
+   assert.equal(readme.includes('npm.cmd test'), true);
+ });
+ 
+@@ -116,6 +138,32 @@ test('templates are intentionally small and project-adaptable', () => {
+   assert.equal(read('templates/TASKS.md').includes('## Active'), true);
+   assert.equal(read('templates/REVIEW.md').includes('### Verification'), true);
+   assert.equal(read('templates/GOLDEN-PATH.md').includes('From Zero To Local Run'), true);
++  assert.equal(read('templates/PROJECT-SETUP.md').includes('## Definition Of Done'), true);
++});
++
++test('github community surface is present', () => {
++  assert.equal(read('.github/workflows/test.yml').includes('workflow_dispatch'), true);
++  assert.equal(read('.github/PULL_REQUEST_TEMPLATE.md').includes('## Verification'), true);
++  assert.equal(read('.github/dependabot.yml').includes('github-actions'), true);
++  assert.equal(read('SECURITY.md').includes('Security Policy'), true);
++  assert.equal(read('SUPPORT.md').includes('docs/INSTALLATION.md'), true);
++});
++
++test('documentation includes diagrams, install detail, and figma handoff', () => {
++  assert.equal(read('docs/INSTALLATION.md').includes('## Dry-Run First'), true);
++  assert.equal(read('docs/USAGE.md').includes('## Compact Handoff Template'), true);
++  assert.equal(read('docs/DIAGRAMS.md').includes('```mermaid'), true);
++  assert.equal(read('docs/FIGMA-HANDOFF.md').includes('figma.com/board'), true);
++  assert.equal(read('docs/GITHUB-REPO-CHECKLIST.md').includes('Repo Settings To Review Manually'), true);
++  assert.equal(read('docs/MAINTENANCE.md').includes('## Release Checklist'), true);
++  assert.equal(read('assets/brand/hafizalar-repo-card.svg').includes('<svg'), true);
++});
++
++test('package metadata supports public github repo usage', () => {
++  const pkg = JSON.parse(read('package.json'));
++  assert.equal(pkg.repository.url, 'git+https://github.com/trugurpala/hafizalar.git');
++  assert.equal(pkg.bugs.url, 'https://github.com/trugurpala/hafizalar/issues');
++  assert.equal(pkg.bin['hafizalar-install'], './scripts/install-hafizalar.mjs');
+ });
+ 
+ test('sandbox node verification works without dependencies', () => {
+@@ -159,6 +207,7 @@ test('installer dry-run and real install work for Codex and ChatGPT surfaces', (
+     assert.equal(existsSync(path.join(sandbox, '.hafizalar', 'OPENAI-SURFACE-LIMITS.md')), true);
+     assert.equal(existsSync(path.join(sandbox, 'HAFIZALAR.md')), true);
+     assert.equal(existsSync(path.join(sandbox, 'docs', 'GOLDEN-PATH.md')), true);
++    assert.equal(existsSync(path.join(sandbox, 'docs', 'PROJECT-SETUP.md')), true);
+     assert.equal(existsSync(path.join(sandbox, '.hafizalar', 'INSTALL-REPORT.json')), true);
+ 
+     const secondOutput = execFileSync(process.execPath, [installer, '--target', sandbox, '--surface', 'both'], {
