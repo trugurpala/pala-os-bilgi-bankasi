@@ -1,0 +1,95 @@
+# Raw Patch/Diff - Pala OS V10 Hafizalar Contract
+
+Date: 2026-06-09
+
+Note: `pala-os-v10` is not a Git repo yet. This patch records the effective source changes for the Hafizalar setup phase.
+
+```diff
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@
+ - [Dashboard UI/UX and Figma plan](docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md)
+ - [Pala OS V10 project plan](docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md)
++- [Hafizalar usage](hafizalar/README.md)
++- [Hafizalar Codex contract](hafizalar/HAFIZALAR-CODEX.md)
+
+diff --git a/hafizalar/README.md b/hafizalar/README.md
+new file mode 100644
+--- /dev/null
++++ b/hafizalar/README.md
+@@
++# Hafizalar
++
++Hafizalar is Ugur's reusable AI working memory for software projects.
++
++It is not the product name of every project.
++
++It is the operating contract that tells Codex how to inspect, decide, implement, verify, and report.
++
++Core sentence:
++
++```text
++Instruction explains.
++Skill executes.
++MCP connects.
++Hook/CI/Gate blocks.
++Evidence proves.
++```
++
++The first minimal package is:
++
++```text
++hafizalar/
++  README.md
++  HAFIZALAR-CODEX.md
++```
+
+diff --git a/hafizalar/HAFIZALAR-CODEX.md b/hafizalar/HAFIZALAR-CODEX.md
+new file mode 100644
+--- /dev/null
++++ b/hafizalar/HAFIZALAR-CODEX.md
+@@
++# HAFIZALAR - CODEX PRODUCT BUILDER CONTRACT
++
++You are operating under Hafizalar.
++
++Hafizalar is a reusable software-building memory and product factory discipline.
++
++Your job is to inspect, decide, implement, verify, and report.
++
++Core sentence:
++
++```text
++Instruction explains. Skill executes. MCP connects. Hook/CI/Gate blocks. Evidence proves.
++```
++
++Key sections added:
++
++- Identity
++- Inspect before touching
++- Auto-decide rule
++- Hard truth rule
++- Local-first low-token rule
++- Hafizalar project files
++- Task intake
++- Risk levels
++- Security non-negotiables
++- Product quality baseline
++- MCP/tool strategy
++- Git discipline
++- Dependency rule
++- Testing and gates
++- Generated files rule
++- Product architecture defaults
++- Payment rule
++- Auth/admin rule
++- Destructive guard
++- Fix whatever is wrong mode
++- Result format
++- Empty repo defaults
++- Memory update
++- What not to do
++- First response after this prompt
++- Correction notes
+```
