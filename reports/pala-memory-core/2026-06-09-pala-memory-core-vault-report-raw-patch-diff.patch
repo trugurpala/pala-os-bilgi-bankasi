@@ -1,0 +1,565 @@
+﻿commit 3ff165b1c228329d4d1750918a8f9180af2fc2d1
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 17:19:22 2026 +0300
+
+    Add vault recovery report and scoped backups
+---
+ INSTALL.md                 |   2 +
+ README.md                  |   2 +
+ docs/backlog.md            |   1 +
+ docs/commands.md           |  38 ++++++++
+ docs/roadmap.md            |   2 +
+ docs/v0.1-acceptance.md    |   2 +
+ docs/v0.13-vault-report.md |  74 ++++++++++++++++
+ pala.py                    | 212 +++++++++++++++++++++++++++++++++++++++++++--
+ 8 files changed, 326 insertions(+), 7 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 80c64bf..14de62d 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -26,6 +26,7 @@ python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
+ python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py search "First memory"
++python pala.py report vault --all
+ python pala.py dashboard export
+ python pala.py dashboard export --all
+ python pala.py dashboard serve
+@@ -93,6 +94,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | List saved records | `python pala.py list --limit 10` |
+ | Search the memory vault | `python pala.py search "github backup"` |
+ | Show one record | `python pala.py show <record-id-or-prefix>` |
++| Create vault recovery report | `python pala.py report vault --all` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Update dashboard with all records | `python pala.py dashboard export --all` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+diff --git a/README.md b/README.md
+index e7f1c87..da3fde6 100644
+--- a/README.md
++++ b/README.md
+@@ -21,6 +21,7 @@ python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --o
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py search "Pala Memory Core"
+ python pala.py list --limit 10
++python pala.py report vault --all
+ python pala.py dashboard export
+ python pala.py dashboard export --all
+ python pala.py dashboard serve
+@@ -87,6 +88,7 @@ pala-memory-core/
+ | `capture playwright` | v0.10 | Optional connector for browser-rendered pages and screenshots when Playwright is installed |
+ | `list` / `search` / `show` | v0.11 | Finds saved records across the local memory vault |
+ | `doctor` | v0.12 | Checks 10+ local systems and reports ready/missing pieces |
++| `report vault` | v0.13 | Creates a beginning-to-end recovery and backup summary report |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index d09fc9e..ccd5047 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -13,6 +13,7 @@
+ | `PMC-006` | Add `list` command | User can see recent records |
+ | `PMC-007` | Add `show` command | User can inspect one record |
+ | `PMC-007B` | Add `search` command | User can recover records by phrase, source, project, or tag |
++| `PMC-007C` | Add `report vault` command | User can create a beginning-to-end recovery and backup summary |
+ | `PMC-008` | Add static dashboard data export | Dashboard can load `records.json` |
+ | `PMC-008B` | Add local dashboard server | Dashboard can be opened from localhost |
+ 
+diff --git a/docs/commands.md b/docs/commands.md
+index beeecd9..b8bc2dd 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -102,6 +102,26 @@ Creates a daily Markdown brief from today's records.
+ python pala.py brief today
+ ```
+ 
++## report vault
++
++Creates a beginning-to-end recovery report for the local vault.
++
++```text
++python pala.py report vault --all
++```
++
++Useful filters:
++
++| Option | Purpose |
++|---|---|
++| `--all` | Include every record |
++| `--date 2026-06-09` | Limit to one date folder |
++| `--source codex` | Limit by source |
++| `--project trugurpala/pala-memory-core` | Limit by linked project |
++| `--tag mobile-share` | Require a tag |
++| `--output report.md` | Write to a custom Markdown path |
++| `--json` | Print machine-readable report metadata |
++
+ ## backup receipt
+ 
+ Creates a local backup receipt. This is the MVP placeholder before GitHub/Drive upload.
+@@ -110,6 +130,12 @@ Creates a local backup receipt. This is the MVP placeholder before GitHub/Drive
+ python pala.py backup receipt
+ ```
+ 
++Include the whole vault:
++
++```text
++python pala.py backup receipt --all
++```
++
+ ## backup github
+ 
+ Creates a redacted backup package in the local knowledge-bank repository.
+@@ -138,6 +164,12 @@ Commit and push the package:
+ python pala.py backup github --push
+ ```
+ 
++Back up the whole vault instead of today's records:
++
++```text
++python pala.py backup github --all --push
++```
++
+ Default path:
+ 
+ ```text
+@@ -152,6 +184,12 @@ Creates a redacted backup package in a local folder. Point `--target` at a Googl
+ python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ ```
+ 
++Back up the whole vault to a Drive sync folder:
++
++```text
++python pala.py backup drive --all --target "C:\Users\you\Google Drive\Pala Memory Core"
++```
++
+ If no target is given, the default folder is:
+ 
+ ```text
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 705248e..5cc24a9 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -20,6 +20,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.10` | Playwright capture | Rendered pages and screenshots can become records/attachments |
+ | `v0.11` | Recovery search | CLI and dashboard can find saved records across the local vault |
+ | `v0.12` | System doctor | Local install can report 10+ ready/missing systems |
++| `v0.13` | Vault report | Local vault can produce a beginning-to-end recovery and backup report |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -49,4 +50,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add Playwright capture | Capture rendered pages and screenshots with optional dependency |
+ | Add recovery search | List, show, and search records across the local vault |
+ | Add system doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
++| Add vault report | Summarize sources, files, tasks, decisions, timeline, and backup artifacts |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 5be88e0..3dc1546 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -30,6 +30,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | List records | `python pala.py list --limit 10` | Saved records are visible from CLI |
+ | Search records | `python pala.py search <query>` | Saved records can be recovered by phrase |
+ | Show record | `python pala.py show <id-prefix>` | One record can be inspected by id prefix |
++| Create vault report | `python pala.py report vault --all` | Beginning-to-end recovery report is created under `data/reports/` |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Export all dashboard data | `python pala.py dashboard export --all` | All local records can be loaded into the dashboard |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+@@ -79,6 +80,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Recovery search | CLI can list, search, and show saved records |
+ | Dashboard search | Dashboard can filter exported records in the browser |
+ | System doctor | CLI reports active systems and optional missing dependencies |
++| Vault report | CLI summarizes records, files, tasks, decisions, timeline, and backup artifacts |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.13-vault-report.md b/docs/v0.13-vault-report.md
+new file mode 100644
+index 0000000..25734f5
+--- /dev/null
++++ b/docs/v0.13-vault-report.md
+@@ -0,0 +1,74 @@
++# v0.13 Vault Report
++
++Date: 2026-06-09
++Phase: vault recovery report preview
++Status: PASS for beginning-to-end vault report and scoped backup options
++
++## Goal
++
++Create one report that summarizes the local memory vault from beginning to end: records, sources, projects, tags, files, tasks, decisions, evidence, timeline, and backup artifacts.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py report vault` |
++| Scope | Supports `--all`, `--date`, `--source`, `--project`, and `--tag` |
++| Output | Writes Markdown under `data/reports/` by default |
++| JSON | Supports `python pala.py report vault --json` |
++| Backup | Added `--all` and `--date` to `backup receipt` |
++| Backup | Added `--all`, `--date`, `--source`, `--project`, and `--tag` to `backup github` and `backup drive` |
++
++## Commands
++
++```powershell
++python .\pala.py report vault --all
++python .\pala.py report vault --all --json
++python .\pala.py backup receipt --all
++python .\pala.py backup github --all --knowledge-bank .\data\backups\kb-vault-smoke
++python .\pala.py backup drive --all --target .\data\backups\drive-vault-smoke
++```
++
++## Smoke Test
++
++Executed in `C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core`:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py report vault --all
++python .\pala.py report vault --all --json | python -m json.tool
++python .\pala.py backup receipt --all
++python .\pala.py backup github --all --knowledge-bank .\data\backups\kb-vault-smoke
++python .\pala.py backup drive --all --target .\data\backups\drive-vault-smoke
++```
++
++Observed key output:
++
++```text
++vault report saved data\reports\2026-06-09-vault-all-report.md
++scope=all records=8 attachments=2 open_tasks=1
++receipt saved data\backups\2026-06-09-backup-receipt.md
++github backup package saved ...\pala-memory-core-all-backup
++records=8 artifacts=3 committed=False pushed=False
++drive backup package saved ...\pala-memory-core-all-drive-backup
++records=8 artifacts=3
++```
++
++Observed report sections:
++
++```text
++## Sources
++## Projects
++## Tags
++## Backup Status
++## Latest Backup Artifacts
++## Attachments
++## Open Tasks
++## Decisions
++## Evidence
++## Timeline
++```
++
++## Release Posture
++
++This is a recovery/report preview. It does not yet update each individual record's backup status after a backup package is pushed. It does provide a useful beginning-to-end Markdown report that can be backed up or shared.
+diff --git a/pala.py b/pala.py
+index 1133b68..7f204e1 100644
+--- a/pala.py
++++ b/pala.py
+@@ -290,13 +290,20 @@ def record_matches_filters(record: dict[str, Any], args: argparse.Namespace) ->
+     return True
+ 
+ 
+-def records_for_args(args: argparse.Namespace) -> list[dict[str, Any]]:
+-    date = getattr(args, "date", None)
++def records_for_args(args: argparse.Namespace, default_date: str | None = None) -> list[dict[str, Any]]:
++    date = getattr(args, "date", None) or default_date
+     if getattr(args, "all", False):
+         date = None
+     return [record for record in load_records(date) if record_matches_filters(record, args)]
+ 
+ 
++def scope_label(args: argparse.Namespace, default_date: str | None = None) -> str:
++    date = getattr(args, "date", None) or default_date
++    if getattr(args, "all", False) or not date:
++        return "all"
++    return date
++
++
+ def record_line(record: dict[str, Any]) -> str:
+     created = str(record.get("created_at", ""))[:19].replace("T", " ")
+     source = record.get("source", "memory")
+@@ -631,14 +638,172 @@ def brief_today(_args: argparse.Namespace) -> None:
+     print(f"brief saved {report_path.relative_to(ROOT)}")
+ 
+ 
++def count_values(values: list[str]) -> dict[str, int]:
++    counts: dict[str, int] = {}
++    for value in values:
++        if not value:
++            continue
++        counts[value] = counts.get(value, 0) + 1
++    return dict(sorted(counts.items(), key=lambda item: (-item[1], item[0])))
++
++
++def format_counts_table(counts: dict[str, int], empty_label: str = "none") -> str:
++    if not counts:
++        return f"| Name | Count |\n|---|---:|\n| {empty_label} | 0 |"
++    rows = ["| Name | Count |", "|---|---:|"]
++    rows.extend(f"| {name} | {count} |" for name, count in counts.items())
++    return "\n".join(rows)
++
++
++def latest_path(path: Path, pattern: str = "*") -> str:
++    if not path.exists():
++        return "none"
++    children = sorted(path.glob(pattern), key=lambda item: item.stat().st_mtime, reverse=True)
++    return str(children[0]) if children else "none"
++
++
++def record_backup_status_counts(records: list[dict[str, Any]], key: str) -> dict[str, int]:
++    return count_values([str(record.get("backup_status", {}).get(key, "unknown")) for record in records])
++
++
++def vault_report(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = sorted(records_for_args(args), key=lambda item: item.get("created_at", ""))
++    scope = scope_label(args)
++    sources = count_values([str(record.get("source", "")) for record in records])
++    projects = count_values([project for record in records for project in record_project_names(record)])
++    tags = count_values([str(tag) for record in records for tag in record.get("tags", [])])
++    attachments = [attachment for record in records for attachment in record.get("attachments", [])]
++    open_tasks = [
++        task.get("text", "")
++        for record in records
++        for task in record.get("tasks", [])
++        if task.get("status") != "done"
++    ]
++    decisions = [str(decision) for record in records for decision in record.get("decisions", [])]
++    evidence = [
++        f"{item.get('kind')}: {item.get('value')}"
++        for record in records
++        for item in record.get("evidence", [])
++    ]
++
++    kb_root = knowledge_bank_path(args.knowledge_bank)
++    kb_backup_root = kb_root / "reports" / "pala-memory-core-backups"
++    drive_root = drive_backup_path(args.drive_target)
++    local_receipts = BACKUPS
++
++    payload = {
++        "generated_at": now_utc().isoformat(),
++        "scope": scope,
++        "records": len(records),
++        "sources": sources,
++        "projects": projects,
++        "tags": tags,
++        "attachments": len(attachments),
++        "open_tasks": len(open_tasks),
++        "decisions": len(decisions),
++        "backup_status": {
++            "local": record_backup_status_counts(records, "local"),
++            "github": record_backup_status_counts(records, "github"),
++            "google_drive": record_backup_status_counts(records, "google_drive"),
++        },
++        "latest_artifacts": {
++            "local_receipt": latest_path(local_receipts, "*backup-receipt.md"),
++            "knowledge_bank_backup": latest_path(kb_backup_root),
++            "drive_backup": latest_path(drive_root),
++        },
++    }
++
++    report_path = Path(args.output).expanduser().resolve() if args.output else REPORTS / f"{today()}-vault-{slug(scope)}-report.md"
++    lines = [
++        f"# Pala Memory Core Vault Report - {scope}",
++        "",
++        f"Created: {payload['generated_at']}",
++        f"Scope: {scope}",
++        f"Records: {len(records)}",
++        f"Attachments: {len(attachments)}",
++        f"Open tasks: {len(open_tasks)}",
++        f"Decisions: {len(decisions)}",
++        "",
++        "## Sources",
++        "",
++        format_counts_table(sources),
++        "",
++        "## Projects",
++        "",
++        format_counts_table(projects),
++        "",
++        "## Tags",
++        "",
++        format_counts_table(tags),
++        "",
++        "## Backup Status",
++        "",
++        "### Local",
++        "",
++        format_counts_table(payload["backup_status"]["local"]),
++        "",
++        "### GitHub",
++        "",
++        format_counts_table(payload["backup_status"]["github"]),
++        "",
++        "### Google Drive",
++        "",
++        format_counts_table(payload["backup_status"]["google_drive"]),
++        "",
++        "## Latest Backup Artifacts",
++        "",
++        f"- Local receipt: {payload['latest_artifacts']['local_receipt']}",
++        f"- Knowledge-bank backup: {payload['latest_artifacts']['knowledge_bank_backup']}",
++        f"- Drive backup: {payload['latest_artifacts']['drive_backup']}",
++        "",
++        "## Attachments",
++        "",
++    ]
++    if attachments:
++        for attachment in attachments:
++            lines.append(f"- {attachment.get('kind', 'file')}: {attachment.get('path', '')}")
++    else:
++        lines.append("- none")
++
++    lines.extend(["", "## Open Tasks", "", format_list(open_tasks), "", "## Decisions", "", format_list(decisions), "", "## Evidence", "", format_list(evidence), "", "## Timeline", ""])
++    for record in records[-args.limit:]:
++        projects_text = ", ".join(record_project_names(record)) or "none"
++        lines.extend(
++            [
++                f"### {record.get('title', record.get('id', 'Untitled'))}",
++                "",
++                f"- ID: {record.get('id')}",
++                f"- Created: {record.get('created_at')}",
++                f"- Source: {record.get('source')}",
++                f"- Summary: {record.get('summary')}",
++                f"- Projects: {projects_text}",
++                f"- Record: {record.get('raw_text_path')}",
++                "",
++            ]
++        )
++
++    report_path.parent.mkdir(parents=True, exist_ok=True)
++    report_path.write_text("\n".join(lines), encoding="utf-8")
++
++    if args.json:
++        payload["report_path"] = str(report_path)
++        print(json.dumps(payload, indent=2, ensure_ascii=True))
++    else:
++        print(f"vault report saved {report_path.relative_to(ROOT) if ROOT in report_path.parents else report_path}")
++        print(f"scope={scope} records={len(records)} attachments={len(attachments)} open_tasks={len(open_tasks)}")
++
++
+ def backup_receipt(_args: argparse.Namespace) -> None:
+     ensure_dirs()
+-    records = load_today_records()
++    records = records_for_args(_args, default_date=today())
++    scope = scope_label(_args, default_date=today())
+     receipt_path = BACKUPS / f"{today()}-backup-receipt.md"
+     lines = [
+         f"# Backup Receipt - {today()}",
+         "",
+         f"Created: {now_utc().isoformat()}",
++        f"Scope: {scope}",
+         f"Records included: {len(records)}",
+         "",
+         "## Status",
+@@ -667,12 +832,13 @@ def drive_backup_path(value: str | None) -> Path:
+ 
+ def backup_github(args: argparse.Namespace) -> None:
+     ensure_dirs()
+-    records = load_today_records()
++    records = records_for_args(args, default_date=today())
++    scope = scope_label(args, default_date=today())
+     kb_root = knowledge_bank_path(args.knowledge_bank)
+     if not kb_root.exists():
+         raise SystemExit(f"knowledge bank path not found: {kb_root}")
+ 
+-    package_id = f"{today()}-{stamp()}-pala-memory-core-backup"
++    package_id = f"{today()}-{stamp()}-pala-memory-core-{scope}-backup"
+     target = kb_root / "reports" / "pala-memory-core-backups" / package_id
+     target.mkdir(parents=True, exist_ok=False)
+ 
+@@ -700,6 +866,7 @@ def backup_github(args: argparse.Namespace) -> None:
+         "",
+         f"Created: {now_utc().isoformat()}",
+         f"Source repo: {ROOT}",
++        f"Scope: {scope}",
+         f"Records included: {len(records)}",
+         "",
+         "## Records",
+@@ -746,6 +913,7 @@ def backup_github(args: argparse.Namespace) -> None:
+     receipt = {
+         "created_at": now_utc().isoformat(),
+         "package": str(target.relative_to(kb_root)),
++        "scope": scope,
+         "records": len(records),
+         "artifacts": copied,
+         "committed": bool(args.commit or args.push),
+@@ -765,11 +933,12 @@ def backup_github(args: argparse.Namespace) -> None:
+ 
+ def backup_drive(args: argparse.Namespace) -> None:
+     ensure_dirs()
+-    records = load_today_records()
++    records = records_for_args(args, default_date=today())
++    scope = scope_label(args, default_date=today())
+     drive_root = drive_backup_path(args.target)
+     drive_root.mkdir(parents=True, exist_ok=True)
+ 
+-    package_id = f"{today()}-{stamp()}-pala-memory-core-drive-backup"
++    package_id = f"{today()}-{stamp()}-pala-memory-core-{scope}-drive-backup"
+     target = drive_root / package_id
+     target.mkdir(parents=True, exist_ok=False)
+ 
+@@ -797,6 +966,7 @@ def backup_drive(args: argparse.Namespace) -> None:
+         "",
+         f"Created: {now_utc().isoformat()}",
+         f"Source repo: {ROOT}",
++        f"Scope: {scope}",
+         f"Records included: {len(records)}",
+         "",
+         "## Records",
+@@ -843,6 +1013,7 @@ def backup_drive(args: argparse.Namespace) -> None:
+     receipt = {
+         "created_at": now_utc().isoformat(),
+         "package": str(target),
++        "scope": scope,
+         "records": len(records),
+         "artifacts": copied,
+         "target": str(drive_root),
+@@ -1347,17 +1518,44 @@ def build_parser() -> argparse.ArgumentParser:
+     today_cmd = brief_sub.add_parser("today", help="brief today's records")
+     today_cmd.set_defaults(func=brief_today)
+ 
++    report = sub.add_parser("report", help="create summary reports")
++    report_sub = report.add_subparsers(dest="kind", required=True)
++    vault = report_sub.add_parser("vault", help="create a vault-wide recovery report")
++    vault.add_argument("--all", action="store_true", help="include every record; this is the default when no date is given")
++    vault.add_argument("--date", default=None, help="limit report to one date folder")
++    vault.add_argument("--source")
++    vault.add_argument("--project")
++    vault.add_argument("--tag", action="append")
++    vault.add_argument("--limit", type=int, default=200, help="maximum timeline records to include")
++    vault.add_argument("--output", help="custom Markdown report path")
++    vault.add_argument("--knowledge-bank", help="path to local knowledge-bank repository")
++    vault.add_argument("--drive-target", help="Drive-folder backup target to inspect")
++    vault.add_argument("--json", action="store_true")
++    vault.set_defaults(func=vault_report)
++
+     backup = sub.add_parser("backup", help="create backup artifacts")
+     backup_sub = backup.add_subparsers(dest="target", required=True)
+     receipt = backup_sub.add_parser("receipt", help="create a local backup receipt")
++    receipt.add_argument("--all", action="store_true", help="include every record instead of today's records")
++    receipt.add_argument("--date", default=None, help="date folder to include")
+     receipt.set_defaults(func=backup_receipt)
+     github = backup_sub.add_parser("github", help="create a knowledge-bank backup package")
+     github.add_argument("--knowledge-bank", help="path to local knowledge-bank repository")
++    github.add_argument("--all", action="store_true", help="include every record instead of today's records")
++    github.add_argument("--date", default=None, help="date folder to include")
++    github.add_argument("--source")
++    github.add_argument("--project")
++    github.add_argument("--tag", action="append")
+     github.add_argument("--commit", action="store_true", help="commit the generated backup package")
+     github.add_argument("--push", action="store_true", help="commit and push the generated backup package")
+     github.set_defaults(func=backup_github)
+     drive = backup_sub.add_parser("drive", help="create a Drive-folder backup package")
+     drive.add_argument("--target", help="target folder, ideally a Google Drive sync folder")
++    drive.add_argument("--all", action="store_true", help="include every record instead of today's records")
++    drive.add_argument("--date", default=None, help="date folder to include")
++    drive.add_argument("--source")
++    drive.add_argument("--project")
++    drive.add_argument("--tag", action="append")
+     drive.set_defaults(func=backup_drive)
+ 
+     import_cmd = sub.add_parser("import", help="import external data")
