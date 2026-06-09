@@ -1,0 +1,47 @@
+{
+  "generated_at": "2026-06-09T13:15:09.807114+00:00",
+  "date": "2026-06-09",
+  "stats": {
+    "records": 1,
+    "projects": 1,
+    "files": 0,
+    "open_tasks": 1
+  },
+  "records": [
+    {
+      "id": "20260609T131509Z-published-repo-smoke-test",
+      "created_at": "2026-06-09T13:15:09.497352+00:00",
+      "source": "codex",
+      "title": "Published repo smoke test",
+      "summary": "Pala Memory Core public repo smoke test after publish.",
+      "raw_text_path": "data\\records\\2026-06-09\\20260609T131509Z-published-repo-smoke-test.md",
+      "attachments": [],
+      "project_refs": [
+        {
+          "name": "trugurpala/pala-memory-core",
+          "kind": "github_repo"
+        }
+      ],
+      "tags": [
+        "published-smoke"
+      ],
+      "decisions": [
+        "Generated memory data must stay out of Git"
+      ],
+      "tasks": [
+        {
+          "text": "Plan GitHub backup connector",
+          "status": "open"
+        }
+      ],
+      "evidence": [],
+      "backup_status": {
+        "local": "complete",
+        "github": "pending",
+        "google_drive": "pending",
+        "last_backup_at": "2026-06-09T13:15:09.497352+00:00",
+        "receipt": ""
+      }
+    }
+  ]
+}
