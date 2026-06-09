@@ -1,0 +1,62 @@
+# Raw Patch / Diff Note: Pala Memory Core Scaffold
+
+Date: 2026-06-09
+Source workspace: C:\Users\Pala-Home-1\Documents\Codex\2026-06-09\kod-yazmak-proje-geli-tirmek-i
+Package root: outputs/pala-memory-core-scaffold
+
+The source package was generated in a projectless Codex output workspace, not inside an initialized `pala-memory-core` Git checkout. Therefore this artifact records the raw mutation inventory and smoke-test-generated files rather than a tracked Git diff from a product repository.
+
+## New package roots
+
+```diff
+new file: outputs/pala-memory-core-mvp-spec.md
+new file: outputs/pala-memory-core-dashboard.html
+new file: outputs/pala-memory-core-readme-draft.md
+new file: outputs/pala-memory-core-agents-template.md
+new file: outputs/pala-memory-core-record-schema.json
+new dir:  outputs/pala-memory-core-scaffold/
+```
+
+## New scaffold files
+
+```diff
+new file: outputs/pala-memory-core-scaffold/README.md
+new file: outputs/pala-memory-core-scaffold/AGENTS.md
+new file: outputs/pala-memory-core-scaffold/INSTALL.md
+new file: outputs/pala-memory-core-scaffold/pala.py
+new file: outputs/pala-memory-core-scaffold/schema/record.schema.json
+new file: outputs/pala-memory-core-scaffold/docs/commands.md
+new file: outputs/pala-memory-core-scaffold/docs/connectors.md
+new file: outputs/pala-memory-core-scaffold/docs/roadmap.md
+new file: outputs/pala-memory-core-scaffold/docs/security.md
+new file: outputs/pala-memory-core-scaffold/docs/v0.1-acceptance.md
+new file: outputs/pala-memory-core-scaffold/docs/backlog.md
+new file: outputs/pala-memory-core-scaffold/docs/github-launch.md
+new file: outputs/pala-memory-core-scaffold/docs/v0.1-smoke-test.md
+new file: outputs/pala-memory-core-scaffold/examples/sample-record.json
+new file: outputs/pala-memory-core-scaffold/dashboard/index.html
+new file: outputs/pala-memory-core-scaffold/data/inbox/.gitkeep
+new file: outputs/pala-memory-core-scaffold/data/records/.gitkeep
+new file: outputs/pala-memory-core-scaffold/data/reports/.gitkeep
+new file: outputs/pala-memory-core-scaffold/data/attachments/.gitkeep
+new file: outputs/pala-memory-core-scaffold/data/backups/.gitkeep
+```
+
+## Smoke test generated files
+
+```diff
+new file: outputs/pala-memory-core-scaffold/data/records/2026-06-09/20260609T130017Z-pala-memory-core-v01-smoke-test.md
+new file: outputs/pala-memory-core-scaffold/data/records/2026-06-09/20260609T130017Z-pala-memory-core-v01-smoke-test.json
+new file: outputs/pala-memory-core-scaffold/data/reports/2026-06-09-brief.md
+new file: outputs/pala-memory-core-scaffold/data/backups/2026-06-09-backup-receipt.md
+```
+
+## Evidence output
+
+```text
+saved 20260609T130017Z-pala-memory-core-v01-smoke-test
+data\records\2026-06-09\20260609T130017Z-pala-memory-core-v01-smoke-test.md
+brief saved data\reports\2026-06-09-brief.md
+receipt saved data\backups\2026-06-09-backup-receipt.md
+```
+
