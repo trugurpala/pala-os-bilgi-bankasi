@@ -1,0 +1,44 @@
+# Raw Patch / Diff Note: Pala Memory Core Dashboard Export
+
+Date: 2026-06-09
+Source workspace: C:\Users\Pala-Home-1\Documents\Codex\2026-06-09\kod-yazmak-proje-geli-tirmek-i
+Package root: outputs/pala-memory-core-scaffold
+
+The source package is still a projectless Codex output workspace, not a tracked `pala-memory-core` Git checkout. This artifact records the dashboard export delta as an inventory plus evidence output.
+
+## Modified files
+
+```diff
+modified: outputs/pala-memory-core-scaffold/pala.py
+modified: outputs/pala-memory-core-scaffold/dashboard/index.html
+modified: outputs/pala-memory-core-scaffold/README.md
+modified: outputs/pala-memory-core-scaffold/INSTALL.md
+modified: outputs/pala-memory-core-scaffold/docs/commands.md
+modified: outputs/pala-memory-core-scaffold/docs/v0.1-acceptance.md
+modified: outputs/pala-memory-core-scaffold/docs/roadmap.md
+modified: outputs/pala-memory-core-scaffold/docs/backlog.md
+modified: outputs/pala-memory-core-scaffold/docs/v0.1-smoke-test.md
+```
+
+## New files
+
+```diff
+new file: outputs/pala-memory-core-scaffold/docs/v0.2-dashboard-export.md
+new file: outputs/pala-memory-core-scaffold/dashboard/records.json
+```
+
+## Behavioral delta
+
+```diff
++ added CLI command: python pala.py dashboard export
++ writes dashboard/records.json with generated_at, date, stats, records
++ dashboard/index.html fetches ./records.json and renders stats/timeline
++ dashboard keeps static fallback if records.json is missing or inaccessible
+```
+
+## Evidence output
+
+```text
+dashboard data saved dashboard\records.json
+```
+
