@@ -1,0 +1,276 @@
+﻿commit 2935ef1cce07275dc825a8d89e1dfbfe2a3cc823
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 17:27:16 2026 +0300
+
+    Track backup completion on records
+---
+ INSTALL.md                           |  1 +
+ README.md                            |  1 +
+ docs/backlog.md                      |  1 +
+ docs/commands.md                     |  6 ++++
+ docs/roadmap.md                      |  2 ++
+ docs/v0.1-acceptance.md              |  2 ++
+ docs/v0.14-backup-status-tracking.md | 68 ++++++++++++++++++++++++++++++++++++
+ pala.py                              | 42 ++++++++++++++++++++++
+ 8 files changed, 123 insertions(+)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 14de62d..2984503 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -85,6 +85,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Create local backup receipt | `python pala.py backup receipt` |
+ | Prepare knowledge-bank backup | `python pala.py backup github` |
+ | Commit and push knowledge-bank backup | `python pala.py backup github --push` |
++| Back up all records and update status | `python pala.py backup github --all --push` |
+ | Prepare Drive-folder backup | `python pala.py backup drive --target "C:\path\to\Google Drive\Pala Memory Core"` |
+ | Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
+ | Import mobile shares | `python pala.py import mobile-share "C:\path\to\shared\folder"` |
+diff --git a/README.md b/README.md
+index da3fde6..5a98eae 100644
+--- a/README.md
++++ b/README.md
+@@ -89,6 +89,7 @@ pala-memory-core/
+ | `list` / `search` / `show` | v0.11 | Finds saved records across the local memory vault |
+ | `doctor` | v0.12 | Checks 10+ local systems and reports ready/missing pieces |
+ | `report vault` | v0.13 | Creates a beginning-to-end recovery and backup summary report |
++| Backup status tracking | v0.14 | Updates record backup status after receipt/GitHub/Drive backups |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index ccd5047..99c5668 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -52,6 +52,7 @@
+ | `PMC-022` | Add mobile share/import command | Phone-shared folder or zip becomes records and attachments |
+ | `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares without duplicates |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
++| `PMC-024` | Track backup status on records | Records show local/GitHub/Drive backup completion after backup commands |
+ 
+ ## Risk Register
+ 
+diff --git a/docs/commands.md b/docs/commands.md
+index b8bc2dd..83c39d1 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -136,6 +136,8 @@ Include the whole vault:
+ python pala.py backup receipt --all
+ ```
+ 
++This updates matching records with `backup_status.local=complete`.
++
+ ## backup github
+ 
+ Creates a redacted backup package in the local knowledge-bank repository.
+@@ -170,6 +172,8 @@ Back up the whole vault instead of today's records:
+ python pala.py backup github --all --push
+ ```
+ 
++When `--push` succeeds, matching records are updated with `backup_status.github=complete`.
++
+ Default path:
+ 
+ ```text
+@@ -190,6 +194,8 @@ Back up the whole vault to a Drive sync folder:
+ python pala.py backup drive --all --target "C:\Users\you\Google Drive\Pala Memory Core"
+ ```
+ 
++When the package is written, matching records are updated with `backup_status.google_drive=complete`.
++
+ If no target is given, the default folder is:
+ 
+ ```text
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 5cc24a9..715631c 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -21,6 +21,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.11` | Recovery search | CLI and dashboard can find saved records across the local vault |
+ | `v0.12` | System doctor | Local install can report 10+ ready/missing systems |
+ | `v0.13` | Vault report | Local vault can produce a beginning-to-end recovery and backup report |
++| `v0.14` | Backup status tracking | Backup commands update record backup status fields |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -51,4 +52,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add recovery search | List, show, and search records across the local vault |
+ | Add system doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
+ | Add vault report | Summarize sources, files, tasks, decisions, timeline, and backup artifacts |
++| Add backup status tracking | Update local records after receipt, GitHub, and Drive backups |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 3dc1546..f36838e 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -22,6 +22,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
+ | Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
+ | Create Drive-folder backup | `python pala.py backup drive --target <folder>` | Redacted package created under selected folder |
++| Track backup status | `python pala.py backup github --all --push` | Matching records show GitHub backup status after push |
+ | Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
+ | Import mobile share | `python pala.py import mobile-share <path>` | Shared text becomes records and files become attachments |
+ | Watch mobile share | `python pala.py watch mobile-share <path> --once` | New shared files are imported once |
+@@ -81,6 +82,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Dashboard search | Dashboard can filter exported records in the browser |
+ | System doctor | CLI reports active systems and optional missing dependencies |
+ | Vault report | CLI summarizes records, files, tasks, decisions, timeline, and backup artifacts |
++| Backup status tracking | Records are updated after local receipt, GitHub push, and Drive-folder backup |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.14-backup-status-tracking.md b/docs/v0.14-backup-status-tracking.md
+new file mode 100644
+index 0000000..d9dbae1
+--- /dev/null
++++ b/docs/v0.14-backup-status-tracking.md
+@@ -0,0 +1,68 @@
++# v0.14 Backup Status Tracking
++
++Date: 2026-06-09
++Phase: backup status tracking preview
++Status: PASS for local receipt, GitHub push, Drive-folder backup, and vault report status reflection
++
++## Goal
++
++When a backup command says work was backed up, matching local records should also remember that state in `backup_status`.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| Local receipt | `backup receipt` updates `backup_status.local=complete` |
++| GitHub backup | `backup github --push` updates `backup_status.github=complete` |
++| GitHub package only | `backup github` without `--push` keeps `backup_status.github=pending` |
++| Drive backup | `backup drive` updates `backup_status.google_drive=complete` |
++| Records | Updated records persist back to their JSON files |
++| Vault report | `report vault` reflects local/GitHub/Drive status counts |
++
++## Commands
++
++```powershell
++python .\pala.py backup receipt --all
++python .\pala.py backup drive --all --target .\data\backups\drive-status-smoke
++python .\pala.py backup github --all --knowledge-bank <repo> --push
++python .\pala.py report vault --all --json
++```
++
++## Smoke Test
++
++Executed in `C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core`:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py backup receipt --all
++python .\pala.py backup drive --all --target .\data\backups\drive-status-smoke-<stamp>
++python .\pala.py backup github --all --knowledge-bank <local-temp-git-repo> --push
++python .\pala.py report vault --all --json
++```
++
++Observed key output:
++
++```text
++receipt saved data\backups\2026-06-09-backup-receipt.md
++backup_status.local=complete updated=8
++drive backup package saved ...\pala-memory-core-all-drive-backup
++records=8 artifacts=3
++backup_status.google_drive=complete updated=8
++github backup package saved ...\pala-memory-core-all-backup
++records=8 artifacts=3 committed=True pushed=True
++backup_status.github=complete updated=8
++```
++
++Observed vault status after push smoke:
++
++```json
++"backup_status": {
++  "local": { "complete": 8 },
++  "github": { "complete": 8 },
++  "google_drive": { "complete": 8 }
++}
++```
++
++## Release Posture
++
++This is a local status-tracking preview. It updates local record JSON files after backup commands succeed. It does not yet reconcile backup status from remote GitHub/Drive independently after the fact.
+diff --git a/pala.py b/pala.py
+index 7f204e1..9941a1f 100644
+--- a/pala.py
++++ b/pala.py
+@@ -229,6 +229,41 @@ def load_records(date: str | None = None) -> list[dict[str, Any]]:
+     return [read_record_json(path) for path in paths]
+ 
+ 
++def record_json_path(record: dict[str, Any]) -> Path | None:
++    json_path = record.get("_json_path")
++    if not json_path:
++        return None
++    path = (ROOT / str(json_path)).resolve()
++    if path == ROOT or ROOT in path.parents:
++        return path
++    return None
++
++
++def persist_record(record: dict[str, Any]) -> bool:
++    path = record_json_path(record)
++    if not path:
++        return False
++    stored = {key: value for key, value in record.items() if not key.startswith("_")}
++    path.write_text(json.dumps(stored, indent=2, ensure_ascii=True), encoding="utf-8")
++    return True
++
++
++def update_backup_status(records: list[dict[str, Any]], key: str, status: str, receipt: str) -> int:
++    updated = 0
++    backed_up_at = now_utc().isoformat()
++    for record in records:
++        backup_status = record.setdefault("backup_status", {})
++        backup_status.setdefault("local", "complete")
++        backup_status.setdefault("github", "pending")
++        backup_status.setdefault("google_drive", "pending")
++        backup_status[key] = status
++        backup_status["last_backup_at"] = backed_up_at
++        backup_status["receipt"] = receipt
++        if persist_record(record):
++            updated += 1
++    return updated
++
++
+ def load_today_records() -> list[dict[str, Any]]:
+     return load_records(today())
+ 
+@@ -817,7 +852,9 @@ def backup_receipt(_args: argparse.Namespace) -> None:
+     ]
+     lines.append(format_list([record["raw_text_path"] for record in records]))
+     receipt_path.write_text("\n".join(lines), encoding="utf-8")
++    updated = update_backup_status(records, "local", "complete", str(receipt_path))
+     print(f"receipt saved {receipt_path.relative_to(ROOT)}")
++    print(f"backup_status.local=complete updated={updated}")
+ 
+ 
+ def knowledge_bank_path(value: str | None) -> Path:
+@@ -926,9 +963,12 @@ def backup_github(args: argparse.Namespace) -> None:
+         run_git(kb_root, ["commit", "-m", f"Add Pala Memory Core backup {package_id}"])
+     if args.push:
+         run_git(kb_root, ["push", "origin", "HEAD"])
++    status_value = "complete" if args.push else "pending"
++    updated = update_backup_status(records, "github", status_value, str(target))
+ 
+     print(f"github backup package saved {target}")
+     print(f"records={len(records)} artifacts={len(copied)} committed={receipt['committed']} pushed={receipt['pushed']}")
++    print(f"backup_status.github={status_value} updated={updated}")
+ 
+ 
+ def backup_drive(args: argparse.Namespace) -> None:
+@@ -1020,9 +1060,11 @@ def backup_drive(args: argparse.Namespace) -> None:
+         "sync_mode": "folder",
+     }
+     write_redacted_text(target / "drive-backup-receipt.json", json.dumps(receipt, indent=2, ensure_ascii=True))
++    updated = update_backup_status(records, "google_drive", "complete", str(target))
+ 
+     print(f"drive backup package saved {target}")
+     print(f"records={len(records)} artifacts={len(copied)}")
++    print(f"backup_status.google_drive=complete updated={updated}")
+ 
+ 
+ def import_chatgpt_export(args: argparse.Namespace) -> None:
