@@ -1,0 +1,44 @@
+﻿commit 7b20dedeba9be44a68627ac890a04a750110ff81
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:15:07 2026 +0300
+
+    Ignore generated local memory data
+---
+ .gitignore | 29 +++++++++++++++++++++++++++++
+ 1 file changed, 29 insertions(+)
+
+diff --git a/.gitignore b/.gitignore
+new file mode 100644
+index 0000000..9a5340f
+--- /dev/null
++++ b/.gitignore
+@@ -0,0 +1,29 @@
++# Python
++__pycache__/
++*.py[cod]
++.venv/
++venv/
++
++# Local secrets
++.env
++.env.*
++*.pem
++*.key
++
++# Generated memory data
++data/inbox/*
++!data/inbox/.gitkeep
++data/records/*
++!data/records/.gitkeep
++data/reports/*
++!data/reports/.gitkeep
++data/attachments/*
++!data/attachments/.gitkeep
++data/backups/*
++!data/backups/.gitkeep
++
++# Generated dashboard data
++dashboard/records.json
++
++# Logs
++*.log
