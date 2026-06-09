@@ -1,0 +1,458 @@
+﻿commit 6f0042ec8b1057d92149e7d124f8d565496ad3cc
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:20:21 2026 +0300
+
+    Add knowledge-bank GitHub backup connector
+---
+ INSTALL.md                 |   3 +
+ README.md                  |   6 +-
+ docs/backlog.md            |   1 +
+ docs/commands.md           |  35 +++++++++++-
+ docs/connectors.md         |  13 ++++-
+ docs/roadmap.md            |   3 +-
+ docs/security.md           |  11 ++++
+ docs/v0.1-acceptance.md    |   2 +
+ docs/v0.4-github-backup.md |  60 ++++++++++++++++++++
+ pala.py                    | 134 +++++++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 262 insertions(+), 6 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 8ce718a..b639c51 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -18,6 +18,7 @@ From the repository root:
+ python pala.py remember --title "First memory" --text "Pala Memory Core is installed." --source manual --tag setup
+ python pala.py brief today
+ python pala.py backup receipt
++python pala.py backup github
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -64,6 +65,8 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Connect to a repo | `python pala.py remember --title "..." --project trugurpala/pala-os-v4` |
+ | Make today's summary | `python pala.py brief today` |
+ | Create local backup receipt | `python pala.py backup receipt` |
++| Prepare knowledge-bank backup | `python pala.py backup github` |
++| Commit and push knowledge-bank backup | `python pala.py backup github --push` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+ 
+diff --git a/README.md b/README.md
+index 6c804e1..ee8a742 100644
+--- a/README.md
++++ b/README.md
+@@ -12,6 +12,7 @@ The MVP starts with reliable manual capture:
+ python pala.py remember --title "Pala Memory Core idea" --text "Capture this work."
+ python pala.py brief today
+ python pala.py backup receipt
++python pala.py backup github
+ python pala.py dashboard export
+ python pala.py dashboard serve
+ ```
+@@ -58,9 +59,10 @@ pala-memory-core/
+ | `brief today` | v0.1 | Creates a daily Markdown briefing |
+ | `backup receipt` | v0.1 | Creates a local backup receipt |
+ | `dashboard export` | v0.2 | Writes `dashboard/records.json` for the local panel |
+-| `link project` | planned | Adds repo/folder references to a record |
+-| `backup github` | planned | Publishes report package to knowledge bank |
+ | `dashboard serve` | v0.3 | Starts local dashboard server |
++| `backup github` | v0.4 | Creates a redacted knowledge-bank backup package |
++| `link project` | planned | Adds repo/folder references to a record |
++| `backup drive` | planned | Uploads selected artifacts to Google Drive |
+ 
+ ## Data Principles
+ 
+diff --git a/docs/backlog.md b/docs/backlog.md
+index b0cbd45..1123550 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -39,6 +39,7 @@
+ | Issue | Title | Outcome |
+ |---|---|---|
+ | `PMC-019` | Add GitHub backup connector | Reports can be published to configured repo |
++| `PMC-019A` | Add redacted knowledge-bank package | GitHub backup starts with explicit local package creation |
+ | `PMC-020` | Add Google Drive backup design | OAuth and upload flow is specified |
+ | `PMC-021` | Add browser capture design | Playwright/Chrome capture is optional |
+ | `PMC-022` | Add mobile share/import design | Phone capture uses share/export first |
+diff --git a/docs/commands.md b/docs/commands.md
+index f20e361..9bbc6df 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -35,6 +35,40 @@ Creates a local backup receipt. This is the MVP placeholder before GitHub/Drive
+ python pala.py backup receipt
+ ```
+ 
++## backup github
++
++Creates a redacted backup package in the local knowledge-bank repository.
++
++By default, this command writes files locally and does not commit or push.
++
++```text
++python pala.py backup github
++```
++
++Use a custom knowledge-bank path:
++
++```text
++python pala.py backup github --knowledge-bank C:\path\to\pala-os-bilgi-bankasi
++```
++
++Commit the package:
++
++```text
++python pala.py backup github --commit
++```
++
++Commit and push the package:
++
++```text
++python pala.py backup github --push
++```
++
++Default path:
++
++```text
++%USERPROFILE%\Desktop\Codex\pala-os-bilgi-bankasi
++```
++
+ ## dashboard export
+ 
+ Writes today's local records to `dashboard/records.json` so the static dashboard can show real captured data.
+@@ -68,6 +102,5 @@ python pala.py dashboard serve --host 127.0.0.1 --port 8787
+ | Command | Purpose |
+ |---|---|
+ | `pala link project` | Attach an existing record to a repo or folder |
+-| `pala backup github` | Publish report package to `pala-os-bilgi-bankasi` |
+ | `pala backup drive` | Upload selected artifacts to Google Drive |
+ | `pala import chatgpt-export` | Import official ChatGPT data export |
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 47cf15e..31981e8 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -10,7 +10,7 @@ Pala Memory Core uses a staged connector model. The core stays local-first; conn
+ | ChatGPT Mobile | Save phone conversations | Share/export into inbox | Mobile OS restrictions |
+ | ChatGPT Export | Import official export archive | Parse exported files | Export format can change |
+ | Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
+-| GitHub | Publish reports and read repo context | Knowledge-bank report output | Secrets must be filtered |
++| GitHub | Publish reports and read repo context | Redacted knowledge-bank backup package | Secrets must be filtered |
+ | Google Drive | Backup files and reports | Upload selected artifacts | OAuth setup required |
+ | Browser/Playwright | Capture visible web context/screenshots | Optional screen/page capture | UI changes can break capture |
+ | PDF/Documents | Import and summarize PDFs/docs | Attach file + metadata first | OCR/text extraction later |
+@@ -44,7 +44,16 @@ Every connector should produce or update a memory record with:
+ | `v0.8` | Mobile share/import flow |
+ | `v1.0` | Unified dashboard and recovery |
+ 
++## GitHub Backup Behavior
++
++The first GitHub connector writes a redacted package into a local knowledge-bank checkout. It does not push by default.
++
++| Option | Behavior |
++|---|---|
++| no flag | Write package locally |
++| `--commit` | Commit package in knowledge-bank repo |
++| `--push` | Commit and push package |
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+-
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 563f4f2..79f480e 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -13,7 +13,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.3` | Knowledge bank reports | Report package can be prepared for `pala-os-bilgi-bankasi` |
+ | `v0.4` | Attachment imports | PDFs, screenshots, markdown, text files are copied and hashed |
+ | `v0.5` | Live local dashboard | Dashboard reads exported local records from local server |
+-| `v0.6` | GitHub backup | Reports can be published to a configured GitHub repo |
++| `v0.6` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
+ | `v0.7` | Google Drive backup | Selected artifacts can be uploaded to Drive |
+ | `v0.8` | ChatGPT export import | Official exports can be imported and indexed |
+ | `v0.9` | Browser capture | Playwright/Chrome can capture visible pages/screenshots |
+@@ -37,4 +37,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add project link command | Update `project_refs` after capture |
+ | Add static dashboard data export | Generate `dashboard/records.json` |
+ | Add local dashboard server | Serve `dashboard/` at `127.0.0.1` |
++| Add GitHub backup package | Write redacted package to local knowledge bank |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index 3bb568c..3ff774a 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -38,3 +38,14 @@ Pala Memory Core is designed to store personal AI work. That can include private
+ 
+ Backup is not release approval. A record can be backed up and still be marked as partial, blocked, or needs review.
+ 
++## GitHub Backup Defaults
++
++`pala backup github` creates a redacted package and does not commit or push unless explicitly requested.
++
++| Mode | Behavior |
++|---|---|
++| default | Write package locally |
++| `--commit` | Commit package in the knowledge-bank repo |
++| `--push` | Commit and push package |
++
++Raw conversation text is not copied by default. Full-fidelity backups should use private storage.
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 88001e8..66546a9 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -19,6 +19,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Save with attachment | `python pala.py remember --title "..." --file file.pdf` | File copied under `data/attachments/` and hash stored |
+ | Create daily brief | `python pala.py brief today` | Markdown brief created under `data/reports/` |
+ | Create backup receipt | `python pala.py backup receipt` | Receipt created under `data/backups/` |
++| Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+ 
+@@ -57,6 +58,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Dashboard preview | Opens as static HTML |
+ | Dashboard data export | Static dashboard can read `records.json` |
+ | Dashboard local server | Dashboard can be served at `http://127.0.0.1:8765` |
++| GitHub backup package | Writes redacted report/manifest/receipt without pushing by default |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.4-github-backup.md b/docs/v0.4-github-backup.md
+new file mode 100644
+index 0000000..85fde58
+--- /dev/null
++++ b/docs/v0.4-github-backup.md
+@@ -0,0 +1,60 @@
++# v0.4 GitHub Backup
++
++Date: 2026-06-09
++Phase: knowledge-bank backup connector preview
++Status: PASS for redacted knowledge-bank backup package
++
++## Goal
++
++Create a safe first GitHub backup path by writing a redacted backup package into a local `pala-os-bilgi-bankasi` checkout.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py backup github` |
++| Default target | `%USERPROFILE%\Desktop\Codex\pala-os-bilgi-bankasi` |
++| Output folder | `reports/pala-memory-core-backups/<date-stamp>/` |
++| Default mode | Write local package only |
++| Optional mode | `--commit` or `--push` |
++| Safety | Common API key/token/private key patterns are redacted |
++
++## Commands
++
++```powershell
++python .\pala.py backup github
++python .\pala.py backup github --commit
++python .\pala.py backup github --push
++```
++
++## Expected Package
++
++| File | Purpose |
++|---|---|
++| `backup-report.md` | Human-readable summary |
++| `records-manifest.json` | Redacted record manifest |
++| `backup-receipt.json` | Backup receipt |
++| `artifacts/` | Redacted brief/receipt/dashboard exports when present |
++
++## Smoke Test
++
++```powershell
++python .\pala.py backup github --push
++```
++
++Observed output:
++
++```text
++github backup package saved C:\Users\Pala-Home-1\Desktop\Codex\pala-os-bilgi-bankasi\reports\pala-memory-core-backups\2026-06-09-20260609T131949Z-pala-memory-core-backup
++records=1 artifacts=3 committed=True pushed=True
++```
++
++Knowledge-bank commit:
++
++```text
++9e3a80d Add Pala Memory Core backup 2026-06-09-20260609T131949Z-pala-memory-core-backup
++```
++
++## Release Posture
++
++This is a preview connector. It intentionally avoids raw conversation backup and avoids pushing unless explicitly requested.
+diff --git a/pala.py b/pala.py
+index 5df89b1..584774c 100644
+--- a/pala.py
++++ b/pala.py
+@@ -12,8 +12,11 @@ import datetime as dt
+ import hashlib
+ import http.server
+ import json
++import os
++import re
+ import shutil
+ import socketserver
++import subprocess
+ from pathlib import Path
+ from typing import Any
+ 
+@@ -25,6 +28,13 @@ REPORTS = DATA / "reports"
+ ATTACHMENTS = DATA / "attachments"
+ BACKUPS = DATA / "backups"
+ DASHBOARD = ROOT / "dashboard"
++DEFAULT_KNOWLEDGE_BANK = Path.home() / "Desktop" / "Codex" / "pala-os-bilgi-bankasi"
++SECRET_PATTERNS = [
++    (re.compile(r"(gh[pousr]_[A-Za-z0-9_]{20,})"), "[REDACTED_GITHUB_TOKEN]"),
++    (re.compile(r"(sk-[A-Za-z0-9_-]{20,})"), "[REDACTED_API_KEY]"),
++    (re.compile(r"(?i)(api[_-]?key|token|secret|password)\s*[:=]\s*['\"]?[^'\"\s]+"), r"\1=[REDACTED]"),
++    (re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----.*?-----END [A-Z ]*PRIVATE KEY-----", re.DOTALL), "[REDACTED_PRIVATE_KEY]"),
++]
+ 
+ 
+ def ensure_dirs() -> None:
+@@ -176,6 +186,18 @@ def format_list(items: list[str]) -> str:
+     return "\n".join(f"- {item}" for item in items)
+ 
+ 
++def redact_text(value: str) -> str:
++    redacted = value
++    for pattern, replacement in SECRET_PATTERNS:
++        redacted = pattern.sub(replacement, redacted)
++    return redacted
++
++
++def write_redacted_text(path: Path, value: str) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(redact_text(value), encoding="utf-8")
++
++
+ def load_today_records() -> list[dict[str, Any]]:
+     record_dir = RECORDS / today()
+     if not record_dir.exists():
+@@ -245,6 +267,113 @@ def backup_receipt(_args: argparse.Namespace) -> None:
+     print(f"receipt saved {receipt_path.relative_to(ROOT)}")
+ 
+ 
++def knowledge_bank_path(value: str | None) -> Path:
++    configured = value or os.environ.get("PALA_KNOWLEDGE_BANK_PATH")
++    return Path(configured).expanduser().resolve() if configured else DEFAULT_KNOWLEDGE_BANK
++
++
++def backup_github(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = load_today_records()
++    kb_root = knowledge_bank_path(args.knowledge_bank)
++    if not kb_root.exists():
++        raise SystemExit(f"knowledge bank path not found: {kb_root}")
++
++    package_id = f"{today()}-{stamp()}-pala-memory-core-backup"
++    target = kb_root / "reports" / "pala-memory-core-backups" / package_id
++    target.mkdir(parents=True, exist_ok=False)
++
++    manifest_records = []
++    for record in records:
++        manifest_records.append(
++            {
++                "id": record.get("id"),
++                "created_at": record.get("created_at"),
++                "source": record.get("source"),
++                "title": redact_text(str(record.get("title", ""))),
++                "summary": redact_text(str(record.get("summary", ""))),
++                "project_refs": record.get("project_refs", []),
++                "tags": [redact_text(str(tag)) for tag in record.get("tags", [])],
++                "tasks": [
++                    {"text": redact_text(str(task.get("text", ""))), "status": task.get("status", "open")}
++                    for task in record.get("tasks", [])
++                ],
++                "attachments": record.get("attachments", []),
++            }
++        )
++
++    report_lines = [
++        f"# Pala Memory Core Backup - {today()}",
++        "",
++        f"Created: {now_utc().isoformat()}",
++        f"Source repo: {ROOT}",
++        f"Records included: {len(records)}",
++        "",
++        "## Records",
++        "",
++    ]
++    for record in manifest_records:
++        report_lines.extend(
++            [
++                f"### {record['title'] or record['id']}",
++                "",
++                f"- ID: {record['id']}",
++                f"- Source: {record['source']}",
++                f"- Summary: {record['summary']}",
++                f"- Projects: {', '.join(project.get('name', '') for project in record['project_refs']) or 'none'}",
++                "",
++            ]
++        )
++
++    report_lines.extend(
++        [
++            "## Backup Policy",
++            "",
++            "- Raw conversation text is not copied by default.",
++            "- Common token/API key/private key patterns are redacted.",
++            "- Use private storage for full-fidelity backups.",
++        ]
++    )
++    write_redacted_text(target / "backup-report.md", "\n".join(report_lines))
++    write_redacted_text(target / "records-manifest.json", json.dumps(manifest_records, indent=2, ensure_ascii=True))
++
++    optional_artifacts = [
++        REPORTS / f"{today()}-brief.md",
++        BACKUPS / f"{today()}-backup-receipt.md",
++        DASHBOARD / "records.json",
++    ]
++    artifact_dir = target / "artifacts"
++    copied = []
++    for artifact in optional_artifacts:
++        if artifact.exists():
++            destination = artifact_dir / artifact.name
++            write_redacted_text(destination, artifact.read_text(encoding="utf-8"))
++            copied.append(str(destination.relative_to(kb_root)))
++
++    receipt = {
++        "created_at": now_utc().isoformat(),
++        "package": str(target.relative_to(kb_root)),
++        "records": len(records),
++        "artifacts": copied,
++        "committed": bool(args.commit or args.push),
++        "pushed": bool(args.push),
++    }
++    write_redacted_text(target / "backup-receipt.json", json.dumps(receipt, indent=2, ensure_ascii=True))
++
++    if args.commit or args.push:
++        run_git(kb_root, ["add", str(target.relative_to(kb_root))])
++        run_git(kb_root, ["commit", "-m", f"Add Pala Memory Core backup {package_id}"])
++    if args.push:
++        run_git(kb_root, ["push", "origin", "HEAD"])
++
++    print(f"github backup package saved {target}")
++    print(f"records={len(records)} artifacts={len(copied)} committed={receipt['committed']} pushed={receipt['pushed']}")
++
++
++def run_git(cwd: Path, args: list[str]) -> None:
++    subprocess.run(["git", *args], cwd=cwd, check=True)
++
++
+ def dashboard_export(_args: argparse.Namespace) -> None:
+     ensure_dirs()
+     DASHBOARD.mkdir(parents=True, exist_ok=True)
+@@ -319,6 +448,11 @@ def build_parser() -> argparse.ArgumentParser:
+     backup_sub = backup.add_subparsers(dest="target", required=True)
+     receipt = backup_sub.add_parser("receipt", help="create a local backup receipt")
+     receipt.set_defaults(func=backup_receipt)
++    github = backup_sub.add_parser("github", help="create a knowledge-bank backup package")
++    github.add_argument("--knowledge-bank", help="path to local knowledge-bank repository")
++    github.add_argument("--commit", action="store_true", help="commit the generated backup package")
++    github.add_argument("--push", action="store_true", help="commit and push the generated backup package")
++    github.set_defaults(func=backup_github)
+ 
+     dashboard = sub.add_parser("dashboard", help="dashboard utilities")
+     dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
