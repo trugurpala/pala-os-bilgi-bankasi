@@ -1,0 +1,74 @@
+# Raw Patch/Diff - Pala OS V10 Dashboard UI/UX Figma Plan
+
+Date: 2026-06-09
+
+Note: `pala-os-v10` is not a Git repo yet. This patch records the effective source changes for the UI/UX-Figma planning phase.
+
+```diff
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@
+ - [Codex folder readback](docs/CODEX-FOLDER-READBACK-2026-06-09.md)
+ - [GitHub readback](docs/GITHUB-READBACK-2026-06-09.md)
++- [Dashboard UI/UX and Figma plan](docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md)
+ - [Pala OS V10 project plan](docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md)
+
+diff --git a/docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md b/docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md
+new file mode 100644
+--- /dev/null
++++ b/docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md
+@@
++# Dashboard UI/UX and Figma Plan - 2026-06-09
++
++Status: DESIGN_PLAN_READY
++
++Design premise:
++
++```text
++Pala OS V10 dashboard should feel like an elite agency operations floor, not a generic admin template.
++```
++
++The plan defines product feel, agency roles, layout, key screens, Figma paid workflow, components, behavior references, acceptance criteria, and the next move.
++
++Key screens:
++
++- Command Floor
++- Work Queue
++- Agent Desks
++- Evidence Room
++- Source Court
++- Release Gate
++
++Key Figma pages:
++
++- `00 Brief`
++- `01 Foundations`
++- `02 Components`
++- `03 Desktop Screens`
++- `04 Responsive Screens`
++- `05 Prototype Flows`
++- `06 Dev Mode Handoff`
++
++Core rule:
++
++```text
++Design is not product proof until implemented and tested.
++```
+
+diff --git a/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md b/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
+--- a/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
++++ b/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
+@@
+ ### Phase 5 - Dashboard Truth Surface
+
+ Build only DB/ledger-backed dashboard panels.
+
++Design source:
++
++- use `docs/DASHBOARD-UI-UX-FIGMA-PLAN-2026-06-09.md`,
++- create the Figma file before dashboard implementation,
++- treat Figma as design evidence only until implemented and tested.
++
+ Panels:
+```
