@@ -1,0 +1,165 @@
+# Raw Patch/Diff - Pala OS V10 GitHub Readback
+
+Date: 2026-06-09
+
+Note: `pala-os-v10` is not a Git repo yet. This patch records the effective source changes for the GitHub readback phase.
+
+```diff
+diff --git a/README.md b/README.md
+--- a/README.md
++++ b/README.md
+@@
+ - [Codex folder readback](docs/CODEX-FOLDER-READBACK-2026-06-09.md)
++- [GitHub readback](docs/GITHUB-READBACK-2026-06-09.md)
+ - [Pala OS V10 project plan](docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md)
+
+diff --git a/docs/GITHUB-READBACK-2026-06-09.md b/docs/GITHUB-READBACK-2026-06-09.md
+new file mode 100644
+--- /dev/null
++++ b/docs/GITHUB-READBACK-2026-06-09.md
+@@
++# GitHub Readback - 2026-06-09
++
++Status: READ_ONLY_TOUR_COMPLETE
++
++GitHub account observed:
++
++```text
++trugurpala
++```
++
++Tooling:
++
++```text
++gh version 2.89.0
++```
++
++No token value is recorded in this document.
++
++## Relevant Repos
++
++| Repo | Visibility | Readback decision |
++| --- | --- | --- |
++| `trugurpala/pala-os-bilgi-bankasi` | PUBLIC | Knowledge-bank report target. Confirmed published. |
++| `trugurpala/konusmalar` | PRIVATE | Memory room. Context only, not product proof. |
++| `trugurpala/pala-os-v6` | PRIVATE | Active executable baseline. PR #1 open and blocked by review. |
++| `trugurpala/pala-os` | PRIVATE | Legacy source pool. Source-card/quarantine only. |
++| `trugurpala/pala-os-v5` | PRIVATE | Governance and migration-court source. |
++| `trugurpala/pala-os-v3` | PUBLIC | Doctrine/community reference. |
++| `trugurpala/pala-os-v4` | PUBLIC | Transition/reference source. |
++| `trugurpala/pala-os-v10` | not found/no access | No GitHub repo exists or is accessible for V10 yet. |
++
++## Knowledge Bank Publication
++
++Repo:
++
++```text
++https://github.com/trugurpala/pala-os-bilgi-bankasi
++```
++
++Confirmed commit:
++
++```text
++3476b4ef2dc91c12fede5a123cdafded4fe25463
++docs: add pala os v10 project start report
++```
++
++Confirmed implementation report URL:
++
++```text
++https://github.com/trugurpala/pala-os-bilgi-bankasi/blob/main/reports/pala-os-v10/2026-06-09-v10-project-start-implementation-report.md
++```
++
++## V6 PR #1 State
++
++PR:
++
++```text
++https://github.com/trugurpala/pala-os-v6/pull/1
++```
++
++Observed state:
++
++- title: `Strengthen V6 source-card gate radar`
++- state: `OPEN`
++- draft: `false`
++- base: `main`
++- head: `codex/v6-source-card-gate-radar`
++- merge state: `BLOCKED`
++- review decision: `REVIEW_REQUIRED`
++- reviews: none
++- changed files: `2160`
++- additions: `608408`
++- deletions: `230`
++- latest head: `61b5962f639baa61f497fdac3ba8b3e35863ed75`
++
++Checks observed on latest PR/push runs:
++
++- `source-court-audit`: success
++- `legacy-boundary`: success
++- `test`: success
++- `court`: success
++- `Cursor Bugbot`: success
++- `nightly-cron`: skipped on PR/push, expected for normal gate posture
++
++## V6 Main Branch Protection
++
++Observed branch protection for `trugurpala/pala-os-v6` main:
++
++- required status checks are strict.
++- required context: `test`.
++- pull request reviews required.
++- required approving review count: `1`.
++- code owner reviews required.
++- stale review dismissal enabled.
++- admins enforced.
++- linear history required.
++- force pushes disabled.
++- branch deletion disabled.
++- conversation resolution required.
++
++Decision:
++
++```text
++V6 PR #1 is CI-clean but review-blocked. It must not be treated as merged or released.
++```
++
++## V10 GitHub Gap
++
++`trugurpala/pala-os-v10` is not present or not accessible through GitHub readback.
++
++Local V10 is also not a Git repo yet.
++
++Before any V10 remote work:
++
++1. initialize local V10 Git repo,
++2. create first scaffold commit,
++3. create GitHub repo or connect to the chosen remote,
++4. push only after owner approval,
++5. keep release blocked.
++
++## Not Performed
++
++- No V6 PR review was submitted.
++- No V6 merge was attempted.
++- No V6 branch protection was changed.
++- No V10 GitHub repo was created.
++- No source repo push happened during this GitHub tour.
++
++The only external write already performed in this session was the required knowledge-bank report publication.
+
+diff --git a/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md b/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
+--- a/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
++++ b/docs/PALA-OS-V10-PROJECT-PLAN-2026-06-09.md
+@@
+ - `npm.cmd test` passes.
+ - `node src/cli.js status` prints V10 status.
+ - `node src/cli.js court` returns `RELEASE_BLOCKED`.
++- GitHub remote is still absent unless owner explicitly authorizes creating or connecting `trugurpala/pala-os-v10`.
+@@
+ - V10 is not a Git repo yet.
++- `trugurpala/pala-os-v10` is not present or not accessible on GitHub.
+ - V6 PR #1 is blocked by GitHub self-approval rules.
++- V6 PR #1 is CI-clean but still `REVIEW_REQUIRED` and `BLOCKED`.
+ - V4 has dirty tracked rule files and is behind V6.
+```
