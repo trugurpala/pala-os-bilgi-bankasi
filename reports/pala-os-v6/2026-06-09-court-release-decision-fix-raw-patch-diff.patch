@@ -1,0 +1,188 @@
+﻿diff --git a/src/cli.js b/src/cli.js
+index a4c064f..574b82d 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -13,7 +13,7 @@ import {
+   startRun,
+ } from './db.js';
+ import { STANDARD_BY_ID } from './standards.js';
+-import { buildEvidenceSprint } from './policy.js';
++import { buildEvidenceSprint, resolveReleaseGateState } from './policy.js';
+ import { syncGithubBridge } from './github.js';
+ import { captureScreenshotEvidence } from './screenshot.js';
+ import { buildRegistryHealth, getRegistrySkill, listRegistrySkills, loadSeedSkillRegistry, summarizeSkillRegistry } from './skill-registry.js';
+@@ -145,16 +145,19 @@ function buildCourtDecisionPayload(court, state) {
+   const blockedStandards = selectCourtStandards(state.standards);
+   const blockedRequired = court?.blockedRequired ?? 0;
+   const ownerApproved = Boolean(court?.ownerApproved);
+-  const hasSourceCards = sourceCards.length > 0;
+-  const hasLedgerEvidence = ledger.length > 0;
+-  const sourceStampGatePassable = sourceStampGate.status !== 'BLOCKED';
+-  const releaseReady = ownerApproved && blockedRequired === 0 && hasSourceCards && hasLedgerEvidence && sourceStampGatePassable;
+-  const gate = releaseReady ? 'PASS' : 'BLOCKED';
++  const releaseGateState = resolveReleaseGateState({
++    ownerApproved,
++    blockedRequired,
++    sourceCards,
++    ledger,
++    sourceStampGate,
++  });
++  const { releaseReady, gate } = releaseGateState;
+ 
+   return {
+     decisionText: releaseReady
+-      ? 'Release gate state is PASS (owner approved, no blocked required standards, source cards present, ledger has evidence).'
+-      : 'Release gate is BLOCKED. Expected: owner approval, no blocked required standards, source cards and ledger evidence are required.',
++      ? 'Release gate state is PASS (owner approved, no blocked required standards, source cards present, ledger has evidence, source stamp gate passable).'
++      : 'Release gate is BLOCKED. Expected: owner approval, no blocked required standards, source cards, ledger evidence, and passable source stamp gate are required.',
+     gate,
+     blockedCount: blockedRequired,
+     blockedStandards,
+@@ -163,19 +166,20 @@ function buildCourtDecisionPayload(court, state) {
+       ownerApproved,
+       sourceCards: sourceCards.length,
+       ledgerRecords: ledger.length,
+-      courtDecision: court?.decision ?? 'RELEASE_BLOCKED',
++      courtDecision: releaseGateState.decision,
+       sourceStampGateStatus: sourceStampGate.status,
+-      releaseStatus: releaseReady ? 'GECERLI' : 'BASARISIZ',
++      releaseStatus: releaseGateState.verdict,
+     },
+     releaseGate: {
+       name: 'release',
+-      verdict: releaseReady ? 'GECERLI' : 'BASARISIZ',
++      verdict: releaseGateState.verdict,
+       status: gate,
+       ownerApproved,
+-      hasSourceCards,
+-      hasLedgerEvidence,
++      hasSourceCards: releaseGateState.hasSourceCards,
++      hasLedgerEvidence: releaseGateState.hasLedgerEvidence,
+       blockedRequired,
+       sourceStampGateStatus: sourceStampGate.status,
++      sourceStampGatePassable: releaseGateState.sourceStampGatePassable,
+       route: state.route,
+     },
+     sourceStampGate,
+diff --git a/src/policy.js b/src/policy.js
+index 08619ff..84578ab 100644
+--- a/src/policy.js
++++ b/src/policy.js
+@@ -317,11 +317,53 @@ export function summarizeJobs(jobRuns) {
+   );
+ }
+ 
+-export function evaluateCourt({ summary, sourceCards, runs, ledger, sourceStampGate = null }) {
++export function resolveReleaseGateState({
++  ownerApproved,
++  blockedRequired,
++  sourceCards = [],
++  ledger = [],
++  sourceStampGate = null,
++} = {}) {
++  const sourceStampGateStatus = sourceStampGate?.status ?? 'NOT_AVAILABLE_WITH_REASON';
++  const hasSourceCards = Array.isArray(sourceCards) && sourceCards.length > 0;
++  const hasLedgerEvidence = Array.isArray(ledger) && ledger.length > 0;
++  const sourceStampGatePassable = sourceStampGateStatus === 'PASS' || sourceStampGateStatus === 'PARTIAL';
++  const releaseReady = Boolean(ownerApproved)
++    && blockedRequired === 0
++    && hasSourceCards
++    && hasLedgerEvidence
++    && sourceStampGatePassable;
++
++  return {
++    decision: releaseReady ? 'PASS' : 'RELEASE_BLOCKED',
++    gate: releaseReady ? 'PASS' : 'BLOCKED',
++    verdict: releaseReady ? 'GECERLI' : 'BASARISIZ',
++    releaseReady,
++    ownerApproved: Boolean(ownerApproved),
++    blockedRequired,
++    hasSourceCards,
++    hasLedgerEvidence,
++    sourceStampGateStatus,
++    sourceStampGatePassable,
++  };
++}
++
++export function evaluateCourt({ summary, sourceCards = [], runs = [], ledger = [], sourceStampGate = null }) {
+   const ownerApproved = process.env.PALA_OWNER_APPROVED === '1';
+   const blockedRequired = summary.byStatus.blocked ?? summary.blocked ?? 0;
+   const evidencePressure = sourceCards.length === 0 ? 'source cards missing' : 'source cards present';
+   const ledgerPressure = Array.isArray(ledger) && ledger.length === 0 ? 'ledger empty' : 'ledger has records';
++  const resolvedSourceStampGate = sourceStampGate ?? {
++    status: 'NOT_AVAILABLE_WITH_REASON',
++    reasons: ['source court audit not available'],
++  };
++  const releaseGate = resolveReleaseGateState({
++    ownerApproved,
++    blockedRequired,
++    sourceCards,
++    ledger,
++    sourceStampGate: resolvedSourceStampGate,
++  });
+   const sourceStampPressure = sourceStampGate?.status
+     ? `source stamp gate ${sourceStampGate.status}`
+     : 'source stamp gate not available';
+@@ -330,16 +372,17 @@ export function evaluateCourt({ summary, sourceCards, runs, ledger, sourceStampG
+     : 'owner approval missing';
+ 
+   return {
+-    decision: 'RELEASE_BLOCKED',
++    decision: releaseGate.decision,
+     ownerApproved,
+     reason: `${baseReason}; ${blockedRequired} required standard(s) still blocked; ${evidencePressure}; ${ledgerPressure}; ${sourceStampPressure}`,
+     blockedRequired,
+-    runCount: runs?.length ?? 0,
++    releaseReady: releaseGate.releaseReady,
++    gate: releaseGate.gate,
++    releaseStatus: releaseGate.verdict,
++    sourceStampGatePassable: releaseGate.sourceStampGatePassable,
++    runCount: runs.length,
+     evidenceCount: sourceCards.length,
+-    sourceStampGate: sourceStampGate ?? {
+-      status: 'NOT_AVAILABLE_WITH_REASON',
+-      reasons: ['source court audit not available'],
+-    },
++    sourceStampGate: resolvedSourceStampGate,
+   };
+ }
+ 
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index 9a236a1..d9fd81f 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -1441,6 +1441,34 @@ test('github audit emits machine-readable governance gates', async () => {
+   }
+ });
+ 
++test('owner-approved court returns one canonical PASS decision when release criteria are met', async () => {
++  const { evaluateCourt } = await import('../src/policy.js');
++  const previousOwnerApproval = process.env.PALA_OWNER_APPROVED;
++  process.env.PALA_OWNER_APPROVED = '1';
++
++  try {
++    const court = evaluateCourt({
++      summary: { byStatus: { blocked: 0 } },
++      sourceCards: [{ id: 'source-card' }],
++      runs: [],
++      ledger: [{ id: 'ledger-record' }],
++      sourceStampGate: {
++        status: 'PARTIAL',
++        reasons: ['non-release-blocking governance/reference files need audit tracking'],
++      },
++    });
++
++    assert.equal(court.decision, 'PASS');
++    assert.equal(court.releaseReady, true);
++  } finally {
++    if (previousOwnerApproval === undefined) {
++      delete process.env.PALA_OWNER_APPROVED;
++    } else {
++      process.env.PALA_OWNER_APPROVED = previousOwnerApproval;
++    }
++  }
++});
++
+ test('github governance hardening keeps release court blocked without owner approval', async (t) => {
+   const root = await createWorkspace();
+   t.after(async () => {
