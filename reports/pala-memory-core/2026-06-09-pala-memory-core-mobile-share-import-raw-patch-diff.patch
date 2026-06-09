@@ -1,0 +1,401 @@
+﻿commit 0060bf508b0caf3224c6b73d3276380918f59bb6
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:38:33 2026 +0300
+
+    Add mobile share import preview
+---
+ INSTALL.md                       |   2 +
+ README.md                        |   2 +
+ docs/backlog.md                  |   3 +-
+ docs/commands.md                 |  27 +++++++++
+ docs/connectors.md               |  14 ++++-
+ docs/roadmap.md                  |   2 +
+ docs/security.md                 |  11 ++++
+ docs/v0.1-acceptance.md          |   2 +
+ docs/v0.8-mobile-share-import.md |  60 ++++++++++++++++++++
+ pala.py                          | 118 +++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 239 insertions(+), 2 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 5798d88..3817614 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -21,6 +21,7 @@ python pala.py backup receipt
+ python pala.py backup github
+ python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
++python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+@@ -72,6 +73,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Commit and push knowledge-bank backup | `python pala.py backup github --push` |
+ | Prepare Drive-folder backup | `python pala.py backup drive --target "C:\path\to\Google Drive\Pala Memory Core"` |
+ | Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
++| Import mobile shares | `python pala.py import mobile-share "C:\path\to\shared\folder"` |
+ | Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+diff --git a/README.md b/README.md
+index b7cc79e..8bac541 100644
+--- a/README.md
++++ b/README.md
+@@ -15,6 +15,7 @@ python pala.py backup receipt
+ python pala.py backup github
+ python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
++python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+@@ -67,6 +68,7 @@ pala-memory-core/
+ | `import chatgpt-export` | v0.5 | Imports ChatGPT export files as memory records |
+ | `capture browser` | v0.6 | Captures a public/local URL into a memory record |
+ | `backup drive` | v0.7 | Creates a redacted Drive-folder backup package |
++| `import mobile-share` | v0.8 | Imports phone/shared files and attachments |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 29db77a..251113a 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -44,7 +44,8 @@
+ | `PMC-020B` | Add Google Drive OAuth backup | Upload package through Google Drive API |
+ | `PMC-021` | Add browser URL capture | Public/local URL can become a memory record |
+ | `PMC-021B` | Add Playwright session capture | Authenticated browser context and screenshots become optional connector |
+-| `PMC-022` | Add mobile share/import design | Phone capture uses share/export first |
++| `PMC-022` | Add mobile share/import command | Phone-shared folder or zip becomes records and attachments |
++| `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
+ 
+ ## Risk Register
+diff --git a/docs/commands.md b/docs/commands.md
+index 4409927..c97fd7a 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -124,6 +124,33 @@ Useful options:
+ | `--max-records 25` | Limit created records |
+ | `--max-chars 12000` | Limit text stored per record |
+ 
++## import mobile-share
++
++Imports files shared from a phone or sync folder into local memory records.
++
++Supported inputs:
++
++| Input | Behavior |
++|---|---|
++| folder | Recursively imports supported files |
++| `.zip` | Reads supported files inside the archive |
++| `.json` / `.html` / `.md` / `.txt` | Creates text memory records |
++| `.pdf` / images / Office files | Stores as attachments |
++
++```text
++python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--project trugurpala/pala-memory-core` | Link imported records to a project |
++| `--tag mobile` | Add an extra tag |
++| `--title "..."` | Override record title |
++| `--max-records 25` | Limit text records |
++| `--max-chars 12000` | Limit text stored per record |
++
+ ## capture browser
+ 
+ Captures a public or local URL into a memory record.
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 619b87c..07da3b6 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -7,7 +7,7 @@ Pala Memory Core uses a staged connector model. The core stays local-first; conn
+ | Connector | Purpose | MVP Path | Risk |
+ |---|---|---|---|
+ | ChatGPT Desktop | Save important desktop conversations | Manual copy/import first | No guaranteed full live API |
+-| ChatGPT Mobile | Save phone conversations | Share/export into inbox | Mobile OS restrictions |
++| ChatGPT Mobile | Save phone conversations | Share/export into inbox or sync folder | Mobile OS restrictions |
+ | ChatGPT Export | Import official export archive | Parse zip/folder/json/html/md/txt into records | Export format can change |
+ | Codex | Capture local coding sessions and outputs | Manual `remember` + report package | Needs user-approved capture scope |
+ | GitHub | Publish reports and read repo context | Redacted knowledge-bank backup package | Secrets must be filtered |
+@@ -86,6 +86,18 @@ The first Drive connector writes a redacted package into a local folder. If that
+ | `PALA_DRIVE_BACKUP_PATH` | Sets default Drive backup folder |
+ | future OAuth connector | Uploads directly through Google Drive API |
+ 
++## Mobile Share Import Behavior
++
++The first mobile connector imports shared files from a local/synced folder or ZIP. It is designed for phone share sheets, Google Drive folders, iCloud/OneDrive sync folders, or manually copied files.
++
++| Input | Behavior |
++|---|---|
++| Text/Markdown/HTML/JSON | Creates local memory records |
++| PDF/images/Office files | Stores as attachments |
++| ZIP/folder | Processes supported files inside |
++
++Mobile background monitoring is intentionally deferred. The first reliable path is "share to folder, then import".
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 5da50d8..b9715ab 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -17,6 +17,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.7` | Drive folder backup | Selected artifacts can be copied into a Drive sync folder |
+ | `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+ | `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
++| `v0.10` | Mobile share/import flow | Phone/shared folder files can become records and attachments |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -41,4 +42,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add ChatGPT export import | Convert export files into local memory records |
+ | Add browser URL capture | Convert a public/local URL into a local memory record |
+ | Add Drive folder backup | Copy redacted package to a selected Drive sync folder |
++| Add mobile share import | Import phone-shared text, PDFs, images, and Office files |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index 488c319..4d3934e 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -83,3 +83,14 @@ Raw conversation text is not copied by default. Full-fidelity backups should use
+ | redaction | Avoid copying common secrets into the backup package |
+ 
+ This is not yet a direct Google Drive API upload.
++
++## Mobile Share Import Defaults
++
++`pala import mobile-share` reads files from a path the user provides. It does not monitor the phone in the background.
++
++| Control | Purpose |
++|---|---|
++| `--max-records` | Avoid importing too many text records |
++| `--max-chars` | Limit text stored per record |
++| attachments | PDF/images/Office files are copied into local attachments |
++| `.gitignore` | Generated records and attachments stay out of Git |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index f1a7f81..65c977a 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -22,6 +22,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create GitHub backup package | `python pala.py backup github` | Redacted package created under local knowledge bank |
+ | Create Drive-folder backup | `python pala.py backup drive --target <folder>` | Redacted package created under selected folder |
+ | Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
++| Import mobile share | `python pala.py import mobile-share <path>` | Shared text becomes records and files become attachments |
+ | Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+@@ -65,6 +66,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | ChatGPT export import | Supports zip/folder/json/html/md/txt inputs |
+ | Browser capture | Supports public/local URL capture |
+ | Drive backup | Supports local folder target suitable for Google Drive sync |
++| Mobile share import | Supports folder/zip/file import from phone sync/share flows |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.8-mobile-share-import.md b/docs/v0.8-mobile-share-import.md
+new file mode 100644
+index 0000000..bd7c7dd
+--- /dev/null
++++ b/docs/v0.8-mobile-share-import.md
+@@ -0,0 +1,60 @@
++# v0.8 Mobile Share Import
++
++Date: 2026-06-09
++Phase: mobile share/import preview
++Status: PASS for mobile share/import preview
++
++## Goal
++
++Import files shared from a phone, sync folder, or ZIP into Pala Memory Core so mobile ChatGPT notes, PDFs, screenshots, and text exports can be preserved locally.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py import mobile-share <path>` |
++| Inputs | File, folder, or ZIP |
++| Text inputs | `.json`, `.html`, `.md`, `.txt` become memory records |
++| Attachments | PDF, images, and Office files are copied as attachments |
++| Source | Stores record source as `mobile` |
++| Tags | Adds `mobile-share` plus optional user tags |
++
++## Command
++
++```powershell
++python .\pala.py import mobile-share .\data\inbox\mobile-share-smoke --project trugurpala/pala-memory-core --tag smoke-test
++```
++
++## Expected Result
++
++```text
++saved <record-id>
++data\records\<date>\<record-id>.md
++imported <n> text record(s) and <m> attachment file(s) from <path>
++```
++
++## Smoke Test
++
++Created a sample shared folder with one Markdown note and one PDF-like attachment, then imported it:
++
++```powershell
++python .\pala.py import mobile-share .\data\inbox\mobile-share-smoke --project trugurpala/pala-memory-core --tag smoke-test --max-records 5 --max-chars 2000
++python .\pala.py brief today
++python .\pala.py dashboard export
++```
++
++Observed output:
++
++```text
++saved 20260609T133804Z-mobile-share-chatgpt-mobile-note
++data\records\2026-06-09\20260609T133804Z-mobile-share-chatgpt-mobile-note.md
++saved 20260609T133804Z-mobile-share-attachments
++data\records\2026-06-09\20260609T133804Z-mobile-share-attachments.md
++imported 1 text record(s) and 1 attachment file(s) from C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core\data\inbox\mobile-share-smoke
++brief saved data\reports\2026-06-09-brief.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is a share/import preview. It does not monitor phones in the background; the reliable first path is share/copy to a folder, then import.
+diff --git a/pala.py b/pala.py
+index 51edb30..23d272f 100644
+--- a/pala.py
++++ b/pala.py
+@@ -512,6 +512,115 @@ def import_chatgpt_export(args: argparse.Namespace) -> None:
+     print(f"imported {imported} record(s) from {source}")
+ 
+ 
++def import_mobile_share(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    source = Path(args.path).expanduser().resolve()
++    if not source.exists():
++        raise SystemExit(f"mobile share path not found: {source}")
++
++    entries, attachments = collect_mobile_share_entries(source, args.max_chars)
++    imported = 0
++    tags = ["mobile-share", *(args.tag or [])]
++    for title, text in entries:
++        if imported >= args.max_records:
++            break
++        clean = text.strip()
++        if not clean:
++            continue
++        write_record(
++            argparse.Namespace(
++                title=(args.title or f"Mobile share: {title}")[:120],
++                text=clean[: args.max_chars],
++                text_file=None,
++                summary=args.summary,
++                source="mobile",
++                project=args.project,
++                tag=tags,
++                decision=[],
++                task=[],
++                file=[],
++                evidence=[{"kind": "file", "value": str(source)}],
++            )
++        )
++        imported += 1
++
++    if attachments:
++        write_record(
++            argparse.Namespace(
++                title=(args.title or "Mobile share attachments")[:120],
++                text=f"Imported {len(attachments)} attachment(s) from {source}",
++                text_file=None,
++                summary=args.summary,
++                source="mobile",
++                project=args.project,
++                tag=tags,
++                decision=[],
++                task=[],
++                file=[str(path) for path in attachments],
++                evidence=[{"kind": "file", "value": str(source)}],
++            )
++        )
++
++    print(f"imported {imported} text record(s) and {len(attachments)} attachment file(s) from {source}")
++
++
++def collect_mobile_share_entries(source: Path, max_chars: int) -> tuple[list[tuple[str, str]], list[Path]]:
++    text_suffixes = {".json", ".html", ".htm", ".md", ".txt"}
++    attachment_suffixes = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".docx", ".pptx", ".xlsx"}
++    entries: list[tuple[str, str]] = []
++    attachments: list[Path] = []
++
++    def handle_file(path: Path) -> None:
++        suffix = path.suffix.lower()
++        if suffix in text_suffixes:
++            entries.extend(parse_import_file(path.name, path.read_bytes(), max_chars))
++        elif suffix in attachment_suffixes:
++            attachments.append(path)
++
++    if source.is_dir():
++        for path in sorted(source.rglob("*")):
++            if path.is_file():
++                handle_file(path)
++        return entries, attachments
++
++    if source.suffix.lower() == ".zip":
++        extract_dir = DATA / "inbox" / f"mobile-share-{stamp()}"
++        extract_dir.mkdir(parents=True, exist_ok=True)
++        with zipfile.ZipFile(source) as archive:
++            for member in sorted(archive.namelist()):
++                if member.endswith("/"):
++                    continue
++                suffix = Path(member).suffix.lower()
++                raw = archive.read(member)
++                name = safe_filename(Path(member).name)
++                if suffix in text_suffixes:
++                    entries.extend(parse_import_file(name, raw, max_chars))
++                elif suffix in attachment_suffixes:
++                    target = unique_path(extract_dir / name)
++                    target.write_bytes(raw)
++                    attachments.append(target)
++        return entries, attachments
++
++    handle_file(source)
++    return entries, attachments
++
++
++def safe_filename(value: str) -> str:
++    clean = "".join(char if char.isalnum() or char in [".", "-", "_"] else "-" for char in value)
++    return clean.strip(".-") or "shared-file"
++
++
++def unique_path(path: Path) -> Path:
++    if not path.exists():
++        return path
++    counter = 2
++    while True:
++        candidate = path.with_name(f"{path.stem}-{counter}{path.suffix}")
++        if not candidate.exists():
++            return candidate
++        counter += 1
++
++
+ def capture_browser(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     request = urllib.request.Request(args.url, headers={"User-Agent": "PalaMemoryCore/0.6"})
+@@ -737,6 +846,15 @@ def build_parser() -> argparse.ArgumentParser:
+     chatgpt.add_argument("--max-records", type=int, default=50)
+     chatgpt.add_argument("--max-chars", type=int, default=12000)
+     chatgpt.set_defaults(func=import_chatgpt_export)
++    mobile = import_sub.add_parser("mobile-share", help="import mobile shared files")
++    mobile.add_argument("path", help="path to a shared file, folder, or zip")
++    mobile.add_argument("--title")
++    mobile.add_argument("--project")
++    mobile.add_argument("--tag", action="append")
++    mobile.add_argument("--summary")
++    mobile.add_argument("--max-records", type=int, default=50)
++    mobile.add_argument("--max-chars", type=int, default=12000)
++    mobile.set_defaults(func=import_mobile_share)
+ 
+     capture = sub.add_parser("capture", help="capture live/local sources")
+     capture_sub = capture.add_subparsers(dest="kind", required=True)
