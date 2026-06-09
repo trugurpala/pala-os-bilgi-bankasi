@@ -1,0 +1,447 @@
+﻿commit 5c29cc35250e5147708a18ab8184669467f26cd1
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 21:30:57 2026 +0300
+
+    docs: add codex compatibility protocol
+---
+ .github/workflows/pala-memory-core-ci.yml |  8 +++
+ AGENTS.md                                 | 77 ++++++++++++++++++++++++++++-
+ docs/codex-compatibility.md               | 64 ++++++++++++++++++++++++
+ docs/commands.md                          | 12 +++++
+ docs/task-templates/codex-audit-task.md   | 33 +++++++++++++
+ docs/task-templates/codex-feature-task.md | 33 +++++++++++++
+ docs/task-templates/codex-merge-gate.md   | 33 +++++++++++++
+ pala.py                                   | 81 +++++++++++++++++++++++++++++++
+ 8 files changed, 339 insertions(+), 2 deletions(-)
+
+diff --git a/.github/workflows/pala-memory-core-ci.yml b/.github/workflows/pala-memory-core-ci.yml
+index 8af82be..ea9be5e 100644
+--- a/.github/workflows/pala-memory-core-ci.yml
++++ b/.github/workflows/pala-memory-core-ci.yml
+@@ -52,6 +52,14 @@ jobs:
+         run: |
+           python -c "from pathlib import Path; h=Path('dashboard/index.html').read_text(encoding='utf-8').lower(); forbidden=['pricing','upgrade','subscribe','subscription','billing','paywall','contact sales','enterprise only']; assert not any(x in h for x in forbidden)"
+ 
++      - name: Codex compatibility docs
++        run: |
++          test -f AGENTS.md
++          test -f docs/codex-compatibility.md
++          test -f docs/task-templates/codex-feature-task.md
++          test -f docs/task-templates/codex-audit-task.md
++          test -f docs/task-templates/codex-merge-gate.md
++
+       - name: Doctor
+         run: python pala.py doctor
+ 
+diff --git a/AGENTS.md b/AGENTS.md
+index f93a88a..1def29d 100644
+--- a/AGENTS.md
++++ b/AGENTS.md
+@@ -1,4 +1,78 @@
+-# AGENTS.md
++# Pala Memory Core - Agent Operating Protocol
++
++## Product Truth
++
++Pala Memory Core is not a coding agent.
++
++Agents do the work.
++Pala verifies the work.
++
++Plain rule: Agents do the work. Pala verifies the work.
++
++## Free Local Rule
++
++The project is free and local-first by default.
++
++Do not add pricing, upgrade, subscription, billing, trial, or paywall UI.
++
++## Agent Rules
++
++1. Do not claim done without evidence.
++2. Do not push directly to main.
++3. Use a feature branch for every change.
++4. Open a draft PR for review.
++5. Run smoke tests before reporting.
++6. Do not commit generated runtime data.
++7. Do not commit secrets, API keys, tokens, or local config.
++8. Do not edit unrelated files.
++9. Do not vendor external code without Source Court approval.
++10. Do not merge without owner approval.
++
++## Required Smoke
++
++Run the relevant subset before any report:
++
++- `python -m py_compile pala.py`
++- `python pala.py doctor`
++- `python pala.py token intel`
++- `python pala.py source court`
++- `python pala.py dashboard export --all`
++- `python pala.py list --limit 10`
++
++## Forbidden Files
++
++Do not stage:
++
++- `.env`
++- `.pala/config.json`
++- `dashboard/records.json`
++- `data/reports/*`
++- `data/backups/*`
++- `data/records/*`
++- secret/config/private-key files
++
++## Required Report Format
++
++Every task report must include:
++
++- Verdict
++- Files changed
++- Commands run
++- Evidence
++- Problems found
++- Remaining risks
++- Next mission
++
++## Release Court
++
++Every PR must have a court comment before merge.
++
++Court verdict examples:
++
++- READY_FOR_OWNER_REVIEW
++- MERGE_APPROVED_BY_OWNER
++- BLOCKED
++- HOLD
+ 
+ ## Project Identity
+ 
+@@ -67,4 +141,3 @@ At the end of a task, report:
+ - Backup status
+ - Remaining risk
+ - Next best step
+-
+diff --git a/docs/codex-compatibility.md b/docs/codex-compatibility.md
+new file mode 100644
+index 0000000..d31487b
+--- /dev/null
++++ b/docs/codex-compatibility.md
+@@ -0,0 +1,64 @@
++# Codex Compatibility
++
++## Purpose
++
++Codex should treat Pala Memory Core as an evidence-first local control system.
++
++## How Codex Should Work In This Repo
++
++Codex should make small scoped changes, collect command evidence, and report the result without hiding warnings or generated outputs.
++
++## Branch Discipline
++
++Use a feature branch for each change. Do not push directly to `main`.
++
++## PR Discipline
++
++Open a draft PR for review, keep the changed-file scope explicit, and wait for owner approval before merge.
++
++## Smoke Discipline
++
++Run the relevant smoke commands before claiming a task is complete:
++
++- `python -m py_compile pala.py`
++- `python pala.py doctor`
++- `python pala.py token intel`
++- `python pala.py source court`
++- `python pala.py dashboard export --all`
++- `python pala.py list --limit 10`
++
++## Evidence Discipline
++
++Use command output, PR metadata, CI checks, and release court comments as evidence.
++
++## Forbidden Actions
++
++Do not create releases, tags, force pushes, generated runtime commits, secret commits, pricing UI, upgrade UI, subscription UI, billing UI, trial UI, or paywall UI.
++
++## Generated Files
++
++Generated files stay local and ignored unless the owner explicitly approves otherwise.
++
++## Source Court
++
++External packages, MCP servers, SDKs, and imported source ideas must pass Source Court before becoming implementation dependencies.
++
++## Token Intelligence
++
++Token Intelligence classifies repository intake before large reads and keeps local context low-noise.
++
++## Dashboard Work
++
++Dashboard changes must preserve free local mode, owner approval, evidence ledger, token intelligence, source court, and no-paywall language.
++
++## Report Format
++
++Reports should include verdict, files changed, commands run, evidence, problems found, remaining risks, and next mission.
++
++## Recovery / Resume
++
++On resume, inspect branch, status, PR state, CI, and generated-file hygiene before continuing.
++
++## Next Steps
++
++Keep this protocol stable while v0.19 receives owner review.
+diff --git a/docs/commands.md b/docs/commands.md
+index fe4cae6..bf5ee33 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -462,6 +462,18 @@ Custom host/port:
+ python pala.py dashboard serve --host 127.0.0.1 --port 8787
+ ```
+ 
++## codex compatibility
++
++This repository supports Codex-style agent work through:
++
++- AGENTS.md
++- feature branches
++- draft PRs
++- smoke commands
++- release court comments
++- generated file protections
++- owner approval before merge
++
+ ## Planned
+ 
+ | Command | Purpose |
+diff --git a/docs/task-templates/codex-audit-task.md b/docs/task-templates/codex-audit-task.md
+new file mode 100644
+index 0000000..df07556
+--- /dev/null
++++ b/docs/task-templates/codex-audit-task.md
+@@ -0,0 +1,33 @@
++# Task
++
++## Goal
++
++Audit a scoped area and report evidence-backed findings.
++
++## Scope
++
++Name the repo area, PR, branch, command, or workflow under audit.
++
++## Forbidden
++
++Do not mutate files unless the task explicitly asks for fixes.
++
++## Commands
++
++List read-only inspection commands and any approved smoke commands.
++
++## Files Allowed
++
++List files that may be inspected.
++
++## Files Forbidden
++
++List files that must not be opened, staged, or changed.
++
++## Evidence
++
++Include command output, file references, CI state, and PR metadata.
++
++## Final Report
++
++Lead with verdict and findings, then include residual risk and next mission.
+diff --git a/docs/task-templates/codex-feature-task.md b/docs/task-templates/codex-feature-task.md
+new file mode 100644
+index 0000000..4773eec
+--- /dev/null
++++ b/docs/task-templates/codex-feature-task.md
+@@ -0,0 +1,33 @@
++# Task
++
++## Goal
++
++Implement one scoped feature with evidence.
++
++## Scope
++
++Name the files and behavior allowed for the change.
++
++## Forbidden
++
++Do not edit unrelated files, commit generated runtime data, add secrets, or bypass owner approval.
++
++## Commands
++
++List the smoke commands required for this feature.
++
++## Files Allowed
++
++List the exact files allowed to change.
++
++## Files Forbidden
++
++List generated files, secrets, config files, and out-of-scope paths.
++
++## Evidence
++
++Include command output, CI status, PR metadata, and relevant diffs.
++
++## Final Report
++
++Return verdict, files changed, commands run, problems found, remaining risks, and next mission.
+diff --git a/docs/task-templates/codex-merge-gate.md b/docs/task-templates/codex-merge-gate.md
+new file mode 100644
+index 0000000..33bff4e
+--- /dev/null
++++ b/docs/task-templates/codex-merge-gate.md
+@@ -0,0 +1,33 @@
++# Task
++
++## Goal
++
++Validate a PR before merge and preserve evidence.
++
++## Scope
++
++Name the PR number, branch, allowed files, and required owner approval.
++
++## Forbidden
++
++Do not merge without passing CI, smoke, scope review, court comment, and owner approval.
++
++## Commands
++
++List PR metadata, CI, smoke, ignore checks, and post-merge checks.
++
++## Files Allowed
++
++List files allowed in the PR.
++
++## Files Forbidden
++
++List generated data, secrets, local config, backups, and reports that must not be committed.
++
++## Evidence
++
++Include PR URL, CI URL or status, smoke output, merge commit, and final git status.
++
++## Final Report
++
++Return gate verdict, merge status, evidence, problems found, remaining risks, and next mission.
+diff --git a/pala.py b/pala.py
+index 014b0ab..20aa9c0 100644
+--- a/pala.py
++++ b/pala.py
+@@ -39,6 +39,13 @@ DASHBOARD = ROOT / "dashboard"
+ TOKEN_INTEL_PATH = REPORTS / "token-intelligence.json"
+ OPEN_SOURCE_CANDIDATES_PATH = ROOT / "docs" / "open-source-candidates.json"
+ OPEN_SOURCE_INTEL_PATH = REPORTS / "open-source-intelligence.json"
++CODEX_PROTOCOL_PATH = ROOT / "AGENTS.md"
++CODEX_COMPATIBILITY_PATH = ROOT / "docs" / "codex-compatibility.md"
++CODEX_TASK_TEMPLATES = [
++    ROOT / "docs" / "task-templates" / "codex-feature-task.md",
++    ROOT / "docs" / "task-templates" / "codex-audit-task.md",
++    ROOT / "docs" / "task-templates" / "codex-merge-gate.md",
++]
+ COMMAND_CENTER_FORBIDDEN_UI_TERMS = [
+     "pricing",
+     "upgrade",
+@@ -61,6 +68,7 @@ TOKEN_READ_FULL = {
+     "INSTALL.md",
+     "AGENTS.md",
+     "docs/commands.md",
++    "docs/codex-compatibility.md",
+     "docs/token-intelligence.md",
+     "docs/open-source-candidates.json",
+     "docs/open-source-intelligence.md",
+@@ -730,6 +738,15 @@ def dashboard_forbidden_ui_terms(html_text: str) -> list[str]:
+     return [term for term in COMMAND_CENTER_FORBIDDEN_UI_TERMS if term in lowered]
+ 
+ 
++def read_text_if_exists(path: Path) -> str:
++    if not path.exists():
++        return ""
++    try:
++        return path.read_text(encoding="utf-8")
++    except OSError:
++        return ""
++
++
+ def doctor_report(args: argparse.Namespace) -> None:
+     ensure_dirs()
+     records = load_records()
+@@ -905,6 +922,70 @@ def doctor_report(args: argparse.Namespace) -> None:
+         "source-intel",
+     )
+ 
++    codex_protocol = read_text_if_exists(CODEX_PROTOCOL_PATH)
++    normalized_codex_protocol = " ".join(codex_protocol.split())
++    codex_forbidden_files = [
++        ".env",
++        ".pala/config.json",
++        "dashboard/records.json",
++        "data/reports/*",
++        "data/backups/*",
++        "data/records/*",
++    ]
++    codex_required_smoke = [
++        "python -m py_compile pala.py",
++        "python pala.py doctor",
++        "python pala.py token intel",
++        "python pala.py source court",
++        "python pala.py dashboard export --all",
++        "python pala.py list --limit 10",
++    ]
++    add_check(
++        checks,
++        "Codex operating protocol",
++        "PASS" if CODEX_PROTOCOL_PATH.exists() else "FAIL",
++        str(CODEX_PROTOCOL_PATH.relative_to(ROOT)) if CODEX_PROTOCOL_PATH.exists() else "missing AGENTS.md",
++        "codex",
++    )
++    add_check(
++        checks,
++        "Codex compatibility docs",
++        "PASS" if CODEX_COMPATIBILITY_PATH.exists() else "FAIL",
++        str(CODEX_COMPATIBILITY_PATH.relative_to(ROOT)) if CODEX_COMPATIBILITY_PATH.exists() else "missing docs/codex-compatibility.md",
++        "codex",
++    )
++    for template in CODEX_TASK_TEMPLATES:
++        add_check(
++            checks,
++            f"Codex task template {template.stem}",
++            "PASS" if template.exists() else "FAIL",
++            str(template.relative_to(ROOT)) if template.exists() else f"missing {template.relative_to(ROOT)}",
++            "codex",
++        )
++    add_check(
++        checks,
++        "Codex product truth",
++        "PASS" if "Agents do the work. Pala verifies the work." in normalized_codex_protocol else "FAIL",
++        "Agents do the work. Pala verifies the work." if "Agents do the work. Pala verifies the work." in normalized_codex_protocol else "missing product truth",
++        "codex",
++    )
++    missing_forbidden = [item for item in codex_forbidden_files if item not in codex_protocol]
++    add_check(
++        checks,
++        "Codex forbidden files",
++        "PASS" if not missing_forbidden else "FAIL",
++        "forbidden files documented" if not missing_forbidden else f"missing: {', '.join(missing_forbidden)}",
++        "codex",
++    )
++    missing_smoke = [item for item in codex_required_smoke if item not in codex_protocol]
++    add_check(
++        checks,
++        "Codex required smoke",
++        "PASS" if not missing_smoke else "FAIL",
++        "required smoke documented" if not missing_smoke else f"missing: {', '.join(missing_smoke)}",
++        "codex",
++    )
++
+     add_check(checks, "Recovery CLI", "PASS", "list/search/show commands are registered", "recovery")
+     add_check(checks, "ChatGPT export importer", "PASS", "zip/folder/json/html/md/txt import path is registered", "chatgpt")
+     add_check(checks, "Mobile share importer", "PASS", "file/folder/zip import path is registered", "mobile")
