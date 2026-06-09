@@ -1,0 +1,733 @@
+﻿commit 0dba166f6ea9b34be0c03357045a8419d5f876a2
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 17:03:35 2026 +0300
+
+    Add recovery search and dashboard filtering
+---
+ INSTALL.md                    |   6 ++
+ README.md                     |   6 +-
+ dashboard/index.html          |  59 ++++++++++-
+ docs/backlog.md               |   2 +
+ docs/commands.md              |  61 ++++++++++-
+ docs/roadmap.md               |  20 ++--
+ docs/v0.1-acceptance.md       |   6 ++
+ docs/v0.11-recovery-search.md |  66 ++++++++++++
+ pala.py                       | 239 ++++++++++++++++++++++++++++++++++++++++--
+ schema/record.schema.json     |   3 +-
+ 10 files changed, 440 insertions(+), 28 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 6083d4b..fdc803e 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -24,7 +24,9 @@ python pala.py import chatgpt-export export.zip
+ python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
+ python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
+ python pala.py capture browser --url http://127.0.0.1:8765
++python pala.py search "First memory"
+ python pala.py dashboard export
++python pala.py dashboard export --all
+ python pala.py dashboard serve
+ ```
+ 
+@@ -86,7 +88,11 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Watch mobile shares once | `python pala.py watch mobile-share "C:\path\to\shared\folder" --once` |
+ | Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
+ | Capture with Playwright | Optional: `python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot` |
++| List saved records | `python pala.py list --limit 10` |
++| Search the memory vault | `python pala.py search "github backup"` |
++| Show one record | `python pala.py show <record-id-or-prefix>` |
+ | Update dashboard data | `python pala.py dashboard export` |
++| Update dashboard with all records | `python pala.py dashboard export --all` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+ 
+ ## First Public Repo Setup
+diff --git a/README.md b/README.md
+index 6645757..c8a6305 100644
+--- a/README.md
++++ b/README.md
+@@ -18,7 +18,10 @@ python pala.py import chatgpt-export export.zip
+ python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
+ python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
+ python pala.py capture browser --url http://127.0.0.1:8765
++python pala.py search "Pala Memory Core"
++python pala.py list --limit 10
+ python pala.py dashboard export
++python pala.py dashboard export --all
+ python pala.py dashboard serve
+ ```
+ 
+@@ -39,7 +42,7 @@ python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
+ | Project Link | Connect records to GitHub repos or local folders |
+ | Report | Produce daily briefs and evidence reports |
+ | Backup | Prepare local/GitHub/Drive backup receipts |
+-| Dashboard | Show today's records, sources, projects, and backup state |
++| Dashboard | Show and search exported records, sources, projects, files, and backup state |
+ 
+ ## Repository Layout
+ 
+@@ -80,6 +83,7 @@ pala-memory-core/
+ | `import mobile-share` | v0.8 | Imports phone/shared files and attachments |
+ | `watch mobile-share` | v0.9 | Watches a phone/sync share folder for new files |
+ | `capture playwright` | v0.10 | Optional connector for browser-rendered pages and screenshots when Playwright is installed |
++| `list` / `search` / `show` | v0.11 | Finds saved records across the local memory vault |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/dashboard/index.html b/dashboard/index.html
+index ee7b8d1..230a6a2 100644
+--- a/dashboard/index.html
++++ b/dashboard/index.html
+@@ -64,18 +64,21 @@
+ 
+     .nav { margin-top: 28px; }
+ 
+-    button, .card, .record {
++    button, input, .card, .record {
+       border: 1px solid var(--line);
+       border-radius: 8px;
+       background: var(--surface);
+     }
+ 
+-    button {
++    button, input {
+       min-height: 40px;
+       padding: 9px 11px;
++      font: inherit;
++    }
++
++    button {
+       text-align: left;
+       cursor: pointer;
+-      font: inherit;
+     }
+ 
+     button.primary {
+@@ -122,6 +125,14 @@
+       font-size: 34px;
+     }
+ 
++    .toolbar {
++      margin-bottom: 12px;
++    }
++
++    .toolbar input {
++      width: 100%;
++    }
++
+     .content {
+       display: grid;
+       grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+@@ -205,6 +216,10 @@
+         <div class="card"><span>Tasks</span><strong id="stat-tasks">2</strong></div>
+       </section>
+ 
++      <section class="toolbar">
++        <input id="search" type="search" placeholder="Ara: sohbet, PDF, proje, tag, kaynak" autocomplete="off" />
++      </section>
++
+       <section class="content">
+         <div class="timeline" id="timeline">
+           <article class="record">
+@@ -238,6 +253,8 @@
+     </main>
+   </div>
+   <script>
++    let dashboardRecords = [];
++
+     async function loadDashboardData() {
+       try {
+         const response = await fetch("./records.json", { cache: "no-store" });
+@@ -248,7 +265,8 @@
+         setText("stat-projects", stats.projects);
+         setText("stat-files", stats.files);
+         setText("stat-tasks", stats.open_tasks);
+-        renderTimeline(data.records || []);
++        dashboardRecords = data.records || [];
++        renderTimeline(filteredRecords());
+       } catch (_error) {
+         // The static demo remains visible when no exported data exists.
+       }
+@@ -262,8 +280,15 @@
+ 
+     function renderTimeline(records) {
+       const timeline = document.getElementById("timeline");
+-      if (!timeline || records.length === 0) return;
++      if (!timeline) return;
+       timeline.replaceChildren();
++      if (records.length === 0) {
++        const empty = document.createElement("article");
++        empty.className = "record";
++        empty.innerHTML = "<div class=\"time\">--:--</div><div><h3>Sonuc yok</h3><p>Arama filtresini degistir veya dashboard verisini yeniden export et.</p></div><span class=\"chip\">empty</span>";
++        timeline.append(empty);
++        return;
++      }
+       for (const record of records.slice().reverse()) {
+         const article = document.createElement("article");
+         article.className = "record";
+@@ -294,6 +319,30 @@
+       return date.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+     }
+ 
++    function filteredRecords() {
++      const input = document.getElementById("search");
++      const query = (input?.value || "").trim().toLocaleLowerCase("tr-TR");
++      if (!query) return dashboardRecords;
++      const terms = query.split(/\s+/).filter(Boolean);
++      return dashboardRecords.filter((record) => {
++        const projects = (record.project_refs || []).map((project) => project.name || "").join(" ");
++        const tags = (record.tags || []).join(" ");
++        const text = [
++          record.id,
++          record.title,
++          record.summary,
++          record.source,
++          projects,
++          tags,
++        ].join(" ").toLocaleLowerCase("tr-TR");
++        return terms.every((term) => text.includes(term));
++      });
++    }
++
++    document.getElementById("search")?.addEventListener("input", () => {
++      renderTimeline(filteredRecords());
++    });
++
+     loadDashboardData();
+   </script>
+ </body>
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 62dc29f..712609a 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -11,6 +11,7 @@
+ | `PMC-005` | Add `backup receipt` command | Local backup receipt is generated |
+ | `PMC-006` | Add `list` command | User can see recent records |
+ | `PMC-007` | Add `show` command | User can inspect one record |
++| `PMC-007B` | Add `search` command | User can recover records by phrase, source, project, or tag |
+ | `PMC-008` | Add static dashboard data export | Dashboard can load `records.json` |
+ | `PMC-008B` | Add local dashboard server | Dashboard can be opened from localhost |
+ 
+@@ -32,6 +33,7 @@
+ | `PMC-015` | Add ChatGPT export import | Export zip/folder/json/html/md/txt can become records |
+ | `PMC-016` | Make dashboard read local JSON | Static preview becomes live local panel |
+ | `PMC-017` | Add filters by source/project/tag | User can find records quickly |
++| `PMC-017B` | Add dashboard search box | Local panel can filter exported records |
+ | `PMC-018` | Add daily briefing view | Dashboard shows today's summary |
+ 
+ ## Sprint 4: Backup And Connectors
+diff --git a/docs/commands.md b/docs/commands.md
+index fbfa676..49ae303 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -19,6 +19,59 @@ Useful options:
+ | `--task "..."` | Add an open task |
+ | `--tag memory` | Add a tag |
+ 
++## list
++
++Lists saved records from the local vault.
++
++```text
++python pala.py list --limit 10
++```
++
++Useful filters:
++
++| Option | Purpose |
++|---|---|
++| `--all` | Explicitly scan every date folder |
++| `--date 2026-06-09` | Limit to one date folder |
++| `--source codex` | Limit by record source |
++| `--project trugurpala/pala-memory-core` | Limit by linked project |
++| `--tag mobile-share` | Require a tag |
++| `--json` | Print machine-readable output |
++
++## search
++
++Searches saved records by title, summary, source, tags, project refs, decisions, tasks, evidence, and Markdown raw text.
++
++```text
++python pala.py search "github backup"
++```
++
++Useful filters:
++
++| Option | Purpose |
++|---|---|
++| `--date 2026-06-09` | Limit search to one day |
++| `--source mobile` | Limit by source |
++| `--project trugurpala/pala-memory-core` | Limit by project |
++| `--tag smoke-test` | Require a tag |
++| `--metadata-only` | Skip Markdown raw text |
++| `--limit 5` | Limit visible results |
++| `--json` | Print machine-readable output |
++
++## show
++
++Shows one saved record by full id or id prefix.
++
++```text
++python pala.py show 20260609T131509Z
++```
++
++Print the Markdown/raw text body too:
++
++```text
++python pala.py show 20260609T131509Z --raw
++```
++
+ ## brief today
+ 
+ Creates a daily Markdown brief from today's records.
+@@ -91,12 +144,18 @@ PALA_DRIVE_BACKUP_PATH=C:\path\to\Google Drive\Pala Memory Core
+ 
+ ## dashboard export
+ 
+-Writes today's local records to `dashboard/records.json` so the static dashboard can show real captured data.
++Writes local records to `dashboard/records.json` so the static dashboard can show real captured data.
+ 
+ ```text
+ python pala.py dashboard export
+ ```
+ 
++Export the whole vault instead of today's date folder:
++
++```text
++python pala.py dashboard export --all
++```
++
+ ## import chatgpt-export
+ 
+ Imports ChatGPT export files into local memory records.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 8ca5a46..475a5fa 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -9,17 +9,16 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Milestone | Goal | Done When |
+ |---|---|---|
+ | `v0.1` | Manual memory capture | `remember`, `brief today`, `backup receipt` work locally |
+-| `v0.2` | Project linking | Records can point to GitHub repos and local folders |
+-| `v0.3` | Knowledge bank reports | Report package can be prepared for `pala-os-bilgi-bankasi` |
+-| `v0.4` | Attachment imports | PDFs, screenshots, markdown, text files are copied and hashed |
+-| `v0.5` | Live local dashboard | Dashboard reads exported local records from local server |
+-| `v0.6` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
++| `v0.2` | Dashboard export | Dashboard data can be generated from local records |
++| `v0.3` | Dashboard server | Dashboard can be opened from localhost |
++| `v0.4` | GitHub backup | Redacted backup packages can be written, committed, and pushed through the knowledge bank |
++| `v0.5` | ChatGPT export import | Local export archives can be imported and indexed |
++| `v0.6` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+ | `v0.7` | Drive folder backup | Selected artifacts can be copied into a Drive sync folder |
+-| `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+-| `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+-| `v0.10` | Mobile share/import flow | Phone/shared folder files can become records and attachments |
+-| `v0.11` | Mobile share watcher | Sync folders can be scanned continuously or once |
+-| `v0.12` | Playwright capture | Rendered pages and screenshots can become records/attachments |
++| `v0.8` | Mobile share/import flow | Phone/shared folder files can become records and attachments |
++| `v0.9` | Mobile share watcher | Sync folders can be scanned continuously or once |
++| `v0.10` | Playwright capture | Rendered pages and screenshots can become records/attachments |
++| `v0.11` | Recovery search | CLI and dashboard can find saved records across the local vault |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -47,4 +46,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add mobile share import | Import phone-shared text, PDFs, images, and Office files |
+ | Add mobile share watcher | Import new phone-shared files without repeating old files |
+ | Add Playwright capture | Capture rendered pages and screenshots with optional dependency |
++| Add recovery search | List, show, and search records across the local vault |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 122114d..36cde4a 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -26,7 +26,11 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Watch mobile share | `python pala.py watch mobile-share <path> --once` | New shared files are imported once |
+ | Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
+ | Capture Playwright page | `python pala.py capture playwright --url <url>` | Rendered page content becomes record when Playwright is installed |
++| List records | `python pala.py list --limit 10` | Saved records are visible from CLI |
++| Search records | `python pala.py search <query>` | Saved records can be recovered by phrase |
++| Show record | `python pala.py show <id-prefix>` | One record can be inspected by id prefix |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
++| Export all dashboard data | `python pala.py dashboard export --all` | All local records can be loaded into the dashboard |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+ 
+ ## Required Files
+@@ -71,6 +75,8 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Mobile share import | Supports folder/zip/file import from phone sync/share flows |
+ | Mobile share watch | Tracks seen files and avoids repeat imports |
+ | Playwright capture | Optional dependency guard and command path exist |
++| Recovery search | CLI can list, search, and show saved records |
++| Dashboard search | Dashboard can filter exported records in the browser |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.11-recovery-search.md b/docs/v0.11-recovery-search.md
+new file mode 100644
+index 0000000..78fde41
+--- /dev/null
++++ b/docs/v0.11-recovery-search.md
+@@ -0,0 +1,66 @@
++# v0.11 Recovery Search
++
++Date: 2026-06-09
++Phase: recovery search preview
++Status: PASS for CLI recovery search and dashboard export/search preview
++
++## Goal
++
++Make saved Pala Memory Core records easy to recover after the original chat, phone share, or browser page is no longer visible.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py list` |
++| CLI | Added `python pala.py search <query>` |
++| CLI | Added `python pala.py show <record-id-or-prefix>` |
++| Dashboard | Added client-side search input |
++| Dashboard export | Added `python pala.py dashboard export --all` |
++| Schema | Added `mobile` and `playwright` source values |
++
++## Commands
++
++```powershell
++python .\pala.py list --limit 3
++python .\pala.py search "mobile share" --limit 2
++python .\pala.py show 20260609T131509Z
++python .\pala.py dashboard export --all
++```
++
++## Smoke Test
++
++Executed in `C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core`:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py list --limit 3
++python .\pala.py search "mobile share" --limit 2
++python .\pala.py search "published repo" --metadata-only --json --limit 1
++python .\pala.py show 20260609T131509Z
++python .\pala.py dashboard export --all
++```
++
++Observed key output:
++
++```text
++records found=8 scope=all records
++search found=4 query='mobile share'
++dashboard data saved dashboard\records.json
++scope=all records=8
++```
++
++Local HTTP dashboard verification:
++
++```text
++status=200
++hasSearch=True
++scope=all
++records=8
++```
++
++Browser snapshot verification was attempted through the Browser/Playwright connector, but the local Chrome Playwright Extension was missing. HTTP and exported-data verification passed.
++
++## Release Posture
++
++This is a recovery/search preview. It does not yet provide SQLite full-text indexing, OCR, semantic embeddings, or direct search across cloud services. It does make the local vault practically recoverable through CLI and dashboard filters.
+diff --git a/pala.py b/pala.py
+index 7361423..c9b857f 100644
+--- a/pala.py
++++ b/pala.py
+@@ -212,14 +212,202 @@ def write_redacted_text(path: Path, value: str) -> None:
+     path.write_text(redact_text(value), encoding="utf-8")
+ 
+ 
++def read_record_json(path: Path) -> dict[str, Any]:
++    record = json.loads(path.read_text(encoding="utf-8"))
++    record["_json_path"] = str(path.relative_to(ROOT))
++    return record
++
++
++def load_records(date: str | None = None) -> list[dict[str, Any]]:
++    if date:
++        record_dir = RECORDS / date
++        paths = sorted(record_dir.glob("*.json")) if record_dir.exists() else []
++    else:
++        paths = sorted(RECORDS.rglob("*.json")) if RECORDS.exists() else []
++    return [read_record_json(path) for path in paths]
++
++
+ def load_today_records() -> list[dict[str, Any]]:
+-    record_dir = RECORDS / today()
+-    if not record_dir.exists():
+-        return []
+-    records = []
+-    for path in sorted(record_dir.glob("*.json")):
+-        records.append(json.loads(path.read_text(encoding="utf-8")))
+-    return records
++    return load_records(today())
++
++
++def record_project_names(record: dict[str, Any]) -> list[str]:
++    return [project.get("name", "") for project in record.get("project_refs", []) if project.get("name")]
++
++
++def record_task_texts(record: dict[str, Any]) -> list[str]:
++    return [str(task.get("text", "")) for task in record.get("tasks", [])]
++
++
++def record_metadata_text(record: dict[str, Any]) -> str:
++    parts = [
++        str(record.get("id", "")),
++        str(record.get("title", "")),
++        str(record.get("summary", "")),
++        str(record.get("source", "")),
++        " ".join(str(tag) for tag in record.get("tags", [])),
++        " ".join(record_project_names(record)),
++        " ".join(str(item) for item in record.get("decisions", [])),
++        " ".join(record_task_texts(record)),
++        " ".join(str(item.get("value", "")) for item in record.get("evidence", [])),
++    ]
++    return "\n".join(parts)
++
++
++def read_record_text(record: dict[str, Any], max_chars: int = 20000) -> str:
++    raw_path = record.get("raw_text_path")
++    if not raw_path:
++        return ""
++    path = (ROOT / str(raw_path)).resolve()
++    try:
++        if ROOT not in path.parents and path != ROOT:
++            return ""
++        return path.read_text(encoding="utf-8", errors="replace")[:max_chars]
++    except OSError:
++        return ""
++
++
++def record_search_text(record: dict[str, Any], include_raw: bool = True) -> str:
++    text = record_metadata_text(record)
++    if include_raw:
++        text = f"{text}\n{read_record_text(record)}"
++    return text
++
++
++def record_matches_filters(record: dict[str, Any], args: argparse.Namespace) -> bool:
++    if getattr(args, "source", None) and record.get("source") != args.source:
++        return False
++    if getattr(args, "tag", None):
++        tags = {str(tag) for tag in record.get("tags", [])}
++        if not set(args.tag).issubset(tags):
++            return False
++    if getattr(args, "project", None):
++        projects = record_project_names(record)
++        if args.project not in projects:
++            return False
++    return True
++
++
++def records_for_args(args: argparse.Namespace) -> list[dict[str, Any]]:
++    date = getattr(args, "date", None)
++    if getattr(args, "all", False):
++        date = None
++    return [record for record in load_records(date) if record_matches_filters(record, args)]
++
++
++def record_line(record: dict[str, Any]) -> str:
++    created = str(record.get("created_at", ""))[:19].replace("T", " ")
++    source = record.get("source", "memory")
++    title = record.get("title", "Untitled memory")
++    return f"{record.get('id')} | {created} | {source} | {title}"
++
++
++def print_record_summary(record: dict[str, Any], include_paths: bool = True) -> None:
++    print(record_line(record))
++    summary = str(record.get("summary", "")).strip()
++    if summary:
++        print(f"  summary: {summary}")
++    if include_paths:
++        print(f"  record: {record.get('raw_text_path', '')}")
++        attachments = record.get("attachments", [])
++        if attachments:
++            print(f"  attachments: {len(attachments)}")
++
++
++def list_records(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    records = sorted(records_for_args(args), key=lambda item: item.get("created_at", ""), reverse=True)
++    if getattr(args, "json", False):
++        print(json.dumps(records[: args.limit], indent=2, ensure_ascii=True))
++        return
++    scope = "all records" if args.all or not args.date else f"date={args.date}"
++    print(f"records found={len(records)} scope={scope}")
++    for record in records[: args.limit]:
++        print_record_summary(record)
++
++
++def find_record(identifier: str) -> dict[str, Any]:
++    records = load_records()
++    matches = [
++        record
++        for record in records
++        if str(record.get("id", "")).startswith(identifier)
++        or Path(str(record.get("raw_text_path", ""))).stem.startswith(identifier)
++    ]
++    if not matches:
++        raise SystemExit(f"record not found: {identifier}")
++    if len(matches) > 1:
++        options = ", ".join(str(record.get("id")) for record in matches[:8])
++        raise SystemExit(f"record id is ambiguous: {identifier}; matches: {options}")
++    return matches[0]
++
++
++def show_record(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    record = find_record(args.identifier)
++    if args.json:
++        print(json.dumps(record, indent=2, ensure_ascii=True))
++        return
++    print_record_summary(record)
++    print(f"  json: {record.get('_json_path', '')}")
++    projects = record_project_names(record)
++    if projects:
++        print(f"  projects: {', '.join(projects)}")
++    tags = record.get("tags", [])
++    if tags:
++        print(f"  tags: {', '.join(str(tag) for tag in tags)}")
++    tasks = record_task_texts(record)
++    if tasks:
++        print("  tasks:")
++        for task in tasks:
++            print(f"    - {task}")
++    evidence = record.get("evidence", [])
++    if evidence:
++        print("  evidence:")
++        for item in evidence:
++            print(f"    - {item.get('kind')}: {item.get('value')}")
++    if args.raw:
++        print("")
++        print(read_record_text(record, max_chars=args.max_chars))
++
++
++def make_snippet(text: str, terms: list[str], width: int = 180) -> str:
++    collapsed = " ".join(text.split())
++    lowered = collapsed.lower()
++    positions = [lowered.find(term) for term in terms if term and lowered.find(term) >= 0]
++    if not positions:
++        return collapsed[:width]
++    center = min(positions)
++    start = max(0, center - width // 3)
++    end = min(len(collapsed), start + width)
++    prefix = "..." if start > 0 else ""
++    suffix = "..." if end < len(collapsed) else ""
++    return f"{prefix}{collapsed[start:end]}{suffix}"
++
++
++def search_records(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    terms = [term.lower() for term in args.query.split() if term.strip()]
++    records = records_for_args(args)
++    results = []
++    for record in records:
++        haystack = record_search_text(record, include_raw=not args.metadata_only)
++        lowered = haystack.lower()
++        if all(term in lowered for term in terms):
++            results.append({"record": record, "snippet": make_snippet(haystack, terms)})
++    results.sort(key=lambda item: item["record"].get("created_at", ""), reverse=True)
++    if args.json:
++        payload = [
++            {"record": item["record"], "snippet": item["snippet"]}
++            for item in results[: args.limit]
++        ]
++        print(json.dumps(payload, indent=2, ensure_ascii=True))
++        return
++    print(f"search found={len(results)} query={args.query!r}")
++    for item in results[: args.limit]:
++        print_record_summary(item["record"], include_paths=True)
++        if item["snippet"]:
++            print(f"  snippet: {item['snippet']}")
+ 
+ 
+ def brief_today(_args: argparse.Namespace) -> None:
+@@ -868,7 +1056,8 @@ def run_git(cwd: Path, args: list[str]) -> None:
+ def dashboard_export(_args: argparse.Namespace) -> None:
+     ensure_dirs()
+     DASHBOARD.mkdir(parents=True, exist_ok=True)
+-    records = load_today_records()
++    date = None if _args.all else _args.date
++    records = load_records(date)
+     open_tasks = [
+         task
+         for record in records
+@@ -884,7 +1073,8 @@ def dashboard_export(_args: argparse.Namespace) -> None:
+     attachment_count = sum(len(record.get("attachments", [])) for record in records)
+     payload = {
+         "generated_at": now_utc().isoformat(),
+-        "date": today(),
++        "date": date or "all",
++        "scope": "all" if date is None else "date",
+         "stats": {
+             "records": len(records),
+             "projects": len(linked_projects),
+@@ -930,6 +1120,35 @@ def build_parser() -> argparse.ArgumentParser:
+     remember.add_argument("--file", action="append")
+     remember.set_defaults(func=write_record)
+ 
++    list_cmd = sub.add_parser("list", help="list saved records")
++    list_cmd.add_argument("--all", action="store_true", help="search every record instead of a date folder")
++    list_cmd.add_argument("--date", default=None, help="date folder to list, for example 2026-06-09")
++    list_cmd.add_argument("--source")
++    list_cmd.add_argument("--project")
++    list_cmd.add_argument("--tag", action="append")
++    list_cmd.add_argument("--limit", type=int, default=20)
++    list_cmd.add_argument("--json", action="store_true")
++    list_cmd.set_defaults(func=list_records)
++
++    search = sub.add_parser("search", help="search saved records")
++    search.add_argument("query")
++    search.add_argument("--all", action="store_true", help="search every record; this is the default when no date is given")
++    search.add_argument("--date", default=None, help="limit search to one date folder")
++    search.add_argument("--source")
++    search.add_argument("--project")
++    search.add_argument("--tag", action="append")
++    search.add_argument("--metadata-only", action="store_true", help="skip Markdown raw text")
++    search.add_argument("--limit", type=int, default=20)
++    search.add_argument("--json", action="store_true")
++    search.set_defaults(func=search_records)
++
++    show = sub.add_parser("show", help="show one record by id or id prefix")
++    show.add_argument("identifier")
++    show.add_argument("--raw", action="store_true", help="print the Markdown/raw text body")
++    show.add_argument("--max-chars", type=int, default=20000)
++    show.add_argument("--json", action="store_true")
++    show.set_defaults(func=show_record)
++
+     brief = sub.add_parser("brief", help="create a brief")
+     brief_sub = brief.add_subparsers(dest="period", required=True)
+     today_cmd = brief_sub.add_parser("today", help="brief today's records")
+@@ -1014,6 +1233,8 @@ def build_parser() -> argparse.ArgumentParser:
+     dashboard = sub.add_parser("dashboard", help="dashboard utilities")
+     dashboard_sub = dashboard.add_subparsers(dest="action", required=True)
+     export = dashboard_sub.add_parser("export", help="export dashboard data")
++    export.add_argument("--all", action="store_true", help="export every record instead of today's records")
++    export.add_argument("--date", default=today(), help="date folder to export")
+     export.set_defaults(func=dashboard_export)
+     serve = dashboard_sub.add_parser("serve", help="serve local dashboard")
+     serve.add_argument("--host", default="127.0.0.1")
+diff --git a/schema/record.schema.json b/schema/record.schema.json
+index c4898c1..3303d6c 100644
+--- a/schema/record.schema.json
++++ b/schema/record.schema.json
+@@ -22,7 +22,7 @@
+     "created_at": { "type": "string", "format": "date-time" },
+     "source": {
+       "type": "string",
+-      "enum": ["chatgpt", "codex", "github", "google_drive", "pdf", "browser", "manual", "other"]
++      "enum": ["chatgpt", "codex", "github", "google_drive", "pdf", "browser", "playwright", "mobile", "manual", "other"]
+     },
+     "title": { "type": "string" },
+     "summary": { "type": "string" },
+@@ -96,4 +96,3 @@
+     }
+   }
+ }
+-
