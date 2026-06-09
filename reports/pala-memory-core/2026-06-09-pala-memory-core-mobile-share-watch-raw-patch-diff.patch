@@ -1,0 +1,350 @@
+﻿commit a182e064d60278f02219ea096a2cf656c31fc3a5
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 16:42:42 2026 +0300
+
+    Add mobile share watcher preview
+---
+ INSTALL.md                      |  2 ++
+ README.md                       |  2 ++
+ docs/backlog.md                 |  2 +-
+ docs/commands.md                | 27 +++++++++++++++
+ docs/connectors.md              | 11 ++++++
+ docs/roadmap.md                 |  2 ++
+ docs/security.md                |  2 ++
+ docs/v0.1-acceptance.md         |  2 ++
+ docs/v0.9-mobile-share-watch.md | 57 +++++++++++++++++++++++++++++++
+ pala.py                         | 76 +++++++++++++++++++++++++++++++++++++++++
+ 10 files changed, 182 insertions(+), 1 deletion(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 3817614..1efbbfa 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -22,6 +22,7 @@ python pala.py backup github
+ python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
+ python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
++python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+@@ -74,6 +75,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ | Prepare Drive-folder backup | `python pala.py backup drive --target "C:\path\to\Google Drive\Pala Memory Core"` |
+ | Import ChatGPT export | `python pala.py import chatgpt-export export.zip` |
+ | Import mobile shares | `python pala.py import mobile-share "C:\path\to\shared\folder"` |
++| Watch mobile shares once | `python pala.py watch mobile-share "C:\path\to\shared\folder" --once` |
+ | Capture a browser URL | `python pala.py capture browser --url http://127.0.0.1:8765` |
+ | Update dashboard data | `python pala.py dashboard export` |
+ | Open local dashboard | `python pala.py dashboard serve` |
+diff --git a/README.md b/README.md
+index 8bac541..7674a56 100644
+--- a/README.md
++++ b/README.md
+@@ -16,6 +16,7 @@ python pala.py backup github
+ python pala.py backup drive --target "C:\Users\you\Google Drive\Pala Memory Core"
+ python pala.py import chatgpt-export export.zip
+ python pala.py import mobile-share "C:\Users\you\Google Drive\ChatGPT Shares"
++python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
+ python pala.py capture browser --url http://127.0.0.1:8765
+ python pala.py dashboard export
+ python pala.py dashboard serve
+@@ -69,6 +70,7 @@ pala-memory-core/
+ | `capture browser` | v0.6 | Captures a public/local URL into a memory record |
+ | `backup drive` | v0.7 | Creates a redacted Drive-folder backup package |
+ | `import mobile-share` | v0.8 | Imports phone/shared files and attachments |
++| `watch mobile-share` | v0.9 | Watches a phone/sync share folder for new files |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 251113a..974a1ce 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -45,7 +45,7 @@
+ | `PMC-021` | Add browser URL capture | Public/local URL can become a memory record |
+ | `PMC-021B` | Add Playwright session capture | Authenticated browser context and screenshots become optional connector |
+ | `PMC-022` | Add mobile share/import command | Phone-shared folder or zip becomes records and attachments |
+-| `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares |
++| `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares without duplicates |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
+ 
+ ## Risk Register
+diff --git a/docs/commands.md b/docs/commands.md
+index c97fd7a..0d6549a 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -151,6 +151,33 @@ Useful options:
+ | `--max-records 25` | Limit text records |
+ | `--max-chars 12000` | Limit text stored per record |
+ 
++## watch mobile-share
++
++Watches a phone/sync share folder and imports new files only once.
++
++Scan once and exit:
++
++```text
++python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --once
++```
++
++Continuous watch:
++
++```text
++python pala.py watch mobile-share "C:\Users\you\Google Drive\ChatGPT Shares" --interval 30
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--once` | Run one scan and exit |
++| `--interval 30` | Seconds between scans |
++| `--project trugurpala/pala-memory-core` | Link imported records to a project |
++| `--tag mobile` | Add an extra tag |
++| `--max-records 25` | Limit text records per imported file |
++| `--max-chars 12000` | Limit text stored per record |
++
+ ## capture browser
+ 
+ Captures a public or local URL into a memory record.
+diff --git a/docs/connectors.md b/docs/connectors.md
+index 07da3b6..c61dc4b 100644
+--- a/docs/connectors.md
++++ b/docs/connectors.md
+@@ -42,6 +42,7 @@ Every connector should produce or update a memory record with:
+ | `v0.6` | Drive folder backup |
+ | `v0.7` | ChatGPT export import |
+ | `v0.8` | Mobile share/import flow |
++| `v0.9` | Mobile share watcher |
+ | `v1.0` | Unified dashboard and recovery |
+ 
+ ## GitHub Backup Behavior
+@@ -98,6 +99,16 @@ The first mobile connector imports shared files from a local/synced folder or ZI
+ 
+ Mobile background monitoring is intentionally deferred. The first reliable path is "share to folder, then import".
+ 
++## Mobile Share Watch Behavior
++
++The watcher scans a shared folder and imports only files it has not seen before. It stores its state under `data/inbox/`.
++
++| Mode | Behavior |
++|---|---|
++| `--once` | Scan one time and exit |
++| `--interval <seconds>` | Keep scanning until stopped |
++| state file | Prevents importing the same file repeatedly |
++
+ ## Design Rule
+ 
+ If a connector is fragile, keep it optional. The core should still work through manual capture and file import.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index b9715ab..912a079 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -18,6 +18,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.8` | ChatGPT export import | Local export archives can be imported and indexed |
+ | `v0.9` | Browser capture | URL capture works first; Playwright/Chrome can later capture authenticated pages/screenshots |
+ | `v0.10` | Mobile share/import flow | Phone/shared folder files can become records and attachments |
++| `v0.11` | Mobile share watcher | Sync folders can be scanned continuously or once |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -43,4 +44,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add browser URL capture | Convert a public/local URL into a local memory record |
+ | Add Drive folder backup | Copy redacted package to a selected Drive sync folder |
+ | Add mobile share import | Import phone-shared text, PDFs, images, and Office files |
++| Add mobile share watcher | Import new phone-shared files without repeating old files |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/security.md b/docs/security.md
+index 4d3934e..bd31deb 100644
+--- a/docs/security.md
++++ b/docs/security.md
+@@ -94,3 +94,5 @@ This is not yet a direct Google Drive API upload.
+ | `--max-chars` | Limit text stored per record |
+ | attachments | PDF/images/Office files are copied into local attachments |
+ | `.gitignore` | Generated records and attachments stay out of Git |
++
++`pala watch mobile-share` stores seen-file state under `data/inbox/`, which is ignored by Git.
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index 65c977a..26049d8 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -23,6 +23,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Create Drive-folder backup | `python pala.py backup drive --target <folder>` | Redacted package created under selected folder |
+ | Import ChatGPT export | `python pala.py import chatgpt-export <path>` | Export content becomes local records |
+ | Import mobile share | `python pala.py import mobile-share <path>` | Shared text becomes records and files become attachments |
++| Watch mobile share | `python pala.py watch mobile-share <path> --once` | New shared files are imported once |
+ | Capture browser URL | `python pala.py capture browser --url <url>` | URL content becomes local record with URL evidence |
+ | Export dashboard data | `python pala.py dashboard export` | `dashboard/records.json` created |
+ | Serve dashboard locally | `python pala.py dashboard serve` | Local HTTP server exposes dashboard files |
+@@ -67,6 +68,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | Browser capture | Supports public/local URL capture |
+ | Drive backup | Supports local folder target suitable for Google Drive sync |
+ | Mobile share import | Supports folder/zip/file import from phone sync/share flows |
++| Mobile share watch | Tracks seen files and avoids repeat imports |
+ | Docs | New user can understand first three commands |
+ 
+ ## Release Posture
+diff --git a/docs/v0.9-mobile-share-watch.md b/docs/v0.9-mobile-share-watch.md
+new file mode 100644
+index 0000000..fc70117
+--- /dev/null
++++ b/docs/v0.9-mobile-share-watch.md
+@@ -0,0 +1,57 @@
++# v0.9 Mobile Share Watch
++
++Date: 2026-06-09
++Phase: mobile share watcher preview
++Status: PASS for mobile share watcher preview
++
++## Goal
++
++Watch a phone/sync share folder and import new files without repeatedly importing files that were already processed.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py watch mobile-share <path>` |
++| One-shot mode | `--once` scans and exits |
++| Continuous mode | `--interval <seconds>` scans until stopped |
++| State | Seen file fingerprints are stored under `data/inbox/` |
++| Import path | Reuses `import mobile-share` behavior |
++
++## Command
++
++```powershell
++python .\pala.py watch mobile-share .\data\inbox\mobile-watch-smoke --once --project trugurpala/pala-memory-core --tag smoke-test
++```
++
++## Expected Result
++
++```text
++watching <path>
++imported <n> text record(s) and <m> attachment file(s) from <file>
++watch scan complete processed=<count> seen=<count>
++```
++
++## Smoke Test
++
++Created a watched folder with one text note and one PNG-like attachment, then ran the watcher twice:
++
++```powershell
++python .\pala.py watch mobile-share .\data\inbox\mobile-watch-smoke --once --project trugurpala/pala-memory-core --tag smoke-test --max-records 5 --max-chars 2000
++python .\pala.py watch mobile-share .\data\inbox\mobile-watch-smoke --once --project trugurpala/pala-memory-core --tag smoke-test --max-records 5 --max-chars 2000
++python .\pala.py brief today
++python .\pala.py dashboard export
++```
++
++Observed output:
++
++```text
++watch scan complete processed=2 seen=2
++watch scan complete processed=0 seen=2
++brief saved data\reports\2026-06-09-brief.md
++dashboard data saved dashboard\records.json
++```
++
++## Release Posture
++
++This is a folder watcher preview. It does not monitor phone OS events directly; it watches a local/synced folder.
+diff --git a/pala.py b/pala.py
+index 23d272f..266479c 100644
+--- a/pala.py
++++ b/pala.py
+@@ -18,6 +18,7 @@ import re
+ import shutil
+ import socketserver
+ import subprocess
++import time
+ import urllib.request
+ import zipfile
+ from pathlib import Path
+@@ -564,6 +565,67 @@ def import_mobile_share(args: argparse.Namespace) -> None:
+     print(f"imported {imported} text record(s) and {len(attachments)} attachment file(s) from {source}")
+ 
+ 
++def watch_mobile_share(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    watch_path = Path(args.path).expanduser().resolve()
++    if not watch_path.exists():
++        raise SystemExit(f"watch path not found: {watch_path}")
++
++    state_path = DATA / "inbox" / f"mobile-watch-{hashlib.sha256(str(watch_path).encode('utf-8')).hexdigest()[:16]}.json"
++    seen = load_seen_state(state_path)
++    print(f"watching {watch_path}")
++    while True:
++        processed = 0
++        for path in scan_watch_files(watch_path):
++            fingerprint = file_fingerprint(path)
++            if fingerprint in seen:
++                continue
++            import_mobile_share(
++                argparse.Namespace(
++                    path=str(path),
++                    title=args.title,
++                    project=args.project,
++                    tag=args.tag,
++                    summary=args.summary,
++                    max_records=args.max_records,
++                    max_chars=args.max_chars,
++                )
++            )
++            seen.add(fingerprint)
++            processed += 1
++        save_seen_state(state_path, seen)
++        print(f"watch scan complete processed={processed} seen={len(seen)}")
++        if args.once:
++            break
++        time.sleep(args.interval)
++
++
++def scan_watch_files(path: Path) -> list[Path]:
++    if path.is_file():
++        return [path]
++    return sorted(item for item in path.rglob("*") if item.is_file() and not item.name.startswith(".pala-"))
++
++
++def file_fingerprint(path: Path) -> str:
++    stat = path.stat()
++    return f"{path.resolve()}|{stat.st_size}|{stat.st_mtime_ns}"
++
++
++def load_seen_state(path: Path) -> set[str]:
++    if not path.exists():
++        return set()
++    try:
++        data = json.loads(path.read_text(encoding="utf-8"))
++    except json.JSONDecodeError:
++        return set()
++    return set(data.get("seen", [])) if isinstance(data, dict) else set()
++
++
++def save_seen_state(path: Path, seen: set[str]) -> None:
++    path.parent.mkdir(parents=True, exist_ok=True)
++    path.write_text(json.dumps({"seen": sorted(seen)}, indent=2, ensure_ascii=True), encoding="utf-8")
++
++
+ def collect_mobile_share_entries(source: Path, max_chars: int) -> tuple[list[tuple[str, str]], list[Path]]:
+     text_suffixes = {".json", ".html", ".htm", ".md", ".txt"}
+     attachment_suffixes = {".pdf", ".png", ".jpg", ".jpeg", ".gif", ".webp", ".docx", ".pptx", ".xlsx"}
+@@ -856,6 +918,20 @@ def build_parser() -> argparse.ArgumentParser:
+     mobile.add_argument("--max-chars", type=int, default=12000)
+     mobile.set_defaults(func=import_mobile_share)
+ 
++    watch = sub.add_parser("watch", help="watch local/synced folders")
++    watch_sub = watch.add_subparsers(dest="kind", required=True)
++    mobile_watch = watch_sub.add_parser("mobile-share", help="watch a mobile share folder")
++    mobile_watch.add_argument("path", help="path to a shared folder or file")
++    mobile_watch.add_argument("--once", action="store_true", help="scan once and exit")
++    mobile_watch.add_argument("--interval", type=int, default=30)
++    mobile_watch.add_argument("--title")
++    mobile_watch.add_argument("--project")
++    mobile_watch.add_argument("--tag", action="append")
++    mobile_watch.add_argument("--summary")
++    mobile_watch.add_argument("--max-records", type=int, default=50)
++    mobile_watch.add_argument("--max-chars", type=int, default=12000)
++    mobile_watch.set_defaults(func=watch_mobile_share)
++
+     capture = sub.add_parser("capture", help="capture live/local sources")
+     capture_sub = capture.add_subparsers(dest="kind", required=True)
+     browser = capture_sub.add_parser("browser", help="capture a web page by URL")
