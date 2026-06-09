@@ -1,0 +1,285 @@
+﻿commit f8fb5a7ac7b80d1585a3ace49148947efb772f58
+Author:     Uğur Pala <178584146+trugurpala@users.noreply.github.com>
+AuthorDate: Tue Jun 9 21:29:36 2026 +0300
+Commit:     Uğur Pala <178584146+trugurpala@users.noreply.github.com>
+CommitDate: Tue Jun 9 21:29:36 2026 +0300
+
+    docs: add file explorer v0 source contract
+
+diff --git a/TASKS.md b/TASKS.md
+index d258465..86ec129 100644
+--- a/TASKS.md
++++ b/TASKS.md
+@@ -12,13 +12,15 @@
+ - In progress: branch protection verification.
+ - In progress: source inventory.
+ - In progress: migration court.
+-- In progress: file explorer Product/Figma gate.
++- Kanitlanan: file explorer Product/Figma gate exists.
++- Kanitlanan: file explorer v0/shadcn source contract exists.
+ 
+ ## Next
+ 
+ - First approved import candidate.
+-- Product/Figma gate evidence for file explorer.
+-- v0.dev/shadcn file explorer UI shell after gate evidence exists.
++- Run the recorded file explorer prompt in v0.dev or attach a node-specific Figma URL.
++- Record the v0 output URL/component id/archive/branch before importing UI files.
++- v0.dev/shadcn file explorer UI shell after generated output evidence exists.
+ - Stronger PR review and Code Owners plan.
+ - Enable Dependabot alerts / secret scanning if available.
+ - Dashboard ledger reader verification.
+@@ -32,4 +34,6 @@
+ - Cloud sync.
+ - Stronger security features after availability is proven.
+ 
+-Current feature implementation status: `BLOCKED` until product gates and owner-approved scope exist.
++Current feature implementation status: `PARTIAL`.
++
++File explorer is `READY_FOR_V0_OUTPUT`, but product UI code import is still blocked until actual v0.dev output or node-specific Figma design evidence is recorded.
+diff --git a/docs/migration-court/file-explorer-v0-source-contract-2026-06-09.md b/docs/migration-court/file-explorer-v0-source-contract-2026-06-09.md
+new file mode 100644
+index 0000000..7a52f69
+--- /dev/null
++++ b/docs/migration-court/file-explorer-v0-source-contract-2026-06-09.md
+@@ -0,0 +1,208 @@
++# File Explorer v0/shadcn Source Contract - 2026-06-09
++
++Target repo: `trugurpala/pala-os-v5`
++
++Target feature: file explorer UI shell
++
++Phase: v0/shadcn source contract
++
++Status: `PARTIAL`
++
++Release posture: not release approval
++
++## Current Decision
++
++The file explorer is still not implemented in v5.
++
++This contract records the exact v0.dev/shadcn prompt, data boundary, import boundary, validation plan, and rollback path required before generated UI output can enter the repo as product code.
++
++Decision: `READY_FOR_V0_OUTPUT`
++
++Missing evidence before implementation import:
++
++- actual v0.dev output URL, component id, generated archive, or GitHub branch
++- generated file list
++- UI render evidence
++- responsive evidence
++- owner review or explicit approval to import generated code
++
++## Product Scope
++
++The first file explorer pass is a read-only UI shell.
++
++It may include:
++
++- desktop-window style app frame
++- left navigation tree
++- breadcrumbs
++- search input
++- file list with folder/file rows
++- preview/details panel
++- selection state
++- empty state
++- loading skeleton state
++- error/manual-verification state
++- settings entry point
++- responsive layout for desktop, tablet, and mobile
++
++It must not include:
++
++- real filesystem mutation
++- delete, rename, move, upload, download, or write operations
++- reading private local files
++- reading `.env`, secrets, runtime DBs, ledger payloads, or customer data
++- external service writes
++- release, deploy, tag, or public readiness claim
++- dashboard success state unless backed by evidence records
++
++## Data Boundary
++
++First pass data mode: `MOCK_ONLY_READ_ONLY`
++
++The generated UI may use local in-memory mock rows only.
++
++Approved mock schema:
++
++```ts
++type FileExplorerItem = {
++  id: string
++  name: string
++  kind: "folder" | "file"
++  extension?: string
++  sizeLabel: string
++  modifiedLabel: string
++  ownerLabel: string
++  status: "synced" | "local" | "locked" | "needs-review"
++  path: string
++}
++```
++
++Approved mock roots:
++
++```text
++/Desktop
++/Documents
++/Projects
++/Evidence
++```
++
++These roots are product labels only. They must not read the real local filesystem in the first pass.
++
++## Exact v0.dev Prompt
++
++Use this prompt in v0.dev when generating the first implementation candidate:
++
++```text
++Create a production-quality Pala OS file explorer UI shell using React, TypeScript, Tailwind CSS, and shadcn/ui primitives.
++
++Context:
++- Pala OS is a local-first control tower and OS-like workspace.
++- Agent does the work. Pala OS verifies the work.
++- The first pass must be read-only and mock-data only.
++- Do not access the real filesystem.
++- Do not show fake success. Empty, loading, error, and manual-verification states must be explicit.
++
++Visual direction:
++- OS desktop window inside a serious local control tower.
++- Avoid generic SaaS dashboard cards.
++- Use a compact, high-signal interface with strong information hierarchy.
++- Prefer neutral/zinc/slate tokens, one cyan/teal command accent, and quiet status badges.
++- Use shadcn/ui primitives where appropriate: Button, Card, Badge, Input, ScrollArea, Table, DropdownMenu, Sheet, Separator, Skeleton, Tabs or Breadcrumb.
++- Use lucide-react icons consistently at 16-20px.
++
++Layout:
++- Header: breadcrumbs, search, view toggle, refresh/mock-sync button, settings button.
++- Left rail: roots tree for Desktop, Documents, Projects, Evidence.
++- Main pane: file/folder rows with name, kind, size, modified date, owner, status, and row actions.
++- Right pane: selected item details, path, status, mock metadata, and disabled dangerous actions.
++- Bottom strip: read-only boundary notice and evidence requirement.
++- Mobile: collapse left tree and details panel into sheets; keep search and list usable at 360px width.
++
++States:
++- default populated mock state
++- empty folder state
++- loading skeleton state
++- manual verification required state
++- selected file/folder state
++
++Accessibility:
++- Keyboard reachable controls.
++- Clear labels for search, navigation, row actions, and details.
++- No color-only status indicators.
++
++Important restrictions:
++- No real filesystem APIs.
++- No upload/download/delete/rename/move behavior.
++- No secrets, credentials, or runtime DB data.
++- No "production ready", "all systems green", or fake PASS claims.
++
++Output:
++- Provide a self-contained React component named PalaFileExplorer.
++- Include mock data in the same file unless you create a separate mock-data file.
++- Include a short integration note listing all generated files and dependencies.
++- Include a rollback note.
++```
++
++## Generated Output Intake Contract
++
++When v0 output exists, record the source before import:
++
++| Field | Required value |
++| --- | --- |
++| v0 source | URL, component id, generated archive, or GitHub branch |
++| generated files | exact paths and source refs |
++| dependencies | exact package names and versions if new dependencies are needed |
++| data mode | must remain `MOCK_ONLY_READ_ONLY` unless a separate court approves read/write |
++| validation evidence | UI render, responsive check, and repo command output |
++| rollback | commit hash or file list removable by normal git revert |
++
++## Expected Import Paths
++
++Because v5 does not yet have an approved Next.js product app scaffold, generated output must not be wired into a fake production route by default.
++
++Allowed first intake locations:
++
++- `docs/v0/file-explorer/<date>/` for raw generated output archive notes
++- `docs/migration-court/` for court notes
++- a future product app path only after the Next.js app scaffold decision exists
++
++If the owner explicitly approves an interim static control preview, add it under:
++
++```text
++control/file-explorer/
++```
++
++with status labels that say `Manual verification required` or `Mock UI only`, never `PASS`.
++
++## Validation Plan
++
++Validation required after generated output is imported:
++
++```powershell
++npm.cmd run pala:source-audit
++```
++
++If product UI code is added, also capture:
++
++- desktop render evidence
++- mobile responsive evidence at 360px width
++- source diff review for fake success language
++- confirmation that no filesystem write APIs were introduced
++
++No validation was run for this contract-only phase.
++
++## Rollback Note
++
++Rollback this contract-only phase with:
++
++```powershell
++git revert <commit-containing-this-file>
++```
++
++Rollback of a later generated UI import must be recorded separately with its exact commit and file list.
++
++## Court Result
++
++Status remains `PARTIAL`.
++
++The next safe action is to run the prompt in v0.dev or provide a Figma node-specific URL, then import the generated output only after recording its source reference.
+diff --git a/docs/product-gates.md b/docs/product-gates.md
+index c7dd765..d297f5a 100644
+--- a/docs/product-gates.md
++++ b/docs/product-gates.md
+@@ -18,6 +18,10 @@ The next requested product surface is the file explorer for v5.
+ 
+ Status: `PARTIAL`
+ 
++Latest source contract:
++
++- `docs/migration-court/file-explorer-v0-source-contract-2026-06-09.md`
++
+ Decision:
+ 
+ - UI implementation is still blocked until the feature has an explicit product/Figma gate record.
+@@ -28,7 +32,12 @@ Decision:
+ Required evidence before implementation:
+ 
+ - Feature scope: navigation tree, file list, breadcrumbs, search, empty state, selection, and settings entry points.
+-- Design source: Figma frame link or v0.dev prompt/output reference.
+-- Data boundary: static/mock, local read-only, or local read-write, with permission notes.
+-- Validation plan: UI render evidence, responsive evidence, and no fake dashboard success.
+-- Rollback note: normal git revert of the feature files must remove the feature without touching runtime state.
++- Design source: v0.dev prompt now recorded; actual v0 output URL/component id/archive/branch is still missing.
++- Data boundary: first pass must be `MOCK_ONLY_READ_ONLY`.
++- Validation plan: UI render evidence, responsive evidence, repo command output, and no fake dashboard success.
++- Rollback note: normal git revert of the contract or future generated feature files must remove the feature without touching runtime state.
++
++Current import status:
++
++- `READY_FOR_V0_OUTPUT`
++- Product UI code remains blocked until the generated output source reference and review evidence exist.
