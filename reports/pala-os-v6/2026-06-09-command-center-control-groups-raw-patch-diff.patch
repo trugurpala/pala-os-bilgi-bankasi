@@ -1,0 +1,1881 @@
+﻿# Raw patch/diff for Pala OS V6 Command Center Control Groups
+# Generated: 2026-06-09
+# Note: includes full local tracked diff plus selected untracked files; see manifest for phase boundary.
+
+diff --git a/docs/oss-upstream-matrix.md b/docs/oss-upstream-matrix.md
+index d10042b..6638bf0 100644
+--- a/docs/oss-upstream-matrix.md
++++ b/docs/oss-upstream-matrix.md
+@@ -53,6 +53,38 @@ Pala OS V6 cekirdegi local-first kalir. Dis kaynaklar cekirdege dogrudan baglanm
+ - Git ve repo context'ini aktif calisma araci yapar.
+ - Pala farki: Aider hizlidir; Pala o hizin ustune audit ve court bindirir.
+ 
++## Market Radar Core 10
++
++Dashboard artik bu daha genis pazar radarini da gosterir. Bu tablo "bunu kopyala" listesi degildir; Pala'nin hangi sinyali hangi kontrol sinirina cevirdigini yazar.
++
++| Reference | Signal | Pala control answer |
++| --- | --- | --- |
++| OpenAI Codex CLI | Lokal terminal coding agent ve approval/SDK yuzeyi | Codex tekrar yazilmaz; Pala task scope, evidence ve court ile kontrol eder |
++| OpenHands | SDK/API/React GUI ayrimi olan agent platformu | Pala core/daemon/dashboard ayrimini korur, ama truth DB + ledger + court kalir |
++| Cline | IDE/CLI/SDK agent runtime | Pala runtime satmaz; runtime etrafinda governance board olur |
++| Goose | Rust local-first desktop + CLI + API | Rust/Tauri wrapper ileride degerlendirilebilir; once kontrol modeli kanitlanir |
++| Continue | Repo-native checks ve CI gate disiplini | Pala checks local court ve evidence ledger ile genisletilir |
++| PR-Agent | GitHub Action/App/local CLI PR reviewer modeli | Pala PR yorumundan daha genis diff manifest, source-card ve release gate ister |
++| GitHub Agent HQ | Multi-agent mission control | Pala ayni yonu local-first, owner-controlled ve evidence-backed olarak hedefler |
++| Port AI Control Center | AI-created PR dashboard ve agent attribution | Pala bunu local ledger + GitHub read/write ayrimi ile uygular |
++| Agent Friendly Code | Repo/site agent-readiness scorecard | Pala score'u action queue, standards ve court blocker'a cevirir |
++| Microsoft Agent Governance Toolkit | Policy, identity, sandboxing ve SRE for agents | Pala Court/Evidence katmaninin ciddi bir governance kategorisi oldugunu dogrular |
++
++## PM / Shipping Doctrine Candidate
++
++`phuryn/pm-skills` Pala icin runtime ya da core dependency degildir. Source-carded PM/shipping doctrine adayi olarak tutulur.
++
++- En faydali bolum: `pm-ai-shipping`
++- Pala mapping:
++  - vibe-coded app shipping packet
++  - intended-vs-implemented audit
++  - test coverage map
++  - architecture / permission / secrets documentation discipline
++- Boundary:
++  - kod import yok
++  - command/plugin install yok
++  - once source-card, license, risk, allowed layer ve local proof
++
+ ## Current Local Stack
+ 
+ - Node 24 built-in `node:sqlite` -> local DB
+diff --git a/docs/world-standards-map.md b/docs/world-standards-map.md
+index 203e41e..e90b690 100644
+--- a/docs/world-standards-map.md
++++ b/docs/world-standards-map.md
+@@ -1,6 +1,6 @@
+-# World Standards Map
++# Pala World Standards Atlas
+ 
+-Pala OS V6 turns the V5 world-standard tabur into a machine-readable policy engine.
++Pala OS Command Center groups the 60 world standards into user-facing control areas. The product posture is simple: the world writes agents; Pala OS controls agent work with evidence, standards, risk, and owner decision.
+ 
+ ## Status vocabulary
+ - `required`: must have evidence to avoid a blocked state.
+@@ -17,14 +17,22 @@ Each standard can carry one or more evidence items:
+ - cron snapshot
+ - security scan summary
+ 
+-## First-pass families
+-- NIST
+-- OWASP
+-- SLSA / OpenSSF / Sigstore / in-toto
+-- SPDX / CycloneDX / VEX / GUAC
+-- MITRE / CISA / CVSS
+-- Docker / GitHub Actions / MCP
+-- Pala operational law
++## Command Center surfaces
++- `Pala Court`: release, push, owner approval, and blocker decisions.
++- `Pala Evidence Ledger`: command, source-card, screenshot, run, and decision proof.
++- `Pala World Standards Atlas`: grouped standards and missing evidence.
++- `Pala Agent Control Radar`: market references such as Codex, Cline, OpenHands, Goose, PR review, and governance tools.
++- `Pala Skill Registry`: skills, adapter/import decisions, and tool boundaries.
++- `Pala Action Queue`: the next blocked or partial actions for the owner/operator.
++
++## User-facing control groups
++- `Governance & Risk`: NIST, ISO, SOC 2, CISA, and risk-management standards.
++- `Application Security`: OWASP web, API, ASVS, MASVS, SAMM, and cheat-sheet coverage.
++- `AI & Agent Governance`: NIST AI RMF, OWASP LLM, OWASP Agentic AI, and MCP allowlist controls.
++- `Supply Chain & Provenance`: SLSA, OpenSSF, Sigstore, in-toto, SBOM, SPDX, CycloneDX, VEX, and GUAC.
++- `Runtime & Platform Security`: Docker, Kubernetes, CIS, Linux, and least-privilege runtime controls.
++- `Threat & Vulnerability Intel`: MITRE ATT&CK, CWE, CAPEC, CVE, CVSS, EPSS, and CISA KEV.
++- `Pala Operating Law`: no-fake-done, source-card gate, owner approval, GitHub boundary, and local evidence.
+ 
+ ## How to use it
+ 1. Seed the catalog from `sak init`.
+@@ -32,3 +40,7 @@ Each standard can carry one or more evidence items:
+ 3. Inspect the dashboard or `sak status`.
+ 4. Run `sak cron run` to refresh watcher evidence.
+ 5. Open `sak court` whenever blocked standards stay unresolved.
++6. Use `/api/control-groups` when another UI or report needs the grouped Command Center state.
++
++## Control rule
++No external tool, repository, or idea becomes a dependency directly. It starts as `reference`, then needs source-card, risk, allowed layer, evidence, Pala Court posture, and owner approval.
+diff --git a/src/bootstrap.js b/src/bootstrap.js
+index 9d81968..ecef1de 100644
+--- a/src/bootstrap.js
++++ b/src/bootstrap.js
+@@ -2,7 +2,9 @@ import fs from 'node:fs/promises';
+ import { spawn } from 'node:child_process';
+ import {
+   BATTALIONS_PATH,
++  CONTROL_GROUPS_PATH,
+   DASHBOARD_STATE_PATH,
++  MARKET_RADAR_PATH,
+   POLICY_PATH,
+   ROOT_DIR,
+   ensureAppDirs,
+@@ -41,6 +43,22 @@ import {
+   summarizeSkillRegistry,
+ } from './skill-registry.js';
+ import { ensureBenchmarkState, loadBenchmarkState, summarizeBenchmarkState } from './benchmark.js';
++import {
++  annotateMarketRadarReferences,
++  ensureMarketRadarCatalog,
++  loadMarketRadarCatalog,
++  marketRadarSeed,
++  summarizeMarketRadar,
++} from './market-radar.js';
++import {
++  buildActionQueue,
++  buildControlGroups,
++  buildReleasePosture,
++  controlGroupsSeed,
++  ensureControlGroupsCatalog,
++  loadControlGroupsCatalog,
++  summarizeControlGroups,
++} from './standard-groups.js';
+ 
+ export async function bootstrapApp() {
+   await ensureAppDirs();
+@@ -50,8 +68,12 @@ export async function bootstrapApp() {
+ 
+   await fs.writeFile(POLICY_PATH, `${JSON.stringify(catalogSeed(), null, 2)}\n`, 'utf8');
+   await fs.writeFile(BATTALIONS_PATH, `${JSON.stringify(battalionCatalog(), null, 2)}\n`, 'utf8');
++  await fs.writeFile(MARKET_RADAR_PATH, `${JSON.stringify(marketRadarSeed(), null, 2)}\n`, 'utf8');
++  await fs.writeFile(CONTROL_GROUPS_PATH, `${JSON.stringify(controlGroupsSeed(), null, 2)}\n`, 'utf8');
+   await ensureSeedSkillRegistry();
+   await ensureBenchmarkState();
++  await ensureMarketRadarCatalog();
++  await ensureControlGroupsCatalog();
+ 
+   if (getMeta(db, 'bootstrapped') !== '1') {
+     addEvent(db, {
+@@ -97,6 +119,10 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+   const skillRegistrySummary = summarizeSkillRegistry(skillRegistry);
+   const benchmarkState = await loadBenchmarkState();
+   const benchmarkSummary = summarizeBenchmarkState(benchmarkState);
++  const marketRadar = await loadMarketRadarCatalog();
++  const marketRadarReferences = annotateMarketRadarReferences(marketRadar, sourceCards);
++  const marketRadarSummary = summarizeMarketRadar(marketRadar, sourceCards);
++  const controlGroupsCatalog = await loadControlGroupsCatalog();
+   const summary = summarizeEvaluations(evaluatedStandards);
+   const jobSummary = summarizeJobs(jobRuns);
+   const blockedStandards = evaluatedStandards.filter((standard) => standard.status === 'blocked');
+@@ -108,9 +134,26 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     runs,
+     ledger,
+   });
++  const controlGroups = buildControlGroups(evaluatedStandards, controlGroupsCatalog);
++  const controlGroupSummary = summarizeControlGroups(controlGroups);
++  const releasePosture = buildReleasePosture({
++    summary,
++    court,
++    sourceCards,
++    ledger,
++    github,
++  });
++  const actionQueue = buildActionQueue({
++    controlGroups,
++    releasePosture,
++    sourceCards,
++    github,
++    marketRadarSummary,
++    jobRuns,
++  });
+ 
+   const state = {
+-    app: 'Pala OS V6',
++    app: 'Pala OS Command Center',
+     rootDir: ROOT_DIR,
+     profile,
+     query,
+@@ -120,6 +163,14 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     skillRegistrySummary,
+     benchmarkState,
+     benchmarkSummary,
++    marketRadar,
++    marketRadarSummary,
++    marketRadarReferences,
++    controlGroupsCatalog,
++    controlGroups,
++    controlGroupSummary,
++    releasePosture,
++    actionQueue,
+     skillRegistryViews: {
+       list: listRegistrySkills(skillRegistry),
+       core: listRegistrySkills(skillRegistry, { status: 'draft' }).slice(0, 6),
+@@ -141,6 +192,16 @@ export async function buildAppState(db, { profile = 'dashboard', query = '' } =
+     ledger,
+     tokenBudget,
+     court,
++    commandCenter: {
++      productName: 'Pala OS Command Center',
++      courtName: 'Pala Court',
++      ledgerName: 'Pala Evidence Ledger',
++      standardsName: 'Pala World Standards Atlas',
++      marketName: 'Pala Agent Control Radar',
++      skillName: 'Pala Skill Registry',
++      actionName: 'Pala Action Queue',
++      headline: releasePosture.headline,
++    },
+     nextActions: suggestNextActions({
+       summary: {
+         blocked: summary.byStatus.blocked ?? 0,
+diff --git a/src/cli.js b/src/cli.js
+index 28da447..dbd21a1 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -21,7 +21,7 @@ Commands:
+   sak up
+   sak status
+   sak bak <query>
+-  sak ingest --repo owner/name [--commit sha] [--license MIT] [--summary text]
++  sak ingest --repo owner/name [--commit sha] [--license MIT] [--summary text] [--decision REFERENCE_ONLY] [--risk low] [--layer reference] [--evidence-uri URL]
+   sak evidence add --standard nist-ssdf --detail "..."
+   sak screenshot --url http://127.0.0.1:8787 [--selector ...] [--full-page]
+   sak audit
+@@ -145,6 +145,10 @@ async function main() {
+     const commit = flags.commit ?? null;
+     const license = flags.license ?? null;
+     const summary = flags.summary ?? `Source card for ${repo || 'unidentified source'}`;
++    const decision = String(flags.decision ?? 'QUARANTINE').trim();
++    const riskLevel = String(flags.risk ?? 'medium').trim();
++    const allowedLayer = String(flags.layer ?? 'adapter').trim();
++    const evidenceUri = flags.evidenceuri ? String(flags.evidenceuri).trim() : null;
+ 
+     if (!repo) {
+       console.error('ingest requires --repo owner/name');
+@@ -160,11 +164,11 @@ async function main() {
+         repoFullName: repo,
+         commitSha: commit,
+         license,
+-        decision: 'QUARANTINE',
+-        riskLevel: 'medium',
+-        allowedLayer: 'adapter',
++        decision,
++        riskLevel,
++        allowedLayer,
+         summary,
+-        evidenceUri: null,
++        evidenceUri,
+       });
+ 
+       addToolUsage(db, {
+diff --git a/src/config.js b/src/config.js
+index 3e88c4b..e60699f 100644
+--- a/src/config.js
++++ b/src/config.js
+@@ -28,6 +28,8 @@ export const BENCHMARK_DIR = path.resolve(process.env.PALA_BENCHMARK_DIR ?? path
+ export const DB_PATH = path.resolve(process.env.PALA_DB_PATH ?? path.join(DB_DIR, 'pala-v6.sqlite'));
+ export const POLICY_PATH = path.resolve(process.env.PALA_POLICY_PATH ?? path.join(RULES_DIR, 'world-standards.json'));
+ export const BATTALIONS_PATH = path.resolve(process.env.PALA_BATTALIONS_PATH ?? path.join(RULES_DIR, 'evidence-battalions.json'));
++export const MARKET_RADAR_PATH = path.resolve(process.env.PALA_MARKET_RADAR_PATH ?? path.join(RULES_DIR, 'market-radar.json'));
++export const CONTROL_GROUPS_PATH = path.resolve(process.env.PALA_CONTROL_GROUPS_PATH ?? path.join(RULES_DIR, 'pala-control-groups.json'));
+ export const LEDGER_PATH = path.resolve(process.env.PALA_LEDGER_PATH ?? path.join(LEDGER_DIR, 'events.jsonl'));
+ export const SEED_SKILLS_PATH = path.resolve(
+   process.env.PALA_SEED_SKILLS_PATH ?? path.join(SKILLS_REGISTRY_DIR, 'seed-skills.json'),
+diff --git a/src/dashboard.js b/src/dashboard.js
+index e7c29b2..14e0d2a 100644
+--- a/src/dashboard.js
++++ b/src/dashboard.js
+@@ -14,6 +14,12 @@ function pillClass(status) {
+   return 'warn';
+ }
+ 
++function marketDecisionClass(decision) {
++  if (decision === 'adopt_pattern' || decision === 'governance_signal') return 'good';
++  if (decision === 'adapt_pattern') return 'neutral';
++  return 'warn';
++}
++
+ function familySlug(value) {
+   return String(value ?? '')
+     .toLowerCase()
+@@ -112,39 +118,6 @@ function buildRoleCards(state) {
+   ];
+ }
+ 
+-const REFERENCE_DOCTRINE = [
+-  {
+-    name: 'OpenHands',
+-    layer: 'Mission control',
+-    status: 'adopt',
+-    extract: 'multi-surface agent platform, auditable runs, GitHub/Slack/API delegation, secure sandbox posture',
+-  },
+-  {
+-    name: 'UI/UX Pro Max',
+-    layer: 'Visual doctrine',
+-    status: 'adopt',
+-    extract: 'dashboard style intelligence, typography discipline, analytics information hierarchy, stronger design intent',
+-  },
+-  {
+-    name: 'Continue',
+-    layer: 'Gate discipline',
+-    status: 'adapt',
+-    extract: 'source-controlled checks, PR gates, repo-native agent prompts under .agents or .continue',
+-  },
+-  {
+-    name: 'Cline',
+-    layer: 'Operations board',
+-    status: 'adapt',
+-    extract: 'CLI plus kanban thinking, parallel agents, human approval for risky actions, SDK-ready surfaces',
+-  },
+-  {
+-    name: 'Aider',
+-    layer: 'Terminal rigor',
+-    status: 'adapt',
+-    extract: 'tight git loop, repo-aware pair flow, pragmatic command-line ergonomics, low-ceremony repair cycle',
+-  },
+-];
+-
+ function renderMeter(value, total, className = 'neutral') {
+   const safeTotal = Math.max(1, total);
+   const width = Math.max(0, Math.min(100, Math.round((value / safeTotal) * 100)));
+@@ -166,7 +139,47 @@ export function renderDashboardPage(state) {
+   const roleCards = buildRoleCards(state);
+   const courtTone = state.summary.blocked > 0 ? 'bad' : 'good';
+   const actionTone = state.summary.blocked > 0 ? 'warn' : 'good';
++  const commandCenter = state.commandCenter ?? {
++    productName: 'Pala OS Command Center',
++    courtName: 'Pala Court',
++    ledgerName: 'Pala Evidence Ledger',
++    standardsName: 'Pala World Standards Atlas',
++    marketName: 'Pala Agent Control Radar',
++    skillName: 'Pala Skill Registry',
++    actionName: 'Pala Action Queue',
++    headline: 'Dunya agent yaziyor. Pala OS agent isini kanit, standart, risk ve owner karariyla kontrol ediyor.',
++  };
++  const controlGroups = state.controlGroups ?? [];
++  const controlGroupSummary = state.controlGroupSummary ?? {
++    totalGroups: controlGroups.length,
++    totalStandards: state.summary.total,
++    blockedGroups: 0,
++  };
++  const releasePosture = state.releasePosture ?? {
++    status: state.court.decision === 'RELEASE_BLOCKED' ? 'blocked' : 'owner_review',
++    decision: state.court.decision,
++    ownerApprovalRequired: true,
++    primaryMessage: state.court.reason,
++    headline: commandCenter.headline,
++  };
++  const actionQueue = state.actionQueue ?? state.nextActions.map((action, index) => ({
++    priority: index + 1,
++    title: `Action ${index + 1}`,
++    layer: commandCenter.actionName,
++    status: actionTone,
++    detail: action,
++    evidenceCommand: 'sak status',
++  }));
++  const releaseTone = releasePosture.status === 'blocked' ? 'bad' : 'warn';
+   const jobsAttention = state.jobRuns.filter((jobRun) => jobRun.status !== 'ok').length;
++  const marketSummary = state.marketRadarSummary ?? {
++    total: 0,
++    sourceCarded: 0,
++    byDecision: {},
++    byCategory: {},
++    controlLine: 'Dunya agent yaziyor; Pala OS agentlari kontrol ediyor.',
++  };
++  const marketReferences = state.marketRadarReferences ?? [];
+ 
+   return `<!doctype html>
+ <html lang="en">
+@@ -524,6 +537,52 @@ export function renderDashboardPage(state) {
+       font-size: 13px;
+       line-height: 1.6;
+     }
++    .radar-hero {
++      display: grid;
++      grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
++      gap: 18px;
++      align-items: stretch;
++      margin-bottom: 18px;
++    }
++    .radar-claim {
++      border-radius: 20px;
++      border: 1px solid rgba(103, 212, 255, 0.18);
++      background:
++        linear-gradient(135deg, rgba(103, 212, 255, 0.12), transparent 45%),
++        rgba(255,255,255,0.03);
++      padding: 18px;
++    }
++    .radar-claim strong {
++      display: block;
++      font-family: var(--serif);
++      font-size: clamp(24px, 3vw, 42px);
++      line-height: 1;
++      letter-spacing: 0.03em;
++      text-transform: uppercase;
++    }
++    .radar-claim p, .radar-stat p {
++      color: var(--muted);
++      line-height: 1.65;
++      margin: 10px 0 0;
++      font-size: 14px;
++    }
++    .radar-stats {
++      display: grid;
++      grid-template-columns: repeat(2, minmax(0, 1fr));
++      gap: 12px;
++    }
++    .radar-stat {
++      border: 1px solid rgba(255,255,255,0.08);
++      border-radius: 18px;
++      background: rgba(5, 12, 20, 0.38);
++      padding: 14px;
++      min-width: 0;
++    }
++    .radar-stat .value {
++      font-size: 28px;
++      font-weight: 800;
++      line-height: 1;
++    }
+     .panel-grid {
+       display: grid;
+       grid-template-columns: repeat(12, minmax(0, 1fr));
+@@ -745,13 +804,17 @@ export function renderDashboardPage(state) {
+       .roles {
+         grid-template-columns: repeat(2, minmax(0, 1fr));
+       }
++      .radar-hero {
++        grid-template-columns: 1fr;
++      }
+     }
+     @media (max-width: 900px) {
+       .span-4, .span-5, .span-6, .span-7, .span-8, .span-12 {
+         grid-column: span 12;
+       }
+       .metric-grid,
+-      .roles {
++      .roles,
++      .radar-stats {
+         grid-template-columns: 1fr;
+       }
+       .shell {
+@@ -764,25 +827,29 @@ export function renderDashboardPage(state) {
+ <body>
+   <div class="shell">
+     <aside class="sidebar">
+-      <div class="crest">Pala OS V6</div>
+-      <h1>Command Radar</h1>
+-      <p>Codex calisir. Pala kanit ister. Dashboard sadece gorur, yazar rolunu DB ile ledger tasir.</p>
++      <div class="crest">Pala OS</div>
++      <h1>${escapeHtml(commandCenter.productName)}</h1>
++      <p>${escapeHtml(commandCenter.headline)}</p>
+ 
+       <nav class="nav">
+         <a href="#command">
+-          <span>Command Deck</span>
++          <span>Command Center</span>
+           <small>${escapeHtml(routeLabel)}</small>
+         </a>
++        <a href="#actions">
++          <span>${escapeHtml(commandCenter.actionName)}</span>
++          <small>${actionQueue.length} item</small>
++        </a>
+         <a href="#standards">
+-          <span>Standard Radar</span>
+-          <small>${state.summary.total} record</small>
++          <span>Standards Atlas</span>
++          <small>${controlGroupSummary.totalGroups} group</small>
+         </a>
+         <a href="#sources">
+-          <span>Source Court</span>
++          <span>Evidence Ledger</span>
+           <small>${state.sourceCards.length} source</small>
+         </a>
+         <a href="#skills">
+-          <span>Skill Registry</span>
++          <span>${escapeHtml(commandCenter.skillName)}</span>
+           <small>${state.skillRegistrySummary.total} skill</small>
+         </a>
+         <a href="#benchmark">
+@@ -790,14 +857,14 @@ export function renderDashboardPage(state) {
+           <small>${state.benchmarkSummary.total} cat</small>
+         </a>
+         <a href="#doctrine">
+-          <span>Reference Doctrine</span>
+-          <small>OSS</small>
++          <span>Agent Control Radar</span>
++          <small>${marketSummary.total} ref</small>
+         </a>
+       </nav>
+ 
+       <div class="sidebar-foot">
+         <div class="mono-line">Route ${escapeHtml(routeLabel)}</div>
+-        <div class="mono-line">Court ${escapeHtml(state.court.decision)}</div>
++        <div class="mono-line">Pala Court ${escapeHtml(state.court.decision)}</div>
+         <div class="mono-line">GitHub ${escapeHtml(githubBadge)}</div>
+         <div class="mono-line">Generated ${escapeHtml(state.generatedAt)}</div>
+       </div>
+@@ -806,56 +873,57 @@ export function renderDashboardPage(state) {
+     <main class="content">
+       <section id="command" class="hero">
+         <div>
+-          <span class="eyebrow">Operational route <strong>${escapeHtml(routeLabel)}</strong></span>
+-          <h2>Evidence Before Victory</h2>
++          <span class="eyebrow">Release posture <strong>${escapeHtml(releasePosture.status)}</strong></span>
++          <h2>${escapeHtml(commandCenter.productName)}</h2>
+           <div class="hero-copy">
+-            Pala artik sadece veri gosteren bir panel degil. Bu ekran, OpenHands tarzı operasyon omurgasını, Continue tarzı gate disipliniyle ve daha sert bir dashboard diliyle birlestiriyor. Ledger bosken yesil yok. Court acikken release yok. Kanit yoksa gecis yok.
++            ${escapeHtml(commandCenter.headline)} Ledger bosken yesil yok. Court acikken release yok. Dis arac once reference olur; source-card, risk, layer ve owner karari olmadan dependency olmaz.
+           </div>
+           <div class="chip-row">
+             <span class="chip ${courtTone}">${escapeHtml(state.court.decision)}</span>
++            <span class="chip ${releaseTone}">Owner approval ${releasePosture.ownerApprovalRequired ? 'required' : 'recorded'}</span>
+             <span class="chip ${state.github.configured ? 'good' : 'warn'}">GitHub ${escapeHtml(githubBadge)}</span>
+             <span class="chip neutral">Profile ${escapeHtml(state.profile)}</span>
+             <span class="chip ${jobsAttention > 0 ? 'warn' : 'good'}">${state.jobRuns.length} jobs</span>
+           </div>
+           <div class="chip-row">
+-            ${state.nextActions.map((action) => `<span class="status-pill-mini ${actionTone}">${escapeHtml(action)}</span>`).join('')}
++            ${actionQueue.slice(0, 3).map((action) => `<span class="status-pill-mini ${pillClass(action.status)}">${escapeHtml(action.title)}</span>`).join('')}
+           </div>
+         </div>
+ 
+         <div class="hero-side">
+           <div class="signal-box">
+-            <h3>Court Signal</h3>
++            <h3>${escapeHtml(commandCenter.courtName)}</h3>
+             <div class="signal-value">${escapeHtml(state.court.decision)}</div>
+-            <p>${escapeHtml(state.court.reason)}</p>
++            <p>${escapeHtml(releasePosture.primaryMessage ?? state.court.reason)}</p>
+           </div>
+           <div class="signal-box">
+-            <h3>Token Economy</h3>
+-            <div class="signal-value">${state.tokenBudget.actualTokens}</div>
+-            <p>Plan ${state.tokenBudget.plannedTokens} | latest route estimate for this profile. Unknown is shown as unknown, not zero.</p>
++            <h3>${escapeHtml(commandCenter.ledgerName)}</h3>
++            <div class="signal-value">${state.ledger.length}</div>
++            <p>${state.sourceCards.length} source cards | ${state.runs.length} command runs | owner approval stays required for push and release.</p>
+           </div>
+         </div>
+       </section>
+ 
+       <section class="metric-grid">
+         <article class="metric">
+-          <div class="label">Standards</div>
+-          <div class="value">${state.summary.total}</div>
+-          <div class="meta">V5 tabur artik metin listesi degil. Policy engine olarak ayakta.</div>
++          <div class="label">Atlas Groups</div>
++          <div class="value">${controlGroupSummary.totalGroups}</div>
++          <div class="meta">${controlGroupSummary.totalStandards} standards grouped for end-user triage.</div>
+         </article>
+         <article class="metric">
+           <div class="label">Blocked Required</div>
+           <div class="value">${state.summary.blocked}</div>
+-          <div class="meta">Gercek kanit gelene kadar bunlar mahkemeyi kapatmaz.</div>
++          <div class="meta">Pala Court stays closed until these have evidence.</div>
+         </article>
+         <article class="metric">
+-          <div class="label">Ledger Records</div>
++          <div class="label">Evidence Ledger</div>
+           <div class="value">${state.ledger.length}</div>
+-          <div class="meta">Append-only olay hattı. Fake green'i burada saklayamazsin.</div>
++          <div class="meta">Append-only local proof line for commands, events, and decisions.</div>
+         </article>
+         <article class="metric">
+-          <div class="label">Satisfied</div>
+-          <div class="value">${state.summary.satisfied}</div>
+-          <div class="meta">Kanitli gecenler. Tavsiye kartlari yesil sayilmaz.</div>
++          <div class="label">Owner Gate</div>
++          <div class="value">${releasePosture.ownerApprovalRequired ? 'ON' : 'OK'}</div>
++          <div class="meta">Push and release remain owner-controlled.</div>
+         </article>
+       </section>
+ 
+@@ -879,19 +947,20 @@ export function renderDashboardPage(state) {
+           </div>
+         </article>
+ 
+-        <article class="panel span-5">
++        <article id="actions" class="panel span-5">
+           <div class="section-head">
+             <div>
+-              <h3>Command Orders</h3>
+-              <p>Bir sonraki guvenli hamleler optimism ile degil, route ve kanit baskisiyla uretilir.</p>
++              <h3>${escapeHtml(commandCenter.actionName)}</h3>
++              <p>Release'i kilitleyen ilk isler. Her satir bir Pala layer, durum ve kanit komutuyla gelir.</p>
+             </div>
+             <div class="mini-note">No fake done</div>
+           </div>
+           <div class="list">
+-            ${state.nextActions.map((action, index) => `
++            ${actionQueue.map((action) => `
+               <div class="list-row">
+-                <strong>Order ${index + 1}</strong>
+-                <p>${escapeHtml(action)}</p>
++                <strong>${action.priority}. ${escapeHtml(action.title)}</strong>
++                <p>${escapeHtml(action.layer)} | ${escapeHtml(action.status)} | ${escapeHtml(action.detail)}</p>
++                <p><span class="mini-note">${escapeHtml(action.evidenceCommand)}</span></p>
+               </div>
+             `).join('')}
+           </div>
+@@ -923,26 +992,53 @@ export function renderDashboardPage(state) {
+         <article id="standards" class="panel span-7">
+           <div class="section-head">
+             <div>
+-              <h3>Standard Radar</h3>
+-              <p>Aile bazli baski haritasi. Hangi tabur ne kadar acik veriyor burada gorunuyor.</p>
++              <h3>${escapeHtml(commandCenter.standardsName)}</h3>
++              <p>60 dunya standardi yedi son kullanici grubuna ayrildi. Her grup release riskini, kanit sayisini ve ilk eksik aksiyonu gosterir.</p>
+             </div>
+-            <div class="mini-note">${familyRows.length} families</div>
++            <div class="mini-note">${controlGroupSummary.totalGroups} groups</div>
+           </div>
+           <div class="family-grid">
+-            ${familyRows.map((family) => `
++            ${controlGroups.map((group) => `
+               <div class="family-row">
+                 <div class="family-head">
+-                  <strong>${escapeHtml(family.family)}</strong>
+-                  <span class="status-pill-mini ${family.blocked > 0 ? 'bad' : family.satisfied > 0 ? 'good' : 'warn'}">${family.blocked > 0 ? 'pressure' : family.satisfied > 0 ? 'evidence' : 'pending'}</span>
++                  <strong>${escapeHtml(group.name)}</strong>
++                  <span class="status-pill-mini ${group.blocked > 0 ? 'bad' : group.evidence > 0 ? 'good' : 'warn'}">${escapeHtml(group.status)}</span>
+                 </div>
+-                ${renderMeter(family.blocked, family.total, family.blocked > 0 ? 'bad' : family.satisfied > 0 ? 'good' : 'warn')}
++                ${renderMeter(group.blocked, group.total, group.blocked > 0 ? 'bad' : group.evidence > 0 ? 'good' : 'warn')}
+                 <div class="family-meta">
+-                  <span>Total ${family.total}</span>
+-                  <span>Blocked ${family.blocked}</span>
+-                  <span>Satisfied ${family.satisfied}</span>
+-                  <span>Recommended ${family.recommended}</span>
+-                  <span>NA ${family.notApplicable}</span>
++                  <span>Total ${group.total}</span>
++                  <span>Required ${group.required}</span>
++                  <span>Blocked ${group.blocked}</span>
++                  <span>Evidence ${group.evidence}</span>
++                  <span>${escapeHtml(group.surface)}</span>
+                 </div>
++                <p>${escapeHtml(group.ownerQuestion)}</p>
++                <details>
++                  <summary>
++                    <span>${escapeHtml(group.primaryAction)}</span>
++                    <span>${group.standards.length} standards</span>
++                  </summary>
++                  <div class="details-body table-wrap">
++                    <table>
++                      <thead>
++                        <tr>
++                          <th>Status</th>
++                          <th>Standard</th>
++                          <th>Evidence</th>
++                        </tr>
++                      </thead>
++                      <tbody>
++                        ${group.standards.map((standard) => `
++                          <tr>
++                            <td><span class="status-pill-mini ${pillClass(standard.status)}">${escapeHtml(standard.status)}</span></td>
++                            <td>${escapeHtml(standard.title)}</td>
++                            <td>${standard.evidenceCount}</td>
++                          </tr>
++                        `).join('')}
++                      </tbody>
++                    </table>
++                  </div>
++                </details>
+               </div>
+             `).join('')}
+           </div>
+@@ -1019,8 +1115,8 @@ export function renderDashboardPage(state) {
+         <article id="skills" class="panel span-6">
+           <div class="section-head">
+             <div>
+-              <h3>Skill Registry</h3>
+-              <p>Ilk seed registry artik kontrat degil, gercek veri. MCP ve dashboard ayni skill omurgasina bakacak.</p>
++              <h3>${escapeHtml(commandCenter.skillName)}</h3>
++              <p>Her skill kullanilabilirlik, import karari ve adapter siniriyle okunur.</p>
+             </div>
+             <div class="mini-note">${state.skillRegistrySummary.total} skills</div>
+           </div>
+@@ -1051,7 +1147,7 @@ export function renderDashboardPage(state) {
+         <article id="sources" class="panel span-6">
+           <div class="section-head">
+             <div>
+-              <h3>Source Court</h3>
++              <h3>${escapeHtml(commandCenter.ledgerName)}</h3>
+               <p>Dis repo kodu dogrudan iceri giremez. Once source card, sonra karar, sonra adapter siniri.</p>
+             </div>
+             <div class="mini-note">${state.sourceCards.length} cards</div>
+@@ -1113,30 +1209,63 @@ export function renderDashboardPage(state) {
+         <article id="doctrine" class="panel span-12">
+           <div class="section-head">
+             <div>
+-              <h3>Reference Doctrine</h3>
+-              <p>Bu ekran artik bos estetik denemesi degil. Hangi cevheri nereden alip hangi katmanda kullandigimiz acikca yaziliyor.</p>
++              <h3>${escapeHtml(commandCenter.marketName)}</h3>
++              <p>World Agent Control Radar: dunya agent runtime, PR bot ve governance katmani kuruyor. Pala OS bunlari local-first court, source-card ve evidence ledger ile kontrol ediyor.</p>
++            </div>
++            <div class="mini-note">${marketSummary.total} core references</div>
++          </div>
++          <div class="radar-hero">
++            <div class="radar-claim">
++              <span class="eyebrow">Runtime degil, kontrol sistemi</span>
++              <strong>Dunya agent yaziyor; Pala OS agentlari kontrol ediyor.</strong>
++              <p>Bu panel rakip listesi degil. Hangi pazar sinyalini gorduk, Pala bundan hangi kontrol dersini aliyor, hangi katmanda izin veriliyor ve source-card disiplini nerede devreye giriyor; hepsi ayni masada.</p>
++            </div>
++            <div class="radar-stats">
++              <div class="radar-stat">
++                <div class="label">References</div>
++                <div class="value">${marketSummary.total}</div>
++                <p>Core 10 radar.</p>
++              </div>
++              <div class="radar-stat">
++                <div class="label">Source Cards</div>
++                <div class="value">${marketSummary.sourceCarded}</div>
++                <p>Import degil, kanit kapisi.</p>
++              </div>
++              <div class="radar-stat">
++                <div class="label">Governance</div>
++                <div class="value">${marketSummary.byDecision.governance_signal ?? 0}</div>
++                <p>Policy/proof sinyali.</p>
++              </div>
++              <div class="radar-stat">
++                <div class="label">Adapters</div>
++                <div class="value">${marketSummary.byLayer.adapter ?? 0}</div>
++                <p>Runtime siniri.</p>
++              </div>
+             </div>
+-            <div class="mini-note">Primary upstream thinking</div>
+           </div>
+           <div class="table-wrap">
+             <table>
+               <thead>
+                 <tr>
+                   <th>Reference</th>
+-                  <th>Layer</th>
+-                  <th>Status</th>
+-                  <th>What we steal carefully</th>
++                  <th>World pattern</th>
++                  <th>Pala lesson</th>
++                  <th>Control boundary</th>
+                 </tr>
+               </thead>
+               <tbody>
+-                ${REFERENCE_DOCTRINE.map((reference) => `
++                ${marketReferences.map((reference) => `
+                   <tr>
+-                    <td>${escapeHtml(reference.name)}</td>
+-                    <td>${escapeHtml(reference.layer)}</td>
+-                    <td><span class="status-pill-mini ${reference.status === 'adopt' ? 'good' : 'neutral'}">${escapeHtml(reference.status)}</span></td>
+-                    <td>${escapeHtml(reference.extract)}</td>
++                    <td>
++                      <strong>${escapeHtml(reference.name)}</strong><br>
++                      <span class="status-pill-mini ${marketDecisionClass(reference.decision)}">${escapeHtml(reference.decision)}</span>
++                      <span class="status-pill-mini ${reference.sourceCarded ? 'good' : 'warn'}">${reference.sourceCarded ? 'source-carded' : 'source-card-needed'}</span>
++                    </td>
++                    <td>${escapeHtml(reference.worldPattern)}<br><span class="mini-note">${escapeHtml(reference.stackSignal)}</span></td>
++                    <td>${escapeHtml(reference.palaLesson)}</td>
++                    <td>${escapeHtml(reference.palaControl)}<br><span class="mini-note">${escapeHtml(reference.allowedLayer)} | ${escapeHtml(reference.risk)} risk</span></td>
+                   </tr>
+-                `).join('')}
++                `).join('') || '<tr><td colspan="4">No market radar references loaded.</td></tr>'}
+               </tbody>
+             </table>
+           </div>
+@@ -1177,7 +1306,7 @@ export function renderDashboardPage(state) {
+       </section>
+ 
+       <div class="footer-note">
+-        Last generated ${escapeHtml(state.generatedAt)}. Status summary: required ${statusCounts.required ?? 0}, recommended ${statusCounts.recommended ?? 0}, blocked ${statusCounts.blocked ?? 0}, not applicable ${statusCounts.not_applicable_with_reason ?? 0}. This deck now leans into a stronger command-radar language instead of a plain admin panel, while keeping the same no-fake-done evidence contract underneath.
++        Last generated ${escapeHtml(state.generatedAt)}. Status summary: required ${statusCounts.required ?? 0}, recommended ${statusCounts.recommended ?? 0}, blocked ${statusCounts.blocked ?? 0}, not applicable ${statusCounts.not_applicable_with_reason ?? 0}. This deck now leans into a stronger command-radar language and a market radar, while keeping the same no-fake-done evidence contract underneath.
+       </div>
+     </main>
+   </div>
+diff --git a/src/server.js b/src/server.js
+index a5fc856..b6a8653 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -56,6 +56,8 @@ export function createAppServer({ db, openBrowser = false, port = DEFAULT_PORT }
+           sourceCardCount: state.sourceCards.length,
+           blocked: state.summary.blocked,
+           skillRegistryCount: state.skillRegistrySummary.total,
++          releasePosture: state.releasePosture,
++          controlGroupSummary: state.controlGroupSummary,
+         }, null, 2));
+         return;
+       }
+@@ -113,6 +115,31 @@ export function createAppServer({ db, openBrowser = false, port = DEFAULT_PORT }
+         return;
+       }
+ 
++      if (request.method === 'GET' && url.pathname === '/api/market-radar') {
++        const state = await buildAppState(db, { profile: 'dashboard' });
++        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
++        response.end(JSON.stringify({
++          ok: true,
++          summary: state.marketRadarSummary,
++          references: state.marketRadarReferences,
++        }, null, 2));
++        return;
++      }
++
++      if (request.method === 'GET' && url.pathname === '/api/control-groups') {
++        const state = await buildAppState(db, { profile: 'dashboard' });
++        response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
++        response.end(JSON.stringify({
++          ok: true,
++          productName: state.commandCenter.productName,
++          summary: state.controlGroupSummary,
++          releasePosture: state.releasePosture,
++          actionQueue: state.actionQueue,
++          groups: state.controlGroups,
++        }, null, 2));
++        return;
++      }
++
+       if (request.method === 'GET' && url.pathname === '/api/screenshots') {
+         response.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+         response.end(JSON.stringify({
+diff --git a/test/pala-v6.test.js b/test/pala-v6.test.js
+index 0311f60..6da5959 100644
+--- a/test/pala-v6.test.js
++++ b/test/pala-v6.test.js
+@@ -5,6 +5,8 @@ import os from 'node:os';
+ import path from 'node:path';
+ import { once } from 'node:events';
+ import test from 'node:test';
++import { loadControlGroupsCatalog } from '../src/standard-groups.js';
++import { loadMarketRadarCatalog } from '../src/market-radar.js';
+ 
+ const repoRoot = process.cwd();
+ const cliPath = path.join(repoRoot, 'src', 'cli.js');
+@@ -41,11 +43,18 @@ test('bootstrap seeds the 60-standard policy catalog', async (t) => {
+   const policy = JSON.parse(await readFile(policyPath, 'utf8'));
+   const seedSkillsPath = path.join(root, 'skills', 'registry', 'seed-skills.json');
+   const seedSkills = JSON.parse(await readFile(seedSkillsPath, 'utf8'));
++  const marketRadarPath = path.join(root, '.pala', 'rules', 'market-radar.json');
++  const marketRadar = JSON.parse(await readFile(marketRadarPath, 'utf8'));
++  const controlGroupsPath = path.join(root, '.pala', 'rules', 'pala-control-groups.json');
++  const controlGroups = JSON.parse(await readFile(controlGroupsPath, 'utf8'));
+ 
+   assert.equal(policy.standards.length, 60);
+   assert.ok(policy.generatedAt);
+   assert.equal(seedSkills.status, 'RELEASE_BLOCKED');
+   assert.equal(seedSkills.skills.length, 5);
++  assert.equal(marketRadar.references.length, 10);
++  assert.equal(controlGroups.groups.length, 7);
++  assert.equal(controlGroups.productName, 'Pala OS Command Center');
+ });
+ 
+ test('evidence add reduces the blocked standard count', async (t) => {
+@@ -92,18 +101,51 @@ test('ingest creates a source card and context pack sees it', async (t) => {
+     'MIT',
+     '--summary',
+     'reference source for the adapter layer',
++    '--decision',
++    'REFERENCE_ONLY',
++    '--risk',
++    'low',
++    '--layer',
++    'reference',
++    '--evidence-uri',
++    'https://example.com/source-evidence',
+   ], { PALA_ROOT_DIR: root }));
+ 
+   const pack = JSON.parse(runCli(['bak', 'source card audit'], { PALA_ROOT_DIR: root }));
+ 
+   assert.equal(ingestPayload.sourceCard.repoFullName, 'trugurpala/sample-repo');
+   assert.equal(ingestPayload.sourceCard.originRef, 'trugurpala/sample-repo');
++  assert.equal(ingestPayload.sourceCard.decision, 'REFERENCE_ONLY');
++  assert.equal(ingestPayload.sourceCard.riskLevel, 'low');
++  assert.equal(ingestPayload.sourceCard.allowedLayer, 'reference');
++  assert.equal(ingestPayload.sourceCard.evidenceUri, 'https://example.com/source-evidence');
+   assert.equal(pack.sourceCardsCount, 1);
+   assert.equal(pack.searchPack.query, 'source card audit');
+   assert.equal(pack.skillRegistryCount, 5);
+   assert.ok(Array.isArray(pack.searchPack.matchingSkills));
+ });
+ 
++test('market radar catalog loads the core 10 references', async () => {
++  const catalog = await loadMarketRadarCatalog();
++
++  assert.equal(catalog.references.length, 10);
++  assert.ok(catalog.references.some((reference) => reference.name === 'OpenAI Codex CLI'));
++  assert.ok(catalog.references.some((reference) => reference.name === 'Microsoft Agent Governance Toolkit'));
++  assert.ok(catalog.references.every((reference) => reference.palaControl));
++});
++
++test('control groups catalog maps the 60 standards into 7 user-facing groups', async () => {
++  const catalog = await loadControlGroupsCatalog();
++  const ids = new Set(catalog.groups.flatMap((group) => group.standardIds));
++
++  assert.equal(catalog.productName, 'Pala OS Command Center');
++  assert.equal(catalog.groups.length, 7);
++  assert.equal(ids.size, 60);
++  assert.ok(catalog.groups.some((group) => group.id === 'ai-agent-governance'));
++  assert.ok(catalog.groups.some((group) => group.name === 'Pala Operating Law'));
++  assert.ok(catalog.groups.every((group) => group.standardIds.length > 0));
++});
++
+ test('skills CLI surfaces list, get, and search over the seed registry', async (t) => {
+   const root = await createWorkspace();
+   t.after(async () => {
+@@ -321,12 +363,14 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     const skills = await (await fetch('http://127.0.0.1:${port}/api/skills')).json();
+     const filteredSkills = await (await fetch('http://127.0.0.1:${port}/api/skills?status=draft&q=operator')).json();
+     const benchmark = await (await fetch('http://127.0.0.1:${port}/api/benchmark')).json();
++    const marketRadar = await (await fetch('http://127.0.0.1:${port}/api/market-radar')).json();
++    const controlGroups = await (await fetch('http://127.0.0.1:${port}/api/control-groups')).json();
+ 
+     try {
+       server.kill('SIGTERM');
+     } catch {}
+ 
+-    console.log(JSON.stringify({ rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark }, null, 2));
++    console.log(JSON.stringify({ rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark, marketRadar, controlGroups }, null, 2));
+   `;
+ 
+   const apiOutput = execFileSync(process.execPath, ['--input-type=module', '-e', apiScript], {
+@@ -340,10 +384,15 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+     encoding: 'utf8',
+   });
+ 
+-  const { rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark } = JSON.parse(apiOutput);
++  const { rootHtml, health, court, ledger, tools, skills, filteredSkills, benchmark, marketRadar, controlGroups } = JSON.parse(apiOutput);
+ 
+-  assert.match(rootHtml, /Command Radar/);
+-  assert.match(rootHtml, /Reference Doctrine/);
++  assert.match(rootHtml, /Pala OS Command Center/);
++  assert.match(rootHtml, /Pala Action Queue/);
++  assert.match(rootHtml, /Pala World Standards Atlas/);
++  assert.match(rootHtml, /Pala Evidence Ledger/);
++  assert.match(rootHtml, /World Agent Control Radar/);
++  assert.match(rootHtml, /Runtime degil, kontrol sistemi/);
++  assert.match(rootHtml, /Dunya agent yaziyor; Pala OS agentlari kontrol ediyor/);
+   assert.match(rootHtml, /Skill Registry/);
+   assert.equal(health.ok, true);
+   assert.equal(health.court.decision, 'RELEASE_BLOCKED');
+@@ -359,6 +408,16 @@ test('audit, screenshot, and local API endpoints are available', async (t) => {
+   assert.ok(filteredSkills.skills.some((skill) => skill.name === 'pala-os-operator'));
+   assert.equal(benchmark.ok, true);
+   assert.ok(Array.isArray(benchmark.benchmark.categories));
++  assert.equal(marketRadar.ok, true);
++  assert.equal(marketRadar.summary.total, 10);
++  assert.equal(marketRadar.references.length, 10);
++  assert.equal(controlGroups.ok, true);
++  assert.equal(controlGroups.summary.totalGroups, 7);
++  assert.equal(controlGroups.summary.totalStandards, 60);
++  assert.equal(controlGroups.releasePosture.ownerApprovalRequired, true);
++  assert.ok(Array.isArray(controlGroups.actionQueue));
++  assert.ok(controlGroups.actionQueue.length >= 3);
++  assert.ok(controlGroups.groups.some((group) => group.name === 'AI & Agent Governance'));
+ });
+ 
+ test('root-level scaffold docs exist for plans prompts benchmark and court', async () => {
+
+# --- untracked file diff: .pala/rules/market-radar.json ---
+
+diff --git "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt" b/.pala/rules/market-radar.json
+index e69de29..2a4a615 100644
+--- "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt"
++++ b/.pala/rules/market-radar.json
+@@ -0,0 +1,148 @@
++{
++  "version": "2026-06-09-core-10",
++  "status": "REFERENCE_ONLY",
++  "generatedFrom": "Pala OS market radar core 10",
++  "rule": "Dunya agent yaziyor; Pala OS agentlari kontrol ediyor. No external code import without source-card, license, risk, boundary, and proof.",
++  "references": [
++    {
++      "id": "openai-codex-cli",
++      "name": "OpenAI Codex CLI",
++      "category": "coding-agent-runtime",
++      "repoFullName": "openai/codex",
++      "evidenceUrl": "https://help.openai.com/en/articles/11096431",
++      "worldPattern": "Local terminal coding agent with npm install, binaries, approvals, and SDK-adjacent automation surfaces.",
++      "stackSignal": "CLI-first local agent; OpenAI runtime and local workspace execution.",
++      "palaLesson": "Do not rebuild Codex. Control Codex runs with task scope, approvals, evidence, and court checks.",
++      "palaControl": "Adapter only; Pala records intent, allowed files, commands, outputs, and release blockers before calling work done.",
++      "decision": "adapt_pattern",
++      "risk": "medium",
++      "allowedLayer": "adapter"
++    },
++    {
++      "id": "openhands",
++      "name": "OpenHands",
++      "category": "agent-platform",
++      "repoFullName": "OpenHands/OpenHands",
++      "evidenceUrl": "https://docs.openhands.dev/",
++      "worldPattern": "Software agent platform split across SDK, REST API, CLI/cloud surfaces, and a React web app.",
++      "stackSignal": "Python SDK plus REST API and single-page React application.",
++      "palaLesson": "Agent products split into core, daemon/API, and dashboard. Pala should keep the same separation.",
++      "palaControl": "Reference pattern only; Pala keeps local SQLite, ledger, source cards, and owner-controlled court as the source of truth.",
++      "decision": "adopt_pattern",
++      "risk": "medium",
++      "allowedLayer": "reference"
++    },
++    {
++      "id": "cline",
++      "name": "Cline",
++      "category": "agent-runtime",
++      "repoFullName": "cline/cline",
++      "evidenceUrl": "https://docs.cline.bot/cline-cli/installation",
++      "worldPattern": "IDE extension, CLI, SDK, and task surfaces around an autonomous coding agent runtime.",
++      "stackSignal": "npm-installed CLI and SDK with VS Code/Cursor/JetBrains-style host surfaces.",
++      "palaLesson": "The market already sells runtimes. Pala should sell the governance board around those runtimes.",
++      "palaControl": "Adapter/reference boundary; risky actions require owner approval, file scope, and post-run evidence.",
++      "decision": "adapt_pattern",
++      "risk": "medium",
++      "allowedLayer": "adapter"
++    },
++    {
++      "id": "goose",
++      "name": "Goose",
++      "category": "local-agent-app",
++      "repoFullName": "aaif-goose/goose",
++      "evidenceUrl": "https://block.github.io/goose/",
++      "worldPattern": "General-purpose desktop, CLI, and API agent that runs on the local machine.",
++      "stackSignal": "Rust-backed local-first app for performance and portability.",
++      "palaLesson": "Rust/Tauri can be a later wrapper decision, not the first rewrite. Prove the control model first.",
++      "palaControl": "Reference-only for local-first packaging; no runtime dependency until source-card, license, and adapter proof exist.",
++      "decision": "reference_only",
++      "risk": "medium",
++      "allowedLayer": "reference"
++    },
++    {
++      "id": "continue",
++      "name": "Continue",
++      "category": "repo-native-checks",
++      "repoFullName": "continuedev/continue",
++      "evidenceUrl": "https://docs.continue.dev/checks/running-locally",
++      "worldPattern": "Repo-native coding assistant with local and CI checks discoverable from source-controlled configuration.",
++      "stackSignal": "VS Code, JetBrains, CLI, rules, and check files inside the repository.",
++      "palaLesson": "Pala checks should be repo-native and runnable before push, not only dashboard decoration.",
++      "palaControl": "Adopt the check discipline; Pala extends it with SQLite evidence, source cards, and court state.",
++      "decision": "adopt_pattern",
++      "risk": "low",
++      "allowedLayer": "policy"
++    },
++    {
++      "id": "pr-agent",
++      "name": "PR-Agent",
++      "category": "pr-review",
++      "repoFullName": "The-PR-Agent/pr-agent",
++      "evidenceUrl": "https://docs.pr-agent.ai/usage-guide/introduction/",
++      "worldPattern": "AI PR reviewer that can run as a local CLI, GitHub Action, GitHub App, or other VCS integration.",
++      "stackSignal": "Python/pip style PR automation with hosted and local execution paths.",
++      "palaLesson": "PR review bots are accepted; Pala should make PR proof broader than review comments.",
++      "palaControl": "GitHub adapter surface; Pala requires diff manifest, evidence commands, source-card status, and owner release gate.",
++      "decision": "adapt_pattern",
++      "risk": "medium",
++      "allowedLayer": "github-adapter"
++    },
++    {
++      "id": "github-agent-hq",
++      "name": "GitHub Agent HQ",
++      "category": "mission-control",
++      "repoFullName": null,
++      "evidenceUrl": "https://github.blog/news-insights/company-news/welcome-home-agents",
++      "worldPattern": "Mission control for assigning, monitoring, and managing multiple agents across GitHub, VS Code, mobile, and CLI.",
++      "stackSignal": "GitHub-native multi-agent command center with identity, branch controls, integrations, and PR workflow hooks.",
++      "palaLesson": "The mission-control direction is real. Pala differentiates by staying local-first and owner-controlled.",
++      "palaControl": "Governance signal; GitHub remains operational source of record, but Pala court decides local proof posture.",
++      "decision": "governance_signal",
++      "risk": "low",
++      "allowedLayer": "strategy"
++    },
++    {
++      "id": "port-ai-control-center",
++      "name": "Port AI Control Center",
++      "category": "ai-pr-dashboard",
++      "repoFullName": null,
++      "evidenceUrl": "https://docs.port.io/guides/all/track-ai-driven-pull-requests/",
++      "worldPattern": "Dashboard model for tracking AI-driven pull requests, agent attribution, and PR workflow status.",
++      "stackSignal": "Port software catalog plus GitHub integration and dashboard widgets.",
++      "palaLesson": "Teams want central visibility into AI-created PRs. Pala should show this locally before enterprise integration.",
++      "palaControl": "Reference-only dashboard pattern; Pala records local ledger events and separates GitHub read from write approval.",
++      "decision": "reference_only",
++      "risk": "low",
++      "allowedLayer": "dashboard"
++    },
++    {
++      "id": "agent-friendly-code",
++      "name": "Agent Friendly Code",
++      "category": "agent-readiness",
++      "repoFullName": null,
++      "evidenceUrl": "https://www.agentready.me/",
++      "worldPattern": "Agent-readiness scoring for sites and repos, including AGENTS.md, skills, CI/lint/tests, MCP hints, and safety signals.",
++      "stackSignal": "Dashboard/scorecard experience around repo and web automation readiness.",
++      "palaLesson": "Repo agent-readiness is its own product surface. Pala should turn readiness into actions, not just a score.",
++      "palaControl": "Reference-only; Pala maps readiness findings to standards, action queue, evidence requirements, and court blockers.",
++      "decision": "reference_only",
++      "risk": "low",
++      "allowedLayer": "dashboard"
++    },
++    {
++      "id": "microsoft-agent-governance-toolkit",
++      "name": "Microsoft Agent Governance Toolkit",
++      "category": "agent-governance",
++      "repoFullName": "microsoft/agent-governance-toolkit",
++      "evidenceUrl": "https://opensource.microsoft.com/blog/2026/04/02/introducing-the-agent-governance-toolkit-open-source-runtime-security-for-ai-agents/",
++      "worldPattern": "Runtime governance for autonomous agents with policy, identity, sandboxing, and reliability practices.",
++      "stackSignal": "Multi-language governance toolkit with deterministic policy enforcement and agent identity direction.",
++      "palaLesson": "Policy, identity, and proof are becoming the serious layer. Pala Court/Evidence is a valid product category.",
++      "palaControl": "Governance signal; Pala keeps local evidence first and treats external enforcement as future adapter work.",
++      "decision": "governance_signal",
++      "risk": "medium",
++      "allowedLayer": "policy"
++    }
++  ]
++}
+
+# --- untracked file diff: .pala/rules/pala-control-groups.json ---
+
+diff --git "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt" b/.pala/rules/pala-control-groups.json
+index e69de29..dd6a44a 100644
+--- "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt"
++++ b/.pala/rules/pala-control-groups.json
+@@ -0,0 +1,139 @@
++{
++  "version": "2026-06-09-command-center-v1",
++  "productName": "Pala OS Command Center",
++  "headline": "Dunya agent yaziyor. Pala OS agent isini kanit, standart, risk ve owner karariyla kontrol ediyor.",
++  "rule": "External tools and ideas start as reference. Source-card, risk, layer, evidence, Pala Court, and owner approval decide whether they move further.",
++  "surfaces": [
++    "Pala Court",
++    "Pala Evidence Ledger",
++    "Pala World Standards Atlas",
++    "Pala Agent Control Radar",
++    "Pala Skill Registry",
++    "Pala Action Queue"
++  ],
++  "groups": [
++    {
++      "id": "governance-risk",
++      "name": "Governance & Risk",
++      "surface": "Pala World Standards Atlas",
++      "ownerQuestion": "Is this work governed, risk-scored, and auditable enough to continue?",
++      "evidenceRule": "Policy, risk, identity, continuity, and compliance claims need local evidence before release posture can improve.",
++      "standardIds": [
++        "nist-ssdf",
++        "nist-csf-2",
++        "nist-rmf",
++        "nist-800-53",
++        "nist-800-63",
++        "nist-800-61",
++        "cisa-ssdf-attestation",
++        "iso-27001",
++        "iso-27002",
++        "iso-27005",
++        "iso-27018",
++        "iso-27701",
++        "iso-22301",
++        "iso-31000",
++        "iso-42001",
++        "soc-2",
++        "stride",
++        "dread",
++        "pasta"
++      ]
++    },
++    {
++      "id": "application-security",
++      "name": "Application Security",
++      "surface": "Pala World Standards Atlas",
++      "ownerQuestion": "Can the application surface survive common web, API, and mobile attack paths?",
++      "evidenceRule": "Application standards need scan, test, review, or explicit not-applicable evidence.",
++      "standardIds": [
++        "owasp-top-10",
++        "owasp-asvs",
++        "owasp-api-top-10",
++        "owasp-samm",
++        "owasp-masvs",
++        "owasp-cheat-sheets"
++      ]
++    },
++    {
++      "id": "ai-agent-governance",
++      "name": "AI & Agent Governance",
++      "surface": "Pala Agent Control Radar",
++      "ownerQuestion": "Are AI, MCP, and autonomous-agent actions bounded before they touch the repo?",
++      "evidenceRule": "Agent work enters as reference or adapter intent first; tool access, source cards, and court proof decide the next layer.",
++      "standardIds": [
++        "nist-ai-rmf",
++        "owasp-llm-top-10",
++        "owasp-agentic-ai-risks",
++        "mcp-auth-tool-allowlist"
++      ]
++    },
++    {
++      "id": "supply-chain-provenance",
++      "name": "Supply Chain & Provenance",
++      "surface": "Pala Evidence Ledger",
++      "ownerQuestion": "Can every imported package, build artifact, and upstream reference be traced?",
++      "evidenceRule": "No external idea becomes a dependency without source-card, license, risk, layer, and provenance proof.",
++      "standardIds": [
++        "nist-800-161",
++        "owasp-ci-cd-top-10",
++        "slsa",
++        "openssf-scorecard",
++        "openssf-best-practices-badge",
++        "sigstore",
++        "in-toto",
++        "cyclonedx",
++        "spdx",
++        "vex",
++        "guac",
++        "sbom-provenance"
++      ]
++    },
++    {
++      "id": "runtime-platform-security",
++      "name": "Runtime & Platform Security",
++      "surface": "Pala Evidence Ledger",
++      "ownerQuestion": "Is the local, container, and platform runtime locked down enough to operate?",
++      "evidenceRule": "Runtime claims need Docker, Kubernetes, host, least-privilege, or platform benchmark evidence.",
++      "standardIds": [
++        "nist-800-190",
++        "iso-27017",
++        "cis-docker-benchmark",
++        "cis-kubernetes-benchmark",
++        "cis-linux-benchmark",
++        "owasp-docker-top-10",
++        "docker-least-privilege",
++        "kubernetes-pod-security-standards"
++      ]
++    },
++    {
++      "id": "threat-vulnerability-intel",
++      "name": "Threat & Vulnerability Intel",
++      "surface": "Pala Court",
++      "ownerQuestion": "Do known attack techniques and vulnerability signals change the release decision?",
++      "evidenceRule": "Threat and vulnerability signals should feed court blockers instead of living as passive labels.",
++      "standardIds": [
++        "mitre-attack",
++        "mitre-cwe",
++        "mitre-capec",
++        "cve",
++        "cvss",
++        "epss",
++        "cisa-kev"
++      ]
++    },
++    {
++      "id": "pala-operating-law",
++      "name": "Pala Operating Law",
++      "surface": "Pala Court",
++      "ownerQuestion": "Did Pala keep no-fake-done, owner approval, GitHub boundary, and local evidence intact?",
++      "evidenceRule": "Pala law blocks fake green states: no evidence, no pass; no owner approval, no push or release.",
++      "standardIds": [
++        "cis-controls",
++        "cis-github-benchmark",
++        "github-oidc-least-privilege",
++        "pala-no-fake-done-ledger-law"
++      ]
++    }
++  ]
++}
+
+# --- untracked file diff: src/market-radar.js ---
+
+diff --git "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt" b/src/market-radar.js
+index e69de29..cab2839 100644
+--- "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt"
++++ b/src/market-radar.js
+@@ -0,0 +1,216 @@
++import fs from 'node:fs/promises';
++import { MARKET_RADAR_PATH } from './config.js';
++
++export const MARKET_RADAR_VERSION = '2026-06-09-core-10';
++
++export const MARKET_RADAR_REFERENCES = [
++  {
++    id: 'openai-codex-cli',
++    name: 'OpenAI Codex CLI',
++    category: 'coding-agent-runtime',
++    repoFullName: 'openai/codex',
++    evidenceUrl: 'https://help.openai.com/en/articles/11096431',
++    worldPattern: 'Local terminal coding agent with npm install, binaries, approvals, and SDK-adjacent automation surfaces.',
++    stackSignal: 'CLI-first local agent; OpenAI runtime and local workspace execution.',
++    palaLesson: 'Do not rebuild Codex. Control Codex runs with task scope, approvals, evidence, and court checks.',
++    palaControl: 'Adapter only; Pala records intent, allowed files, commands, outputs, and release blockers before calling work done.',
++    decision: 'adapt_pattern',
++    risk: 'medium',
++    allowedLayer: 'adapter',
++  },
++  {
++    id: 'openhands',
++    name: 'OpenHands',
++    category: 'agent-platform',
++    repoFullName: 'OpenHands/OpenHands',
++    evidenceUrl: 'https://docs.openhands.dev/',
++    worldPattern: 'Software agent platform split across SDK, REST API, CLI/cloud surfaces, and a React web app.',
++    stackSignal: 'Python SDK plus REST API and single-page React application.',
++    palaLesson: 'Agent products split into core, daemon/API, and dashboard. Pala should keep the same separation.',
++    palaControl: 'Reference pattern only; Pala keeps local SQLite, ledger, source cards, and owner-controlled court as the source of truth.',
++    decision: 'adopt_pattern',
++    risk: 'medium',
++    allowedLayer: 'reference',
++  },
++  {
++    id: 'cline',
++    name: 'Cline',
++    category: 'agent-runtime',
++    repoFullName: 'cline/cline',
++    evidenceUrl: 'https://docs.cline.bot/cline-cli/installation',
++    worldPattern: 'IDE extension, CLI, SDK, and task surfaces around an autonomous coding agent runtime.',
++    stackSignal: 'npm-installed CLI and SDK with VS Code/Cursor/JetBrains-style host surfaces.',
++    palaLesson: 'The market already sells runtimes. Pala should sell the governance board around those runtimes.',
++    palaControl: 'Adapter/reference boundary; risky actions require owner approval, file scope, and post-run evidence.',
++    decision: 'adapt_pattern',
++    risk: 'medium',
++    allowedLayer: 'adapter',
++  },
++  {
++    id: 'goose',
++    name: 'Goose',
++    category: 'local-agent-app',
++    repoFullName: 'aaif-goose/goose',
++    evidenceUrl: 'https://block.github.io/goose/',
++    worldPattern: 'General-purpose desktop, CLI, and API agent that runs on the local machine.',
++    stackSignal: 'Rust-backed local-first app for performance and portability.',
++    palaLesson: 'Rust/Tauri can be a later wrapper decision, not the first rewrite. Prove the control model first.',
++    palaControl: 'Reference-only for local-first packaging; no runtime dependency until source-card, license, and adapter proof exist.',
++    decision: 'reference_only',
++    risk: 'medium',
++    allowedLayer: 'reference',
++  },
++  {
++    id: 'continue',
++    name: 'Continue',
++    category: 'repo-native-checks',
++    repoFullName: 'continuedev/continue',
++    evidenceUrl: 'https://docs.continue.dev/checks/running-locally',
++    worldPattern: 'Repo-native coding assistant with local and CI checks discoverable from source-controlled configuration.',
++    stackSignal: 'VS Code, JetBrains, CLI, rules, and check files inside the repository.',
++    palaLesson: 'Pala checks should be repo-native and runnable before push, not only dashboard decoration.',
++    palaControl: 'Adopt the check discipline; Pala extends it with SQLite evidence, source cards, and court state.',
++    decision: 'adopt_pattern',
++    risk: 'low',
++    allowedLayer: 'policy',
++  },
++  {
++    id: 'pr-agent',
++    name: 'PR-Agent',
++    category: 'pr-review',
++    repoFullName: 'The-PR-Agent/pr-agent',
++    evidenceUrl: 'https://docs.pr-agent.ai/usage-guide/introduction/',
++    worldPattern: 'AI PR reviewer that can run as a local CLI, GitHub Action, GitHub App, or other VCS integration.',
++    stackSignal: 'Python/pip style PR automation with hosted and local execution paths.',
++    palaLesson: 'PR review bots are accepted; Pala should make PR proof broader than review comments.',
++    palaControl: 'GitHub adapter surface; Pala requires diff manifest, evidence commands, source-card status, and owner release gate.',
++    decision: 'adapt_pattern',
++    risk: 'medium',
++    allowedLayer: 'github-adapter',
++  },
++  {
++    id: 'github-agent-hq',
++    name: 'GitHub Agent HQ',
++    category: 'mission-control',
++    repoFullName: null,
++    evidenceUrl: 'https://github.blog/news-insights/company-news/welcome-home-agents',
++    worldPattern: 'Mission control for assigning, monitoring, and managing multiple agents across GitHub, VS Code, mobile, and CLI.',
++    stackSignal: 'GitHub-native multi-agent command center with identity, branch controls, integrations, and PR workflow hooks.',
++    palaLesson: 'The mission-control direction is real. Pala differentiates by staying local-first and owner-controlled.',
++    palaControl: 'Governance signal; GitHub remains operational source of record, but Pala court decides local proof posture.',
++    decision: 'governance_signal',
++    risk: 'low',
++    allowedLayer: 'strategy',
++  },
++  {
++    id: 'port-ai-control-center',
++    name: 'Port AI Control Center',
++    category: 'ai-pr-dashboard',
++    repoFullName: null,
++    evidenceUrl: 'https://docs.port.io/guides/all/track-ai-driven-pull-requests/',
++    worldPattern: 'Dashboard model for tracking AI-driven pull requests, agent attribution, and PR workflow status.',
++    stackSignal: 'Port software catalog plus GitHub integration and dashboard widgets.',
++    palaLesson: 'Teams want central visibility into AI-created PRs. Pala should show this locally before enterprise integration.',
++    palaControl: 'Reference-only dashboard pattern; Pala records local ledger events and separates GitHub read from write approval.',
++    decision: 'reference_only',
++    risk: 'low',
++    allowedLayer: 'dashboard',
++  },
++  {
++    id: 'agent-friendly-code',
++    name: 'Agent Friendly Code',
++    category: 'agent-readiness',
++    repoFullName: null,
++    evidenceUrl: 'https://www.agentready.me/',
++    worldPattern: 'Agent-readiness scoring for sites and repos, including AGENTS.md, skills, CI/lint/tests, MCP hints, and safety signals.',
++    stackSignal: 'Dashboard/scorecard experience around repo and web automation readiness.',
++    palaLesson: 'Repo agent-readiness is its own product surface. Pala should turn readiness into actions, not just a score.',
++    palaControl: 'Reference-only; Pala maps readiness findings to standards, action queue, evidence requirements, and court blockers.',
++    decision: 'reference_only',
++    risk: 'low',
++    allowedLayer: 'dashboard',
++  },
++  {
++    id: 'microsoft-agent-governance-toolkit',
++    name: 'Microsoft Agent Governance Toolkit',
++    category: 'agent-governance',
++    repoFullName: 'microsoft/agent-governance-toolkit',
++    evidenceUrl: 'https://opensource.microsoft.com/blog/2026/04/02/introducing-the-agent-governance-toolkit-open-source-runtime-security-for-ai-agents/',
++    worldPattern: 'Runtime governance for autonomous agents with policy, identity, sandboxing, and reliability practices.',
++    stackSignal: 'Multi-language governance toolkit with deterministic policy enforcement and agent identity direction.',
++    palaLesson: 'Policy, identity, and proof are becoming the serious layer. Pala Court/Evidence is a valid product category.',
++    palaControl: 'Governance signal; Pala keeps local evidence first and treats external enforcement as future adapter work.',
++    decision: 'governance_signal',
++    risk: 'medium',
++    allowedLayer: 'policy',
++  },
++];
++
++export function marketRadarSeed() {
++  return {
++    version: MARKET_RADAR_VERSION,
++    status: 'REFERENCE_ONLY',
++    generatedFrom: 'Pala OS market radar core 10',
++    rule: 'Dunya agent yaziyor; Pala OS agentlari kontrol ediyor. No external code import without source-card, license, risk, boundary, and proof.',
++    references: MARKET_RADAR_REFERENCES,
++  };
++}
++
++export async function ensureMarketRadarCatalog() {
++  await fs.writeFile(MARKET_RADAR_PATH, `${JSON.stringify(marketRadarSeed(), null, 2)}\n`, 'utf8');
++}
++
++export async function loadMarketRadarCatalog() {
++  try {
++    const content = await fs.readFile(MARKET_RADAR_PATH, 'utf8');
++    const parsed = JSON.parse(content);
++    return {
++      ...marketRadarSeed(),
++      ...parsed,
++      references: Array.isArray(parsed.references) ? parsed.references : MARKET_RADAR_REFERENCES,
++    };
++  } catch {
++    return marketRadarSeed();
++  }
++}
++
++function countBy(references, key) {
++  return references.reduce((counts, reference) => {
++    const value = reference[key] ?? 'unknown';
++    counts[value] = (counts[value] ?? 0) + 1;
++    return counts;
++  }, {});
++}
++
++function sourceCardMatches(reference, sourceCard) {
++  const repo = reference.repoFullName;
++  if (repo && (sourceCard.repo_full_name === repo || sourceCard.origin_ref === repo)) {
++    return true;
++  }
++
++  return Boolean(reference.evidenceUrl && sourceCard.evidence_uri === reference.evidenceUrl);
++}
++
++export function summarizeMarketRadar(catalog, sourceCards = []) {
++  const references = Array.isArray(catalog.references) ? catalog.references : [];
++  const sourceCarded = references.filter((reference) => (
++    sourceCards.some((sourceCard) => sourceCardMatches(reference, sourceCard))
++  )).length;
++
++  return {
++    total: references.length,
++    sourceCarded,
++    byCategory: countBy(references, 'category'),
++    byDecision: countBy(references, 'decision'),
++    byLayer: countBy(references, 'allowedLayer'),
++    posture: 'runtime-degil-kontrol-sistemi',
++    controlLine: 'Dunya agent yaziyor; Pala OS agentlari kontrol ediyor.',
++  };
++}
++
++export function annotateMarketRadarReferences(catalog, sourceCards = []) {
++  return (catalog.references ?? []).map((reference) => ({
++    ...reference,
++    sourceCarded: sourceCards.some((sourceCard) => sourceCardMatches(reference, sourceCard)),
++  }));
++}
+
+# --- untracked file diff: src/standard-groups.js ---
+
+diff --git "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt" b/src/standard-groups.js
+index e69de29..a378d6e 100644
+--- "a/C:\\Users\\PALA-H~1\\AppData\\Local\\Temp\\pala-empty-for-diff.txt"
++++ b/src/standard-groups.js
+@@ -0,0 +1,385 @@
++import fs from 'node:fs/promises';
++import { CONTROL_GROUPS_PATH } from './config.js';
++
++export const CONTROL_GROUPS_VERSION = '2026-06-09-command-center-v1';
++export const COMMAND_CENTER_NAME = 'Pala OS Command Center';
++export const COMMAND_CENTER_HEADLINE = 'Dunya agent yaziyor. Pala OS agent isini kanit, standart, risk ve owner karariyla kontrol ediyor.';
++
++export const CONTROL_GROUP_DEFINITIONS = [
++  {
++    id: 'governance-risk',
++    name: 'Governance & Risk',
++    surface: 'Pala World Standards Atlas',
++    ownerQuestion: 'Is this work governed, risk-scored, and auditable enough to continue?',
++    evidenceRule: 'Policy, risk, identity, continuity, and compliance claims need local evidence before release posture can improve.',
++    standardIds: [
++      'nist-ssdf',
++      'nist-csf-2',
++      'nist-rmf',
++      'nist-800-53',
++      'nist-800-63',
++      'nist-800-61',
++      'cisa-ssdf-attestation',
++      'iso-27001',
++      'iso-27002',
++      'iso-27005',
++      'iso-27018',
++      'iso-27701',
++      'iso-22301',
++      'iso-31000',
++      'iso-42001',
++      'soc-2',
++      'stride',
++      'dread',
++      'pasta',
++    ],
++  },
++  {
++    id: 'application-security',
++    name: 'Application Security',
++    surface: 'Pala World Standards Atlas',
++    ownerQuestion: 'Can the application surface survive common web, API, and mobile attack paths?',
++    evidenceRule: 'Application standards need scan, test, review, or explicit not-applicable evidence.',
++    standardIds: [
++      'owasp-top-10',
++      'owasp-asvs',
++      'owasp-api-top-10',
++      'owasp-samm',
++      'owasp-masvs',
++      'owasp-cheat-sheets',
++    ],
++  },
++  {
++    id: 'ai-agent-governance',
++    name: 'AI & Agent Governance',
++    surface: 'Pala Agent Control Radar',
++    ownerQuestion: 'Are AI, MCP, and autonomous-agent actions bounded before they touch the repo?',
++    evidenceRule: 'Agent work enters as reference or adapter intent first; tool access, source cards, and court proof decide the next layer.',
++    standardIds: [
++      'nist-ai-rmf',
++      'owasp-llm-top-10',
++      'owasp-agentic-ai-risks',
++      'mcp-auth-tool-allowlist',
++    ],
++  },
++  {
++    id: 'supply-chain-provenance',
++    name: 'Supply Chain & Provenance',
++    surface: 'Pala Evidence Ledger',
++    ownerQuestion: 'Can every imported package, build artifact, and upstream reference be traced?',
++    evidenceRule: 'No external idea becomes a dependency without source-card, license, risk, layer, and provenance proof.',
++    standardIds: [
++      'nist-800-161',
++      'owasp-ci-cd-top-10',
++      'slsa',
++      'openssf-scorecard',
++      'openssf-best-practices-badge',
++      'sigstore',
++      'in-toto',
++      'cyclonedx',
++      'spdx',
++      'vex',
++      'guac',
++      'sbom-provenance',
++    ],
++  },
++  {
++    id: 'runtime-platform-security',
++    name: 'Runtime & Platform Security',
++    surface: 'Pala Evidence Ledger',
++    ownerQuestion: 'Is the local, container, and platform runtime locked down enough to operate?',
++    evidenceRule: 'Runtime claims need Docker, Kubernetes, host, least-privilege, or platform benchmark evidence.',
++    standardIds: [
++      'nist-800-190',
++      'iso-27017',
++      'cis-docker-benchmark',
++      'cis-kubernetes-benchmark',
++      'cis-linux-benchmark',
++      'owasp-docker-top-10',
++      'docker-least-privilege',
++      'kubernetes-pod-security-standards',
++    ],
++  },
++  {
++    id: 'threat-vulnerability-intel',
++    name: 'Threat & Vulnerability Intel',
++    surface: 'Pala Court',
++    ownerQuestion: 'Do known attack techniques and vulnerability signals change the release decision?',
++    evidenceRule: 'Threat and vulnerability signals should feed court blockers instead of living as passive labels.',
++    standardIds: [
++      'mitre-attack',
++      'mitre-cwe',
++      'mitre-capec',
++      'cve',
++      'cvss',
++      'epss',
++      'cisa-kev',
++    ],
++  },
++  {
++    id: 'pala-operating-law',
++    name: 'Pala Operating Law',
++    surface: 'Pala Court',
++    ownerQuestion: 'Did Pala keep no-fake-done, owner approval, GitHub boundary, and local evidence intact?',
++    evidenceRule: 'Pala law blocks fake green states: no evidence, no pass; no owner approval, no push or release.',
++    standardIds: [
++      'cis-controls',
++      'cis-github-benchmark',
++      'github-oidc-least-privilege',
++      'pala-no-fake-done-ledger-law',
++    ],
++  },
++];
++
++export function controlGroupsSeed() {
++  return {
++    version: CONTROL_GROUPS_VERSION,
++    productName: COMMAND_CENTER_NAME,
++    headline: COMMAND_CENTER_HEADLINE,
++    rule: 'External tools and ideas start as reference. Source-card, risk, layer, evidence, Pala Court, and owner approval decide whether they move further.',
++    surfaces: [
++      'Pala Court',
++      'Pala Evidence Ledger',
++      'Pala World Standards Atlas',
++      'Pala Agent Control Radar',
++      'Pala Skill Registry',
++      'Pala Action Queue',
++    ],
++    groups: CONTROL_GROUP_DEFINITIONS,
++  };
++}
++
++export async function ensureControlGroupsCatalog() {
++  await fs.writeFile(CONTROL_GROUPS_PATH, `${JSON.stringify(controlGroupsSeed(), null, 2)}\n`, 'utf8');
++}
++
++export async function loadControlGroupsCatalog() {
++  try {
++    const content = await fs.readFile(CONTROL_GROUPS_PATH, 'utf8');
++    const parsed = JSON.parse(content);
++    return {
++      ...controlGroupsSeed(),
++      ...parsed,
++      groups: Array.isArray(parsed.groups) ? parsed.groups : CONTROL_GROUP_DEFINITIONS,
++    };
++  } catch {
++    return controlGroupsSeed();
++  }
++}
++
++function countStandards(standards) {
++  return standards.reduce((counts, standard) => {
++    counts.total += 1;
++    if (standard.policyState === 'required') counts.required += 1;
++    if (standard.policyState === 'recommended') counts.recommended += 1;
++    if (standard.status === 'blocked') counts.blocked += 1;
++    if (standard.satisfied) counts.satisfied += 1;
++    if (standard.status === 'not_applicable_with_reason') counts.notApplicable += 1;
++    counts.evidence += Number(standard.evidenceCount ?? 0);
++    return counts;
++  }, {
++    total: 0,
++    required: 0,
++    recommended: 0,
++    blocked: 0,
++    satisfied: 0,
++    notApplicable: 0,
++    evidence: 0,
++  });
++}
++
++function statusForGroup(counts) {
++  if (counts.blocked > 0) return 'blocked';
++  if (counts.satisfied > 0) return 'evidence';
++  return 'pending';
++}
++
++function firstMissingRequired(standards) {
++  return standards.find((standard) => standard.status === 'blocked' && standard.policyState === 'required') ?? null;
++}
++
++export function buildControlGroups(evaluatedStandards, catalog = controlGroupsSeed()) {
++  const standardsById = new Map(evaluatedStandards.map((standard) => [standard.id, standard]));
++
++  return catalog.groups.map((group) => {
++    const standards = group.standardIds
++      .map((standardId) => standardsById.get(standardId))
++      .filter(Boolean);
++    const counts = countStandards(standards);
++    const missing = firstMissingRequired(standards);
++
++    return {
++      ...group,
++      ...counts,
++      status: statusForGroup(counts),
++      primaryAction: missing
++        ? `Add evidence for ${missing.title}`
++        : counts.evidence > 0
++          ? 'Review evidence freshness'
++          : 'Collect first evidence item',
++      primaryStandardId: missing?.id ?? standards[0]?.id ?? null,
++      standards: standards.map((standard) => ({
++        id: standard.id,
++        title: standard.title,
++        family: standard.family,
++        policyState: standard.policyState,
++        status: standard.status,
++        evidenceCount: standard.evidenceCount,
++        reason: standard.reason,
++      })),
++    };
++  });
++}
++
++export function summarizeControlGroups(groups) {
++  return groups.reduce((summary, group) => {
++    summary.totalGroups += 1;
++    summary.totalStandards += group.total;
++    summary.required += group.required;
++    summary.recommended += group.recommended;
++    summary.blocked += group.blocked;
++    summary.satisfied += group.satisfied;
++    summary.evidence += group.evidence;
++    if (group.blocked > 0) summary.blockedGroups += 1;
++    if (group.status === 'evidence') summary.evidenceGroups += 1;
++    return summary;
++  }, {
++    productName: COMMAND_CENTER_NAME,
++    headline: COMMAND_CENTER_HEADLINE,
++    totalGroups: 0,
++    totalStandards: 0,
++    required: 0,
++    recommended: 0,
++    blocked: 0,
++    satisfied: 0,
++    evidence: 0,
++    blockedGroups: 0,
++    evidenceGroups: 0,
++  });
++}
++
++export function buildReleasePosture({ summary, court, sourceCards, ledger, github }) {
++  const blockedRequired = summary.byStatus.blocked ?? 0;
++  const sourceCardCount = sourceCards.length;
++  const ledgerCount = ledger.length;
++  const reasons = [];
++
++  if (blockedRequired > 0) reasons.push(`${blockedRequired} required standards still need evidence`);
++  if (sourceCardCount === 0) reasons.push('source-card gate has no approved reference evidence');
++  if (ledgerCount === 0) reasons.push('evidence ledger has no local proof records');
++  if (!github.configured) reasons.push('GitHub bridge is not configured for operational source-of-record checks');
++  reasons.push('owner approval is required for push and release');
++
++  return {
++    productName: COMMAND_CENTER_NAME,
++    courtName: 'Pala Court',
++    ledgerName: 'Pala Evidence Ledger',
++    headline: COMMAND_CENTER_HEADLINE,
++    decision: court.decision,
++    status: court.decision === 'RELEASE_BLOCKED' || blockedRequired > 0 ? 'blocked' : 'owner_review',
++    releaseAllowed: false,
++    ownerApprovalRequired: true,
++    ownerApprovalState: 'required_for_push_release',
++    blockedRequired,
++    sourceCardCount,
++    ledgerCount,
++    githubConfigured: Boolean(github.configured),
++    reasons,
++    primaryMessage: reasons[0] ?? 'Court can move only after owner approval is recorded.',
++  };
++}
++
++export function buildActionQueue({
++  controlGroups,
++  releasePosture,
++  sourceCards,
++  github,
++  marketRadarSummary,
++  jobRuns,
++}) {
++  const queue = [];
++  const push = (item) => {
++    queue.push({
++      priority: queue.length + 1,
++      ...item,
++    });
++  };
++
++  if (releasePosture.status === 'blocked') {
++    push({
++      title: 'Pala Court release blocker',
++      layer: 'Pala Court',
++      status: 'blocked',
++      detail: releasePosture.primaryMessage,
++      evidenceCommand: 'sak court',
++    });
++  }
++
++  controlGroups
++    .filter((group) => group.blocked > 0)
++    .sort((left, right) => right.blocked - left.blocked || left.name.localeCompare(right.name))
++    .slice(0, 2)
++    .forEach((group) => {
++      push({
++        title: `${group.name} evidence gap`,
++        layer: group.surface,
++        status: 'blocked',
++        detail: `${group.blocked} required standards need evidence. Next: ${group.primaryAction}.`,
++        evidenceCommand: group.primaryStandardId
++          ? `sak evidence add --standard ${group.primaryStandardId} --detail "..."`
++          : 'sak status',
++      });
++    });
++
++  if (sourceCards.length === 0) {
++    push({
++      title: 'Source-card gate is empty',
++      layer: 'Pala Evidence Ledger',
++      status: 'partial',
++      detail: 'External references are still catalog entries, not source-carded proof.',
++      evidenceCommand: 'sak ingest --repo owner/name --decision REFERENCE_ONLY --layer reference --risk low --evidence-uri URL',
++    });
++  }
++
++  if ((marketRadarSummary.total ?? 0) > (marketRadarSummary.sourceCarded ?? 0)) {
++    push({
++      title: 'Market radar references need source cards',
++      layer: 'Pala Agent Control Radar',
++      status: 'partial',
++      detail: `${marketRadarSummary.sourceCarded ?? 0}/${marketRadarSummary.total ?? 0} market references are source-carded.`,
++      evidenceCommand: 'sak ingest --repo owner/name --decision REFERENCE_ONLY --layer reference --risk low --evidence-uri URL',
++    });
++  }
++
++  if (!github.configured) {
++    push({
++      title: 'GitHub source-of-record check',
++      layer: 'Pala Court',
++      status: 'owner_controlled',
++      detail: github.reason,
++      evidenceCommand: 'sak github sync',
++    });
++  }
++
++  if (jobRuns.length === 0) {
++    push({
++      title: 'Watcher evidence is empty',
++      layer: 'Pala Evidence Ledger',
++      status: 'partial',
++      detail: 'Cron watchers have not recorded this workspace posture yet.',
++      evidenceCommand: 'sak cron run',
++    });
++  }
++
++  if (queue.length < 3) {
++    push({
++      title: 'Owner release review',
++      layer: 'Pala Court',
++      status: 'owner_controlled',
++      detail: 'Even with green evidence, push and release remain owner-controlled.',
++      evidenceCommand: 'sak audit',
++    });
++  }
++
++  return queue.slice(0, 6);
++}
