@@ -1,0 +1,433 @@
+﻿commit 0c9334bc1dd3d987440c393c71a5b8365f2164d4
+Author: trugurpala <trugurpala@users.noreply.github.com>
+Date:   Tue Jun 9 17:36:22 2026 +0300
+
+    Add local config init command
+---
+ .gitignore                |  1 +
+ INSTALL.md                |  3 ++
+ README.md                 |  5 +++
+ docs/backlog.md           |  2 ++
+ docs/commands.md          | 20 +++++++++++
+ docs/roadmap.md           |  2 ++
+ docs/v0.1-acceptance.md   |  3 ++
+ docs/v0.15-config-init.md | 75 ++++++++++++++++++++++++++++++++++++++
+ pala.config.example.json  |  8 +++++
+ pala.py                   | 91 +++++++++++++++++++++++++++++++++++++++++++----
+ 10 files changed, 204 insertions(+), 6 deletions(-)
+
+diff --git a/.gitignore b/.gitignore
+index 9a5340f..edbb096 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -9,6 +9,7 @@ venv/
+ .env.*
+ *.pem
+ *.key
++pala.config.json
+ 
+ # Generated memory data
+ data/inbox/*
+diff --git a/INSTALL.md b/INSTALL.md
+index 2984503..67ddc05 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -15,6 +15,7 @@ Pala Memory Core MVP is a local-first Python starter. It does not require a data
+ From the repository root:
+ 
+ ```powershell
++python pala.py init
+ python pala.py remember --title "First memory" --text "Pala Memory Core is installed." --source manual --tag setup
+ python pala.py doctor
+ python pala.py brief today
+@@ -76,6 +77,7 @@ Open it in a browser. Later versions can read live records from the local data f
+ 
+ | User Intent | Command |
+ |---|---|
++| Create local config | `python pala.py init` |
+ | Save a useful ChatGPT/Codex answer | `python pala.py remember --title "..." --text "..." --source codex` |
+ | Check local system health | `python pala.py doctor` |
+ | Save text from a file | `python pala.py remember --title "..." --text-file note.txt` |
+@@ -115,6 +117,7 @@ README.md
+ AGENTS.md
+ INSTALL.md
+ pala.py
++pala.config.example.json
+ schema/record.schema.json
+ docs/commands.md
+ docs/connectors.md
+diff --git a/README.md b/README.md
+index 5a98eae..aba00b2 100644
+--- a/README.md
++++ b/README.md
+@@ -9,6 +9,7 @@ Pala Memory Core captures important AI work during the day, stores it as durable
+ The MVP starts with reliable manual capture:
+ 
+ ```text
++python pala.py init
+ python pala.py remember --title "Pala Memory Core idea" --text "Capture this work."
+ python pala.py doctor
+ python pala.py brief today
+@@ -40,6 +41,7 @@ python pala.py capture playwright --url http://127.0.0.1:8765 --screenshot
+ | Layer | Purpose |
+ |---|---|
+ | Capture | Save chat notes, Codex outputs, files, PDFs, screenshots, and links |
++| Config | Store default knowledge-bank, Drive, mobile share, and dashboard settings locally |
+ | Memory | Store records as Markdown + JSON |
+ | Project Link | Connect records to GitHub repos or local folders |
+ | Doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
+@@ -54,6 +56,7 @@ pala-memory-core/
+   README.md
+   AGENTS.md
+   pala.py
++  pala.config.example.json
+   schema/
+     record.schema.json
+   dashboard/
+@@ -74,6 +77,7 @@ pala-memory-core/
+ 
+ | Command | Status | Result |
+ |---|---|---|
++| `init` | v0.15 | Creates local config and data folders |
+ | `remember` | v0.1 | Creates a Markdown + JSON memory record |
+ | `brief today` | v0.1 | Creates a daily Markdown briefing |
+ | `backup receipt` | v0.1 | Creates a local backup receipt |
+@@ -90,6 +94,7 @@ pala-memory-core/
+ | `doctor` | v0.12 | Checks 10+ local systems and reports ready/missing pieces |
+ | `report vault` | v0.13 | Creates a beginning-to-end recovery and backup summary report |
+ | Backup status tracking | v0.14 | Updates record backup status after receipt/GitHub/Drive backups |
++| `pala.config.json` | v0.15 | Stores local defaults without committing user paths |
+ | `link project` | planned | Adds repo/folder references to a record |
+ 
+ ## Data Principles
+diff --git a/docs/backlog.md b/docs/backlog.md
+index 99c5668..42e05cb 100644
+--- a/docs/backlog.md
++++ b/docs/backlog.md
+@@ -5,6 +5,7 @@
+ | Issue | Title | Outcome |
+ |---|---|---|
+ | `PMC-001` | Create local config file | User can set data path and knowledge-bank repo |
++| `PMC-001B` | Add `init` command | User can create local config and data folders from one command |
+ | `PMC-002` | Add `remember` command | User can save Markdown + JSON memory records |
+ | `PMC-003` | Add attachment copy and hash | PDFs/images/files are copied safely |
+ | `PMC-004` | Add `brief today` command | Daily summary file is generated |
+@@ -53,6 +54,7 @@
+ | `PMC-022B` | Add mobile share watcher | Optional sync-folder watcher can import new shares without duplicates |
+ | `PMC-023` | Add secret redaction pass | Common secrets are filtered before backup |
+ | `PMC-024` | Track backup status on records | Records show local/GitHub/Drive backup completion after backup commands |
++| `PMC-025` | Add config-driven defaults | Backup/report/dashboard commands use local config defaults |
+ 
+ ## Risk Register
+ 
+diff --git a/docs/commands.md b/docs/commands.md
+index 83c39d1..ca2e058 100644
+--- a/docs/commands.md
++++ b/docs/commands.md
+@@ -1,5 +1,25 @@
+ # Commands
+ 
++## init
++
++Creates local data folders and writes `pala.config.json`.
++
++```text
++python pala.py init
++```
++
++Useful options:
++
++| Option | Purpose |
++|---|---|
++| `--knowledge-bank C:\path\to\repo` | Default knowledge-bank repo path |
++| `--drive-target C:\path\to\Drive` | Default Drive-folder backup target |
++| `--mobile-share C:\path\to\folder` | Default phone/share sync folder |
++| `--dashboard-host 127.0.0.1` | Default dashboard host |
++| `--dashboard-port 8765` | Default dashboard port |
++| `--create-targets` | Create configured Drive/mobile folders |
++| `--force` | Overwrite existing config |
++
+ ## remember
+ 
+ Creates a local memory record as Markdown + JSON.
+diff --git a/docs/roadmap.md b/docs/roadmap.md
+index 715631c..3229274 100644
+--- a/docs/roadmap.md
++++ b/docs/roadmap.md
+@@ -22,6 +22,7 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | `v0.12` | System doctor | Local install can report 10+ ready/missing systems |
+ | `v0.13` | Vault report | Local vault can produce a beginning-to-end recovery and backup report |
+ | `v0.14` | Backup status tracking | Backup commands update record backup status fields |
++| `v0.15` | Local config/init | User can initialize and reuse local defaults from `pala.config.json` |
+ | `v1.0` | Recovery workflow | Deleted/scattered work can be found through local records |
+ 
+ ## MVP Non-Goals
+@@ -53,4 +54,5 @@ Pala Memory Core should become a local-first dashboard and CLI for saving, summa
+ | Add system doctor | Check local folders, records, dashboard, GitHub, Drive, browser, mobile, and optional Playwright |
+ | Add vault report | Summarize sources, files, tasks, decisions, timeline, and backup artifacts |
+ | Add backup status tracking | Update local records after receipt, GitHub, and Drive backups |
++| Add config/init | Write local defaults for knowledge bank, Drive, mobile shares, and dashboard |
+ | Add secret filter | Redact common API key patterns before backup |
+diff --git a/docs/v0.1-acceptance.md b/docs/v0.1-acceptance.md
+index f36838e..1617dcd 100644
+--- a/docs/v0.1-acceptance.md
++++ b/docs/v0.1-acceptance.md
+@@ -14,6 +14,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ 
+ | Flow | Command | Completion Evidence |
+ |---|---|---|
++| Initialize config | `python pala.py init` | `pala.config.json` created locally and ignored by Git |
+ | Save a text memory | `python pala.py remember --title "..." --text "..."` | Markdown and JSON record created under `data/records/` |
+ | Check system health | `python pala.py doctor` | 10+ local systems are checked with pass/warn/fail status |
+ | Save with project link | `python pala.py remember --title "..." --text "..." --project trugurpala/repo` | JSON contains `project_refs` |
+@@ -44,6 +45,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ | `INSTALL.md` | Explain local install and first commands |
+ | `AGENTS.md` | Explain agent working rules |
+ | `pala.py` | MVP CLI |
++| `pala.config.example.json` | Example local config |
+ | `schema/record.schema.json` | Record contract |
+ | `docs/commands.md` | Command reference |
+ | `docs/connectors.md` | Connector model |
+@@ -64,6 +66,7 @@ The version is complete when a user can save useful ChatGPT/Codex work locally,
+ 
+ | Check | Expected Result |
+ |---|---|
++| Config init | Creates local config and keeps user-specific config out of Git |
+ | CLI capture | Creates valid record files |
+ | Attachment copy | Does not mutate original file |
+ | Brief generation | Includes today's records and open tasks |
+diff --git a/docs/v0.15-config-init.md b/docs/v0.15-config-init.md
+new file mode 100644
+index 0000000..fc6be61
+--- /dev/null
++++ b/docs/v0.15-config-init.md
+@@ -0,0 +1,75 @@
++# v0.15 Config Init
++
++Date: 2026-06-09
++Phase: local config/init preview
++Status: PASS for local config creation and config-driven defaults
++
++## Goal
++
++Let users initialize Pala Memory Core once, then reuse local defaults for knowledge-bank backup, Drive-folder backup, mobile share folders, and dashboard host/port.
++
++## Added Behavior
++
++| Area | Change |
++|---|---|
++| CLI | Added `python pala.py init` |
++| Config | Writes ignored `pala.config.json` |
++| Example | Added committed `pala.config.example.json` |
++| Path precedence | CLI argument > environment variable > config > built-in default |
++| Doctor | Reports config file and config version |
++| Backup | `backup github` and `backup drive` read config defaults |
++| Report | `report vault` reads config paths for latest backup artifacts |
++| Dashboard | `dashboard serve` reads config host/port defaults |
++
++## Commands
++
++```powershell
++python .\pala.py init --force --knowledge-bank <repo> --drive-target <folder> --mobile-share <folder> --dashboard-port 8799 --create-targets
++python .\pala.py doctor --strict
++python .\pala.py backup github --all --push
++python .\pala.py backup drive --all
++python .\pala.py dashboard serve
++```
++
++## Smoke Test
++
++Executed in `C:\Users\Pala-Home-1\Desktop\Codex\pala-memory-core`:
++
++```powershell
++python -m py_compile .\pala.py
++python .\pala.py init --force --knowledge-bank .\data\backups\config-kb --drive-target .\data\backups\config-drive --mobile-share .\data\inbox\config-mobile --dashboard-port 8799 --create-targets
++git status --short --ignored pala.config.json pala.config.example.json .gitignore
++python .\pala.py backup drive --all
++python .\pala.py backup github --all --push
++python .\pala.py report vault --all --json
++python .\pala.py doctor --strict
++python .\pala.py dashboard serve
++```
++
++Observed key output:
++
++```text
++config saved pala.config.json
++knowledge_bank_path=...\data\backups\config-kb-git-...
++drive_backup_path=...\data\backups\config-drive-...
++mobile_share_path=...\data\inbox\config-mobile-...
++!! pala.config.json
++?? pala.config.example.json
++backup_status.github=complete updated=8
++PASS | config           | Config file | pala.config.json
++PASS | config           | Config version | version=1
++PASS | knowledge-bank   | Knowledge-bank repo | ...\config-kb-git-...
++PASS | drive            | Drive folder target | ...\config-drive-...
++status=200 stopped=<pid>
++```
++
++Dashboard verification:
++
++```text
++dashboard serve used configured port 8799
++GET http://127.0.0.1:8799 returned 200
++```
++
++## Release Posture
++
++This is a local setup preview. The config file is intentionally ignored by Git because it stores user-specific local paths. It does not install dependencies or create remote cloud resources automatically.
+diff --git a/pala.config.example.json b/pala.config.example.json
+new file mode 100644
+index 0000000..3bea272
+--- /dev/null
++++ b/pala.config.example.json
+@@ -0,0 +1,8 @@
++{
++  "version": 1,
++  "knowledge_bank_path": "C:\\Users\\you\\Desktop\\Codex\\pala-os-bilgi-bankasi",
++  "drive_backup_path": "C:\\Users\\you\\Documents\\Pala Memory Core Drive Backup",
++  "mobile_share_path": "C:\\Users\\you\\Google Drive\\ChatGPT Shares",
++  "dashboard_host": "127.0.0.1",
++  "dashboard_port": 8765
++}
+diff --git a/pala.py b/pala.py
+index 9941a1f..d32713d 100644
+--- a/pala.py
++++ b/pala.py
+@@ -34,6 +34,8 @@ REPORTS = DATA / "reports"
+ ATTACHMENTS = DATA / "attachments"
+ BACKUPS = DATA / "backups"
+ DASHBOARD = ROOT / "dashboard"
++CONFIG_PATH = ROOT / "pala.config.json"
++CONFIG_VERSION = 1
+ DEFAULT_KNOWLEDGE_BANK = Path.home() / "Desktop" / "Codex" / "pala-os-bilgi-bankasi"
+ DEFAULT_DRIVE_BACKUP = Path.home() / "Documents" / "Pala Memory Core Drive Backup"
+ SECRET_PATTERNS = [
+@@ -49,6 +51,58 @@ def ensure_dirs() -> None:
+         path.mkdir(parents=True, exist_ok=True)
+ 
+ 
++def load_config() -> dict[str, Any]:
++    if not CONFIG_PATH.exists():
++        return {}
++    try:
++        data = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
++    except json.JSONDecodeError:
++        return {}
++    return data if isinstance(data, dict) else {}
++
++
++def write_config(config: dict[str, Any]) -> None:
++    CONFIG_PATH.write_text(json.dumps(config, indent=2, ensure_ascii=True), encoding="utf-8")
++
++
++def config_value(key: str) -> Any:
++    return load_config().get(key)
++
++
++def configured_path(value: str | None, env_name: str, config_key: str, default: Path) -> Path:
++    configured = value or os.environ.get(env_name) or config_value(config_key)
++    return Path(str(configured)).expanduser().resolve() if configured else default
++
++
++def init_config(args: argparse.Namespace) -> None:
++    ensure_dirs()
++    if CONFIG_PATH.exists() and not args.force:
++        raise SystemExit(f"config already exists: {CONFIG_PATH}. Use --force to overwrite.")
++
++    knowledge_bank = Path(args.knowledge_bank).expanduser().resolve() if args.knowledge_bank else DEFAULT_KNOWLEDGE_BANK
++    drive_backup = Path(args.drive_target).expanduser().resolve() if args.drive_target else DEFAULT_DRIVE_BACKUP
++    mobile_share = Path(args.mobile_share).expanduser().resolve() if args.mobile_share else Path.home() / "Documents" / "Pala Mobile Shares"
++
++    if args.create_targets:
++        knowledge_bank.mkdir(parents=True, exist_ok=True)
++        drive_backup.mkdir(parents=True, exist_ok=True)
++        mobile_share.mkdir(parents=True, exist_ok=True)
++
++    config = {
++        "version": CONFIG_VERSION,
++        "knowledge_bank_path": str(knowledge_bank),
++        "drive_backup_path": str(drive_backup),
++        "mobile_share_path": str(mobile_share),
++        "dashboard_host": args.dashboard_host,
++        "dashboard_port": args.dashboard_port,
++    }
++    write_config(config)
++    print(f"config saved {CONFIG_PATH.relative_to(ROOT)}")
++    print(f"knowledge_bank_path={knowledge_bank}")
++    print(f"drive_backup_path={drive_backup}")
++    print(f"mobile_share_path={mobile_share}")
++
++
+ def now_utc() -> dt.datetime:
+     return dt.datetime.now(dt.timezone.utc)
+ 
+@@ -499,6 +553,23 @@ def doctor_report(args: argparse.Namespace) -> None:
+         "local-storage",
+     )
+ 
++    config = load_config()
++    add_check(
++        checks,
++        "Config file",
++        "PASS" if CONFIG_PATH.exists() else "WARN",
++        str(CONFIG_PATH.relative_to(ROOT)) if CONFIG_PATH.exists() else "run: python pala.py init",
++        "config",
++    )
++    if config:
++        add_check(
++            checks,
++            "Config version",
++            "PASS" if config.get("version") == CONFIG_VERSION else "WARN",
++            f"version={config.get('version', 'unknown')}",
++            "config",
++        )
++
+     add_check(
+         checks,
+         "Record vault",
+@@ -858,13 +929,11 @@ def backup_receipt(_args: argparse.Namespace) -> None:
+ 
+ 
+ def knowledge_bank_path(value: str | None) -> Path:
+-    configured = value or os.environ.get("PALA_KNOWLEDGE_BANK_PATH")
+-    return Path(configured).expanduser().resolve() if configured else DEFAULT_KNOWLEDGE_BANK
++    return configured_path(value, "PALA_KNOWLEDGE_BANK_PATH", "knowledge_bank_path", DEFAULT_KNOWLEDGE_BANK)
+ 
+ 
+ def drive_backup_path(value: str | None) -> Path:
+-    configured = value or os.environ.get("PALA_DRIVE_BACKUP_PATH")
+-    return Path(configured).expanduser().resolve() if configured else DEFAULT_DRIVE_BACKUP
++    return configured_path(value, "PALA_DRIVE_BACKUP_PATH", "drive_backup_path", DEFAULT_DRIVE_BACKUP)
+ 
+ 
+ def backup_github(args: argparse.Namespace) -> None:
+@@ -1506,6 +1575,16 @@ def build_parser() -> argparse.ArgumentParser:
+     parser = argparse.ArgumentParser(prog="pala", description="Pala Memory Core MVP CLI")
+     sub = parser.add_subparsers(dest="command", required=True)
+ 
++    init = sub.add_parser("init", help="create local config and data folders")
++    init.add_argument("--knowledge-bank", help="default knowledge-bank repo path")
++    init.add_argument("--drive-target", help="default Drive-folder backup target")
++    init.add_argument("--mobile-share", help="default mobile share folder")
++    init.add_argument("--dashboard-host", default=str(config_value("dashboard_host") or "127.0.0.1"))
++    init.add_argument("--dashboard-port", type=int, default=int(config_value("dashboard_port") or 8765))
++    init.add_argument("--create-targets", action="store_true", help="create configured Drive/mobile folders")
++    init.add_argument("--force", action="store_true", help="overwrite existing pala.config.json")
++    init.set_defaults(func=init_config)
++
+     remember = sub.add_parser("remember", help="save a memory record")
+     remember.add_argument("--title", required=True)
+     remember.add_argument("--text", default="")
+@@ -1670,8 +1749,8 @@ def build_parser() -> argparse.ArgumentParser:
+     export.add_argument("--date", default=today(), help="date folder to export")
+     export.set_defaults(func=dashboard_export)
+     serve = dashboard_sub.add_parser("serve", help="serve local dashboard")
+-    serve.add_argument("--host", default="127.0.0.1")
+-    serve.add_argument("--port", type=int, default=8765)
++    serve.add_argument("--host", default=str(config_value("dashboard_host") or "127.0.0.1"))
++    serve.add_argument("--port", type=int, default=int(config_value("dashboard_port") or 8765))
+     serve.set_defaults(func=dashboard_serve)
+ 
+     return parser
